@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PokemonCardData" load_steps=5 format=3 uid="uid://dbqo5owuxry47"]
+
+[ext_resource type="Texture2D" uid="uid://dcy8mg3agx6na" path="res://images/pikachu-sandstorm-ss-72-art-only.jpg" id="1_6vp3u"]
+[ext_resource type="Script" uid="uid://if60df2q6bbw" path="res://scripts/cards/attack_data.gd" id="1_lsh18"]
+[ext_resource type="Script" uid="uid://dlxt3wusjmtlk" path="res://pokemon_card_data.gd" id="2_py3ia"]
+[ext_resource type="Resource" uid="uid://bytqlvbbdelth" path="res://data/cards/tackle.tres" id="3_renpl"]
+
+[resource]
+script = ExtResource("2_py3ia")
+hp_max = 60
+pokemon_type = 4
+weakness = 6
+attacks = Array[ExtResource("1_lsh18")]([ExtResource("3_renpl")])
+card_id = "PIKACHU_001"
+display_name = "Pikachu"
+art = ExtResource("1_6vp3u")
+metadata/_custom_type_script = "uid://dlxt3wusjmtlk"

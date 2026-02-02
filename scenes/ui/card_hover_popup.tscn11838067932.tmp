@@ -1,0 +1,30 @@
+[gd_scene load_steps=2 format=3 uid="uid://ddq7ehpynxsnh"]
+
+[ext_resource type="Script" uid="uid://77wxepinm1qn" path="res://scenes/ui/card_hover_popup.gd" id="1_xyt3v"]
+
+[node name="CardHoverPopup" type="PopupPanel"]
+oversampling_override = 1.0
+visible = true
+mouse_passthrough = true
+script = ExtResource("1_xyt3v")
+
+[node name="Margin" type="MarginContainer" parent="."]
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 96.0
+offset_bottom = 96.0
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="Stats" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="Art" type="TextureRect" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="Rules" type="RichTextLabel" parent="Margin/VBox"]
+layout_mode = 2

@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://d42t8lsxw6en"]
+
+[ext_resource type="Script" uid="uid://djsp2ya1o2ept" path="res://scenes/main/main.gd" id="1_rbc3b"]
+[ext_resource type="PackedScene" uid="uid://oj60p60ym8g6" path="res://scenes/table/table.tscn" id="2_pjirt"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_rbc3b")
+
+[node name="Table" parent="." instance=ExtResource("2_pjirt")]
+layout_mode = 1

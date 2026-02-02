@@ -1,0 +1,250 @@
+[gd_scene load_steps=2 format=3 uid="uid://oj60p60ym8g6"]
+
+[ext_resource type="Script" uid="uid://btdkw20cgfcvh" path="res://scenes/table/table.gd" id="1_os2sl"]
+
+[node name="Table" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_os2sl")
+num_active_slots = null
+max_bench = null
+test_hand_size = null
+
+[node name="RootVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OpponentArea" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+
+[node name="OpponentMargin" type="MarginContainer" parent="RootVBox/OpponentArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="OpponentVBox" type="VBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin"]
+layout_mode = 2
+
+[node name="OpponentLabel" type="Label" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox"]
+layout_mode = 2
+text = "Opponent"
+horizontal_alignment = 1
+
+[node name="OpponentPlaymat" type="HBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+
+[node name="OpponentBattlefield" type="VBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OpActiveZoneRoot" type="Control" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+
+[node name="OpActiveClickArea" type="Panel" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpActiveZoneRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="OpponentActiveZone" type="HBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpActiveZoneRoot"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 0
+offset_bottom = 260.0
+theme_override_constants/separation = 16
+
+[node name="OpActiveSlots" type="HBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpActiveZoneRoot/OpponentActiveZone"]
+layout_mode = 2
+
+[node name="OpActiveSlot0" type="PanelContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpActiveZoneRoot/OpponentActiveZone/OpActiveSlots"]
+layout_mode = 2
+
+[node name="OpActiveSlot1" type="PanelContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpActiveZoneRoot/OpponentActiveZone/OpActiveSlots"]
+layout_mode = 2
+
+[node name="OpBenchZoneRoot" type="Control" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+
+[node name="OpBenchClickArea" type="Panel" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpBenchZoneRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="OpponentBenchZone" type="HBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpBenchZoneRoot"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 1
+offset_bottom = 260.0
+theme_override_constants/separation = 16
+metadata/_edit_use_anchors_ = true
+
+[node name="OpSideZones" type="VBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat"]
+layout_mode = 2
+
+[node name="OpponentDeckSlot" type="PanelContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpSideZones"]
+layout_mode = 2
+
+[node name="OpponentDiscardSlot" type="PanelContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpSideZones"]
+layout_mode = 2
+
+[node name="OpponentPrizeZone" type="HBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpSideZones"]
+layout_mode = 2
+
+[node name="OpponentHandRow" type="HBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CenterArea" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CenterMargin" type="MarginContainer" parent="RootVBox/CenterArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="CenterLabel" type="Label" parent="RootVBox/CenterArea/CenterMargin"]
+layout_mode = 2
+text = "Center / Stack / Prompts"
+horizontal_alignment = 1
+
+[node name="PlayerArea" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+
+[node name="PlayerMargin" type="MarginContainer" parent="RootVBox/PlayerArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="PlayerVBox" type="VBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin"]
+layout_mode = 2
+
+[node name="PlayerLabel" type="Label" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox"]
+layout_mode = 2
+text = "You"
+horizontal_alignment = 1
+
+[node name="PlayerPlaymat" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+
+[node name="PlayerBattlefield" type="VBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActiveZoneRoot" type="Control" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+
+[node name="ActiveClickArea" type="Panel" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/ActiveZoneRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="PlayerActiveZone" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/ActiveZoneRoot"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 0
+offset_bottom = 260.0
+theme_override_constants/separation = 16
+
+[node name="ActiveSlots" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/ActiveZoneRoot/PlayerActiveZone"]
+layout_mode = 2
+
+[node name="ActiveSlot0" type="PanelContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/ActiveZoneRoot/PlayerActiveZone/ActiveSlots"]
+layout_mode = 2
+
+[node name="ActiveSlot1" type="PanelContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/ActiveZoneRoot/PlayerActiveZone/ActiveSlots"]
+layout_mode = 2
+
+[node name="BenchZoneRoot" type="Control" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+
+[node name="BenchClickArea" type="Panel" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/BenchZoneRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="PlayerBenchZone" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/BenchZoneRoot"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 1
+offset_bottom = 260.0
+theme_override_constants/separation = 16
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerSideZones" type="VBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat"]
+layout_mode = 2
+
+[node name="PlayerDeckSlot" type="PanelContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerSideZones"]
+layout_mode = 2
+
+[node name="PlayerDiscardSlot" type="PanelContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerSideZones"]
+layout_mode = 2
+
+[node name="PlayerPrizeZone" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerSideZones"]
+layout_mode = 2
+
+[node name="PlayerHandZone" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Bottom Bar" type="PanelContainer" parent="RootVBox"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+
+[node name="BottomMargin" type="MarginContainer" parent="RootVBox/Bottom Bar"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="UIRow" type="HBoxContainer" parent="RootVBox/Bottom Bar/BottomMargin"]
+layout_mode = 2
+
+[node name="EndTurnButton" type="Button" parent="RootVBox/Bottom Bar/BottomMargin/UIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "End Turn"
+
+[node name="PhaseLabel" type="Label" parent="RootVBox/Bottom Bar/BottomMargin/UIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Phase: MAIN"
+
+[node name="GameLog" type="RichTextLabel" parent="RootVBox/Bottom Bar/BottomMargin/UIRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_horizontal = 3

@@ -1,0 +1,143 @@
+[gd_scene load_steps=2 format=3 uid="uid://oj60p60ym8g6"]
+
+[ext_resource type="Script" path="res://scenes/table/table.gd" id="1_os2sl"]
+
+[node name="Table" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_os2sl")
+
+[node name="RootVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OpponentArea" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+
+[node name="OpponentMargin" type="MarginContainer" parent="RootVBox/OpponentArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="OpponentVBox" type="VBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin"]
+layout_mode = 2
+
+[node name="OpponentLabel" type="Label" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox"]
+layout_mode = 2
+text = "Opponent"
+horizontal_alignment = 1
+
+[node name="OpponentHandRow" type="HBoxContainer" parent="RootVBox/OpponentArea/OpponentMargin/OpponentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CenterArea" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CenterMargin" type="MarginContainer" parent="RootVBox/CenterArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="CenterLabel" type="Label" parent="RootVBox/CenterArea/CenterMargin"]
+layout_mode = 2
+text = "Center / Stack / Prompts"
+horizontal_alignment = 1
+
+[node name="PlayerArea" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+
+[node name="PlayerMargin" type="MarginContainer" parent="RootVBox/PlayerArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="PlayerVBox" type="VBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin"]
+layout_mode = 2
+
+[node name="PlayerLabel" type="Label" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox"]
+layout_mode = 2
+text = "You"
+horizontal_alignment = 1
+
+[node name="PlayerHandRow" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PlayerPlaymat" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox"]
+layout_mode = 2
+
+[node name="PlayerBattlefield" type="VBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat"]
+layout_mode = 2
+
+[node name="PlayerActiveZone" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield"]
+layout_mode = 2
+
+[node name="ActiveClickArea" type="Panel" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/PlayerActiveZone"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PlayerBenchZone" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield"]
+layout_mode = 2
+
+[node name="BenchClickArea" type="Panel" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/PlayerBenchZone"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PlayerSideZones" type="VBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat"]
+layout_mode = 2
+
+[node name="PlayerDeckSlot" type="PanelContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerSideZones"]
+layout_mode = 2
+
+[node name="PlayerDiscardSlot" type="PanelContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerSideZones"]
+layout_mode = 2
+
+[node name="PlayerPrizeZone" type="HBoxContainer" parent="RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerSideZones"]
+layout_mode = 2
+
+[node name="Bottom Bar" type="PanelContainer" parent="RootVBox"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+
+[node name="BottomMargin" type="MarginContainer" parent="RootVBox/Bottom Bar"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="UIRow" type="HBoxContainer" parent="RootVBox/Bottom Bar/BottomMargin"]
+layout_mode = 2
+
+[node name="EndTurnButton" type="Button" parent="RootVBox/Bottom Bar/BottomMargin/UIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "End Turn"
+
+[node name="PhaseLabel" type="Label" parent="RootVBox/Bottom Bar/BottomMargin/UIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Phase: MAIN"
+
+[node name="GameLog" type="RichTextLabel" parent="RootVBox/Bottom Bar/BottomMargin/UIRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_horizontal = 3

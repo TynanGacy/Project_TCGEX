@@ -1,0 +1,344 @@
+[gd_scene format=3 uid="uid://oj60p60ym8g6"]
+
+[ext_resource type="Script" uid="uid://btdkw20cgfcvh" path="res://scenes/table/table.gd" id="1_os2sl"]
+[ext_resource type="Texture2D" uid="uid://kihn14urjx0k" path="res://images/TestBackground.png" id="2_ov72x"]
+[ext_resource type="Script" uid="uid://c1xoj2q4ak1fx" path="res://scenes/ui/slot_overlay.gd" id="3_qxbf1"]
+
+[node name="Table" type="Control" unique_id=1002999290]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_os2sl")
+
+[node name="PlaymatBG" type="TextureRect" parent="." unique_id=1752913575]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_ov72x")
+
+[node name="ScrollContainer" type="ScrollContainer" parent="." unique_id=2135632991]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = 7.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BoardRoot" type="Control" parent="." unique_id=1276155326]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BoardLayer" type="Control" parent="BoardRoot" unique_id=663895137]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="OpponentBoard" type="Control" parent="BoardRoot/BoardLayer" unique_id=999094402]
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OpponentSlotOverlay" type="Control" parent="BoardRoot/BoardLayer/OpponentBoard" unique_id=604550497]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_qxbf1")
+
+[node name="PlayerBoard" type="Control" parent="BoardRoot/BoardLayer" unique_id=2042682157]
+layout_mode = 1
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="PlayerSlotOverlay" type="Control" parent="BoardRoot/BoardLayer/PlayerBoard" unique_id=1418904590]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_qxbf1")
+
+[node name="StadiumOverlay" type="Control" parent="BoardRoot/BoardLayer" unique_id=1802509162]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="StadiumSlot" type="ColorRect" parent="BoardRoot/BoardLayer/StadiumOverlay" unique_id=1936550432]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+color = Color(0.0042617056, 0.0042617056, 0.0042617056, 1)
+
+[node name="RootVBox" type="VBoxContainer" parent="BoardRoot" unique_id=1245923058]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="OpponentArea" type="PanelContainer" parent="BoardRoot/RootVBox" unique_id=1470347236]
+layout_mode = 2
+size_flags_vertical = 2
+
+[node name="OpponentMargin" type="MarginContainer" parent="BoardRoot/RootVBox/OpponentArea" unique_id=309321786]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="OpponentVBox" type="VBoxContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin" unique_id=669097297]
+layout_mode = 2
+
+[node name="OpponentLabel" type="Label" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox" unique_id=2054772882]
+layout_mode = 2
+text = "Opponent"
+horizontal_alignment = 1
+
+[node name="OpponentHandZone" type="HBoxContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox" unique_id=930715235]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 130)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="OpponentPlaymat" type="HBoxContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox" unique_id=2084898205]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+
+[node name="OpponentBattlefield" type="VBoxContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat" unique_id=144251060]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OpponentBenchZoneRoot" type="Control" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield" unique_id=1414448501]
+custom_minimum_size = Vector2(0, 130)
+layout_mode = 2
+
+[node name="OpponentBenchClickArea" type="Panel" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpponentBenchZoneRoot" unique_id=474973303]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="OpponentBenchZone" type="HBoxContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpponentBenchZoneRoot" unique_id=1628792414]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 1
+offset_bottom = 260.0
+theme_override_constants/separation = 16
+metadata/_edit_use_anchors_ = true
+
+[node name="OpponentActiveZoneRoot" type="Control" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield" unique_id=423665803]
+custom_minimum_size = Vector2(0, 130)
+layout_mode = 2
+
+[node name="OpponentActiveClickArea" type="Panel" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpponentActiveZoneRoot" unique_id=1221114609]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="OpponentActiveZone" type="HBoxContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpponentActiveZoneRoot" unique_id=687244968]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="OpponentActiveSlots" type="HBoxContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpponentActiveZoneRoot/OpponentActiveZone" unique_id=349720617]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OpponentActiveSlot0" type="PanelContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpponentActiveZoneRoot/OpponentActiveZone/OpponentActiveSlots" unique_id=179536711]
+layout_mode = 2
+
+[node name="OpponentActiveSlot1" type="PanelContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentBattlefield/OpponentActiveZoneRoot/OpponentActiveZone/OpponentActiveSlots" unique_id=1370998622]
+layout_mode = 2
+
+[node name="OpponentSideZones" type="VBoxContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat" unique_id=651124534]
+layout_mode = 2
+
+[node name="OpponentDeckSlot" type="PanelContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentSideZones" unique_id=425611439]
+layout_mode = 2
+
+[node name="OpponentDiscardSlot" type="PanelContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentSideZones" unique_id=947635052]
+layout_mode = 2
+
+[node name="OpponentPrizeZone" type="HBoxContainer" parent="BoardRoot/RootVBox/OpponentArea/OpponentMargin/OpponentVBox/OpponentPlaymat/OpponentSideZones" unique_id=1086615307]
+layout_mode = 2
+
+[node name="CenterArea" type="PanelContainer" parent="BoardRoot/RootVBox" unique_id=848188411]
+layout_mode = 2
+
+[node name="CenterMargin" type="MarginContainer" parent="BoardRoot/RootVBox/CenterArea" unique_id=244331845]
+layout_mode = 2
+
+[node name="PlayerArea" type="PanelContainer" parent="BoardRoot/RootVBox" unique_id=933035291]
+layout_mode = 2
+
+[node name="PlayerMargin" type="MarginContainer" parent="BoardRoot/RootVBox/PlayerArea" unique_id=1922508539]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="PlayerVBox" type="VBoxContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin" unique_id=1619699404]
+layout_mode = 2
+
+[node name="PlayerLabel" type="Label" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox" unique_id=465105098]
+layout_mode = 2
+text = "You"
+horizontal_alignment = 1
+
+[node name="PlayerPlaymat" type="HBoxContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox" unique_id=94055545]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+
+[node name="PlayerBattlefield" type="VBoxContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat" unique_id=36251262]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PlayerActiveZoneRoot" type="Control" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield" unique_id=1169366094]
+custom_minimum_size = Vector2(0, 130)
+layout_mode = 2
+
+[node name="PlayerActiveClickArea" type="Panel" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/PlayerActiveZoneRoot" unique_id=924993273]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="PlayerActiveZone" type="HBoxContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/PlayerActiveZoneRoot" unique_id=1688876522]
+custom_minimum_size = Vector2(0, 130)
+layout_mode = 0
+offset_bottom = 260.0
+theme_override_constants/separation = 16
+
+[node name="PlayerActiveSlots" type="HBoxContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/PlayerActiveZoneRoot/PlayerActiveZone" unique_id=125161545]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PlayerActiveSlot0" type="PanelContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/PlayerActiveZoneRoot/PlayerActiveZone/PlayerActiveSlots" unique_id=404976118]
+layout_mode = 2
+
+[node name="PlayerActiveSlot1" type="PanelContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/PlayerActiveZoneRoot/PlayerActiveZone/PlayerActiveSlots" unique_id=32695661]
+layout_mode = 2
+
+[node name="PlayerBenchZoneRoot" type="Control" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield" unique_id=2097077076]
+custom_minimum_size = Vector2(0, 130)
+layout_mode = 2
+
+[node name="PlayerBenchClickArea" type="Panel" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/PlayerBenchZoneRoot" unique_id=1057379006]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="PlayerBenchZone" type="HBoxContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerBattlefield/PlayerBenchZoneRoot" unique_id=314052233]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 1
+offset_bottom = 260.0
+theme_override_constants/separation = 16
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerSideZones" type="VBoxContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat" unique_id=1236195171]
+layout_mode = 2
+
+[node name="PlayerDeckSlot" type="PanelContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerSideZones" unique_id=893548121]
+layout_mode = 2
+
+[node name="PlayerDiscardSlot" type="PanelContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerSideZones" unique_id=966218948]
+layout_mode = 2
+
+[node name="PlayerPrizeZone" type="HBoxContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox/PlayerPlaymat/PlayerSideZones" unique_id=532832399]
+layout_mode = 2
+
+[node name="PlayerHandZone" type="HBoxContainer" parent="BoardRoot/RootVBox/PlayerArea/PlayerMargin/PlayerVBox" unique_id=1549575148]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 130)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Bottom Bar" type="PanelContainer" parent="BoardRoot/RootVBox" unique_id=1199353293]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+
+[node name="BottomMargin" type="MarginContainer" parent="BoardRoot/RootVBox/Bottom Bar" unique_id=1352162013]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="UIRow" type="HBoxContainer" parent="BoardRoot/RootVBox/Bottom Bar/BottomMargin" unique_id=1389993716]
+layout_mode = 2
+
+[node name="EndTurnButton" type="Button" parent="BoardRoot/RootVBox/Bottom Bar/BottomMargin/UIRow" unique_id=1742786600]
+unique_name_in_owner = true
+layout_mode = 2
+text = "End Turn"
+
+[node name="PhaseLabel" type="Label" parent="BoardRoot/RootVBox/Bottom Bar/BottomMargin/UIRow" unique_id=1942088436]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Phase: MAIN"
+
+[node name="GameLog" type="RichTextLabel" parent="BoardRoot/RootVBox/Bottom Bar/BottomMargin/UIRow" unique_id=1095047875]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HUDLayer" type="Control" parent="." unique_id=1040536924]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0

@@ -1,0 +1,56 @@
+[gd_scene format=3 uid="uid://dgtujfwjm17t7"]
+
+[ext_resource type="Script" uid="uid://wk8lyrv3wkhq" path="res://scenes/card/card_view.gd" id="1_npmht"]
+
+[node name="CardView" type="PanelContainer" unique_id=711522952]
+custom_minimum_size = Vector2(160, 160)
+offset_right = 160.0
+offset_bottom = 163.0
+script = ExtResource("1_npmht")
+compact = null
+selection_thickness = null
+selection_color = null
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=357314880]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Margin" unique_id=387154474]
+layout_mode = 2
+
+[node name="SummaryBar" type="HBoxContainer" parent="Margin/VBox" unique_id=496899615]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="NameLabel" type="Label" parent="Margin/VBox/SummaryBar" unique_id=751820993]
+layout_mode = 2
+text = "Card Name"
+
+[node name="Spacer" type="Control" parent="Margin/VBox/SummaryBar" unique_id=394288381]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="HPLabel" type="Label" parent="Margin/VBox/SummaryBar" unique_id=653073176]
+layout_mode = 2
+
+[node name="TypeLabel" type="Label" parent="Margin/VBox/SummaryBar" unique_id=898000100]
+layout_mode = 2
+
+[node name="ArtRect" type="TextureRect" parent="Margin/VBox" unique_id=1978557778]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="OpponentMargin" type="MarginContainer" parent="." unique_id=87045490]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12

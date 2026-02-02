@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3 uid="uid://ddq7ehpynxsnh"]
+
+[ext_resource type="Script" uid="uid://77wxepinm1qn" path="res://scenes/ui/card_hover_popup.gd" id="1_xyt3v"]
+
+[node name="CardHoverPopup" type="PanelContainer"]
+script = ExtResource("1_xyt3v")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="StatsLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="Art" type="TextureRect" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="RulesLabel" type="RichTextLabel" parent="Margin/VBox"]
+layout_mode = 2
