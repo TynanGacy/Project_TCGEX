@@ -69,7 +69,20 @@ func refresh_ui() -> void:
 	# -------- Pokémon-specific --------
 	if data is PokemonCardData:
 		var p := data as PokemonCardData
-
+		
+		# Display HP (current/max)
+		if hp_label:
+			hp_label.text = "%d/%d HP" % [card_instance.hp_remaining(), p.hp_max]
+		
+		# Display type
+		if type_label:
+			type_label.text = PokemonCardData.energy_type_to_string(p.pokemon_type)
+	else:
+		# Non-Pokemon cards
+		if hp_label:
+			hp_label.text = ""
+		if type_label:
+			type_label.text = ""
 	
 # ============================================================
 #	Public API: selection
