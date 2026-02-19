@@ -7,6 +7,7 @@ class_name CardView
 #	- Emits clicked(self) on left-click
 #	- Maintains a simple "selected" visual border
 #	- Renders from a CardInstance (runtime state) when provided
+#	- NOW: Dynamically scales to fit container size
 # ============================================================
 
 
@@ -51,6 +52,29 @@ func _ready() -> void:
 	mouse_entered.connect(func(): hover_started.emit(self))
 	mouse_exited.connect(func(): hover_ended.emit(self))
 	
+	# Configure art scaling to be dynamic
+	if art_rect:
+		art_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		# Make art responsive to container size
+		art_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	
+	# Listen for size changes to update art
+	resized.connect(_on_card_resized)
+	
+
+func _on_card_resized() -> void:
+	"""Called when the card is resized - ensures art scales properly"""
+	if art_rect and size.y > 0:
+		# Calculate available space for art (leaving room for labels)
+		var margin_total = 16  # top + bottom margins
+		var label_height = 24  # approximate height of name/hp labels
+		var available_height = size.y - margin_total - label_height
+		
+		# Set minimum size to encourage proper scaling
+		art_rect.custom_minimum_size = Vector2(size.x - margin_total, max(60, available_height))
+
+	
 func refresh_ui() -> void:
 	if card_instance == null or card_instance.data == null:
 		return
@@ -89,7 +113,7 @@ func refresh_ui() -> void:
 # ============================================================
 func set_selected(v: bool) -> void:
 	_is_selected = v
-	# your existing selection visuals…
+	queue_redraw()
 
 func is_selected() -> bool:
 	return _is_selected

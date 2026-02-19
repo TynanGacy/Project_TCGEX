@@ -313,6 +313,14 @@ func get_bench_cards(player_id: int) -> Array[CardInstance]:
 	return result
 
 
+func get_bench_card_at(player_id: int, bench_index: int) -> CardInstance:
+	"""Returns the card at a specific bench position, or null if invalid."""
+	var bench_cards := get_bench_cards(player_id)
+	if bench_index >= 0 and bench_index < bench_cards.size():
+		return bench_cards[bench_index]
+	return null
+
+
 func get_hand_cards(player_id: int) -> Array[CardInstance]:
 	"""Returns all cards in a player's hand."""
 	var zone_id := "p%d_hand" % player_id
@@ -352,8 +360,8 @@ func can_swap_active_with_bench(player_id: int, active_slot: int, bench_index: i
 	if active_card == null:
 		return false
 	
-	var bench_cards := get_bench_cards(player_id)
-	if bench_index < 0 or bench_index >= bench_cards.size():
+	var bench_card := get_bench_card_at(player_id, bench_index)
+	if bench_card == null:
 		return false
 	
 	return true

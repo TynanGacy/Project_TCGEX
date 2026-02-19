@@ -330,6 +330,8 @@ func _on_action_committed(action: GameAction) -> void:
 	# Optional: keep actives filled for both players during prototyping
 	ensure_required_actives_if_possible(0)
 	ensure_required_actives_if_possible(1)
+	# Re-apply sizing to any newly moved cards
+	call_deferred("_refresh_playmat_layout")
 
 func _on_turn_log(text: String) -> void:
 	_log_line(text)
@@ -737,6 +739,122 @@ func _on_hover_timer_timeout() -> void:
 	if _hover_popup != null:
 		_hover_popup.show_for(_hover_card)
 
+
+# ============================================================
+#	Card container positioning with proper z-ordering and mouse filtering
+# ============================================================
+func _position_card_containers(player_id: int, layout_info: Dictionary, overlay_global_pos: Vector2) -> void:
+	"""Position actual card containers to match the visual slot overlay positions."""
+	
+	var slots: Array = _active_slots_by_player[player_id]
+	var bench_zone: HBoxContainer = _bench_zones[player_id]
+	
+	# Get slot overlay reference for sizing info
+	var slot_overlay: SlotOverlay = player_slots if player_id == 0 else opponent_slots
+	
+	# Position active slots
+	var active_s: float = layout_info.get("active_s", 120.0)
+	var bench_s: float = layout_info.get("bench_s", 120.0)
+	var gap: float = slot_overlay.gap
+	
+	# Calculate active slot positions from overlay
+	var active_x0: float = layout_info.get("bench_x0", 0.0) + (layout_info.get("bench_w", 0.0) - (num_active_slots * active_s + (num_active_slots - 1) * gap)) * 0.5
+	var bench_y: float = layout_info.get("bench_y", 0.0)
+	var row_gap: float = slot_overlay.row_gap
+	var active_y: float = bench_y - active_s - row_gap
+	
+	for i in range(min(num_active_slots, slots.size())):
+		var slot := slots[i] as Control
+		if slot == null:
+			continue
+		
+		# Make slots top-level so they ignore parent transforms
+		slot.top_level = true
+		
+		# Position relative to overlay
+		var slot_x := overlay_global_pos.x + active_x0 + i * (active_s + gap)
+		var slot_y := overlay_global_pos.y + active_y
+		
+		slot.global_position = Vector2(slot_x, slot_y)
+		slot.custom_minimum_size = Vector2(active_s, active_s)
+		slot.size = Vector2(active_s, active_s)
+		slot.z_index = 0  # Above click areas
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Let clicks pass through empty slots
+		
+		# Resize any cards inside the slot to match
+		for child in slot.get_children():
+			if child is CardView:
+				child.custom_minimum_size = Vector2(active_s, active_s)
+				child.size = Vector2(active_s, active_s)
+				child.mouse_filter = Control.MOUSE_FILTER_STOP  # Cards should catch clicks
+	
+	# Position bench zone
+	if bench_zone != null:
+		var bench_x0: float = layout_info.get("bench_x0", 0.0)
+		var bench_w: float = layout_info.get("bench_w", 0.0)
+		
+		bench_zone.top_level = true
+		bench_zone.global_position = Vector2(overlay_global_pos.x + bench_x0, overlay_global_pos.y + bench_y)
+		bench_zone.custom_minimum_size = Vector2(bench_w, bench_s)
+		bench_zone.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		bench_zone.z_index = 0  # Above click areas
+		bench_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Let clicks pass through gaps
+		
+		# Resize cards in bench to match bench size
+		for child in bench_zone.get_children():
+			if child is CardView:
+				child.custom_minimum_size = Vector2(bench_s, bench_s)
+				child.size = Vector2(bench_s, bench_s)
+				child.mouse_filter = Control.MOUSE_FILTER_STOP  # Cards should catch clicks
+	
+	# Position click areas to match the zones
+	_position_click_areas(player_id, layout_info, overlay_global_pos, active_s, bench_s)
+
+
+func _position_click_areas(player_id: int, layout_info: Dictionary, overlay_global_pos: Vector2, active_s: float, bench_s: float) -> void:
+	"""Position click areas to match the repositioned card zones."""
+	
+	var slot_overlay: SlotOverlay = player_slots if player_id == 0 else opponent_slots
+	var gap: float = slot_overlay.gap
+	var row_gap: float = slot_overlay.row_gap
+	
+	# Calculate positions
+	var bench_x0: float = layout_info.get("bench_x0", 0.0)
+	var bench_w: float = layout_info.get("bench_w", 0.0)
+	var bench_y: float = layout_info.get("bench_y", 0.0)
+	
+	var active_x0: float = bench_x0 + (bench_w - (num_active_slots * active_s + (num_active_slots - 1) * gap)) * 0.5
+	var active_y: float = bench_y - active_s - row_gap
+	var active_w: float = num_active_slots * active_s + (num_active_slots - 1) * gap
+	
+	# Get the click area controls
+	var active_click: Control
+	var bench_click: Control
+	
+	if player_id == 0:
+		active_click = active_click_area
+		bench_click = bench_click_area
+	else:
+		active_click = opponent_active_click_area
+		bench_click = opponent_bench_click_area
+	
+	# Position active click area
+	if active_click != null:
+		active_click.top_level = true
+		active_click.global_position = Vector2(overlay_global_pos.x + active_x0, overlay_global_pos.y + active_y)
+		active_click.size = Vector2(active_w, active_s)
+		active_click.z_index = -10  # Behind everything
+		active_click.mouse_filter = Control.MOUSE_FILTER_STOP  # Catch clicks on empty space
+	
+	# Position bench click area
+	if bench_click != null:
+		bench_click.top_level = true
+		bench_click.global_position = Vector2(overlay_global_pos.x + bench_x0, overlay_global_pos.y + bench_y)
+		bench_click.size = Vector2(bench_w, bench_s)
+		bench_click.z_index = -10  # Behind everything
+		bench_click.mouse_filter = Control.MOUSE_FILTER_STOP  # Catch clicks on empty space
+
+
 func _refresh_playmat_layout() -> void:
 	if player_slots == null or opponent_slots == null or stadium_slot == null:
 		return
@@ -755,6 +873,10 @@ func _refresh_playmat_layout() -> void:
 
 	var p := player_slots.update_layout(p_rect, player_active, player_bench, "player")
 	var o := opponent_slots.update_layout(o_rect, opp_active, opp_bench, "opponent")
+
+	# Position actual card containers to match overlay slots
+	_position_card_containers(0, p, player_slots.global_position)
+	_position_card_containers(1, o, opponent_slots.global_position)
 
 	# Stadium sizing: square, same scale as active
 	var stadium_s := player_slots.bench_sq * player_slots.stadium_scale

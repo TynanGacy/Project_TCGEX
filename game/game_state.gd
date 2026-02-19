@@ -84,10 +84,9 @@ func can_swap_active_with_bench(player_id: int, active_slot: int, bench_index: i
 
 func swap_active_with_bench(player_id: int, active_slot: int, bench_index: int) -> void:
 	var active_card := board.get_active_card(player_id, active_slot)
-	var bench_cards := board.get_bench_cards(player_id)
+	var bench_card := board.get_bench_card_at(player_id, bench_index)
 	
-	if bench_index >= 0 and bench_index < bench_cards.size():
-		var bench_card := bench_cards[bench_index]
+	if active_card != null and bench_card != null:
 		board.swap_cards(active_card, bench_card)
 
 
@@ -95,8 +94,8 @@ func can_promote_from_bench(player_id: int, bench_index: int) -> bool:
 	if board.get_first_empty_active_slot(player_id) == -1:
 		return false
 	
-	var bench_cards := board.get_bench_cards(player_id)
-	return bench_index >= 0 and bench_index < bench_cards.size()
+	var bench_card := board.get_bench_card_at(player_id, bench_index)
+	return bench_card != null
 
 
 func promote_from_bench(player_id: int, bench_index: int) -> void:
@@ -104,8 +103,7 @@ func promote_from_bench(player_id: int, bench_index: int) -> void:
 	if slot_idx == -1:
 		return
 	
-	var bench_cards := board.get_bench_cards(player_id)
-	if bench_index >= 0 and bench_index < bench_cards.size():
-		var card := bench_cards[bench_index]
+	var bench_card := board.get_bench_card_at(player_id, bench_index)
+	if bench_card != null:
 		var target_zone := "p%d_active_%d" % [player_id, slot_idx]
-		board.move_card(card, target_zone)
+		board.move_card(bench_card, target_zone)
