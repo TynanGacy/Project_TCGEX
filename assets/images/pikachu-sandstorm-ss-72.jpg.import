@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c41f6qwey5w5u"
-path="res://.godot/imported/pikachu-sandstorm-ss-72.jpg-8b6e96cd2738469835c622c9fac1ebc9.ctex"
+path="res://.godot/imported/pikachu-sandstorm-ss-72.jpg-c2ddba2bc6d0404cc1c6081ff668b339.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/images/pikachu-sandstorm-ss-72.jpg"
-dest_files=["res://.godot/imported/pikachu-sandstorm-ss-72.jpg-8b6e96cd2738469835c622c9fac1ebc9.ctex"]
+dest_files=["res://.godot/imported/pikachu-sandstorm-ss-72.jpg-c2ddba2bc6d0404cc1c6081ff668b339.ctex"]
 
 [params]
 
