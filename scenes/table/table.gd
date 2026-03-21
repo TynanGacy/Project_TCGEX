@@ -9,9 +9,15 @@ class_name Table
 #	- Moves CardViews between Hand/Bench/ActiveSlots
 #	- Updates CardInstance.zone when a CardView moves
 #
-#	Turn Engine (Step 8 target):
-#	- UI requests Actions via turn_controller
-#	- Actions include target_player_id / board_player_id so they work for opponent too
+#	Game actions and state bridge live in:
+#	  scripts/actions/action_play_selected_to_bench.gd
+#	  scripts/actions/action_play_selected_to_empty_active.gd
+#	  scripts/actions/action_promote_selected_to_active.gd
+#	  scripts/actions/action_swap_active_slot_with_bench_index.gd
+#	  scripts/game/table_game_state.gd
+#
+#	Layout positioning lives in:
+#	  scenes/table/table_layout.gd
 # ============================================================
 
 # ============================================================
@@ -55,8 +61,6 @@ var _hover_card: CardView = null
 var hovered_card: CardView = null
 
 
-
-
 # ============================================================
 #	Match config / Limits
 # ============================================================
@@ -81,186 +85,6 @@ var selected_card_view: Node = null
 #	Turn-engine bridge state
 # ============================================================
 var _table_state: TableGameState
-
-
-# ============================================================
-#	LOCAL: TableGameState (bridges Actions -> Table methods)
-# ============================================================
-class TableGameState extends GameState:
-	var table: Table
-
-	func _init(t: Table) -> void:
-		table = t
-
-	# ---------- Play / Promote ----------
-	func can_play_hand_to_bench(target_player_id: int) -> bool:
-		var t := table 
-		return t._count_cards_in_zone(t._bench_zones[target_player_id]) < t.max_bench
-
-	func can_play_hand_to_active(target_player_id: int) -> bool:
-		var t := table 
-		return t.get_first_empty_active_slot_index(target_player_id) != -1
-
-	func can_promote_bench_to_active(target_player_id: int) -> bool:
-		var t := table 
-		return t.get_first_empty_active_slot_index(target_player_id) != -1
-
-	func play_hand_to_bench(target_player_id: int, card_view: Node) -> void:
-		var t := table 
-		t._move_card_to_zone(card_view, t._bench_zones[target_player_id], target_player_id)
-
-	func play_hand_to_active(target_player_id: int, card_view: Node, slot_index: int) -> void:
-		var t := table 
-		t.move_card_to_active_slot(target_player_id, card_view, slot_index)
-
-	func promote_bench_to_active(target_player_id: int, card_view: Node, slot_index: int) -> void:
-		var t := table 
-		t.move_card_to_active_slot(target_player_id, card_view, slot_index)
-
-	# ---------- Swap ----------
-	func can_swap_active_with_bench_3(board_player_id: int, active_slot_index: int, bench_index: int) -> bool:
-		var t := table
-		var a := t.get_active_card(board_player_id, active_slot_index)
-		var b := t._get_bench_card_by_index(board_player_id, bench_index)
-		return a != null and b != null
-
-	func swap_active_with_bench_3(board_player_id: int, active_slot_index: int, bench_index: int) -> void:
-		var t := table
-		t._swap_active_slot_with_bench_index(board_player_id, active_slot_index, bench_index)
-
-
-# ============================================================
-#	LOCAL: Actions (Step 8: include target_player_id / board_player_id)
-# ============================================================
-class ActionPlaySelectedToBench extends GameAction:
-	var card_view: Node
-	var target_player_id: int
-
-	func _init(actor: int, cv: Node, target_id: int) -> void:
-		actor_id = actor
-		card_view = cv
-		target_player_id = target_id
-
-	func validate(state: GameState) -> ActionResult:
-		if state.phase != TurnPhase.Phase.MAIN:
-			return ActionResult.fail("Play to Bench only allowed during MAIN phase.")
-		if card_view == null or not is_instance_valid(card_view):
-			return ActionResult.fail("No selected card.")
-		var table_state := state as TableGameState
-		if table_state == null:
-			return ActionResult.fail("Bad state type.")
-		var t := table_state.table
-
-		if card_view.get_parent() != t._hand_zones[target_player_id]:
-			return ActionResult.fail("Selected card is not in that player's hand.")
-		if not table_state.can_play_hand_to_bench(target_player_id):
-			return ActionResult.fail("That bench is full.")
-		return ActionResult.success()
-
-	func apply(state: GameState) -> void:
-		(state as TableGameState).play_hand_to_bench(target_player_id, card_view)
-
-	func description() -> String:
-		return "Play selected card to P%d Bench" % target_player_id
-
-
-class ActionPlaySelectedToEmptyActive extends GameAction:
-	var card_view: Node
-	var target_player_id: int
-	var slot_index: int
-
-	func _init(actor: int, cv: Node, target_id: int, slot_i: int) -> void:
-		actor_id = actor
-		card_view = cv
-		target_player_id = target_id
-		slot_index = slot_i
-
-	func validate(state: GameState) -> ActionResult:
-		if state.phase != TurnPhase.Phase.MAIN:
-			return ActionResult.fail("Play to Active only allowed during MAIN phase.")
-		if card_view == null or not is_instance_valid(card_view):
-			return ActionResult.fail("No selected card.")
-		var table_state := state as TableGameState
-		if table_state == null:
-			return ActionResult.fail("Bad state type.")
-		var t := table_state.table
-
-		if slot_index < 0:
-			return ActionResult.fail("No empty Active slot.")
-		if card_view.get_parent() != t._hand_zones[target_player_id]:
-			return ActionResult.fail("Selected card is not in that player's hand.")
-		if not table_state.can_play_hand_to_active(target_player_id):
-			return ActionResult.fail("That Active zone is full.")
-		return ActionResult.success()
-
-	func apply(state: GameState) -> void:
-		(state as TableGameState).play_hand_to_active(target_player_id, card_view, slot_index)
-
-	func description() -> String:
-		return "Play selected card to P%d Active[%d]" % [target_player_id, slot_index]
-
-
-class ActionPromoteSelectedBenchToEmptyActive extends GameAction:
-	var card_view: Node
-	var target_player_id: int
-	var slot_index: int
-
-	func _init(actor: int, cv: Node, target_id: int, slot_i: int) -> void:
-		actor_id = actor
-		card_view = cv
-		target_player_id = target_id
-		slot_index = slot_i
-
-	func validate(state: GameState) -> ActionResult:
-		# Keep aligned with your current prototype: allow during MAIN.
-		if state.phase != TurnPhase.Phase.MAIN:
-			return ActionResult.fail("Promotion only allowed during MAIN phase (for now).")
-		if card_view == null or not is_instance_valid(card_view):
-			return ActionResult.fail("No selected card.")
-		var table_state := state as TableGameState
-		if table_state == null:
-			return ActionResult.fail("Bad state type.")
-		var t := table_state.table
-
-		if slot_index < 0:
-			return ActionResult.fail("No empty Active slot.")
-		if card_view.get_parent() != t._bench_zones[target_player_id]:
-			return ActionResult.fail("Selected card is not on that player's bench.")
-		if not table_state.can_promote_bench_to_active(target_player_id):
-			return ActionResult.fail("That Active zone is full.")
-		return ActionResult.success()
-
-	func apply(state: GameState) -> void:
-		(state as TableGameState).promote_bench_to_active(target_player_id, card_view, slot_index)
-
-	func description() -> String:
-		return "Promote selected card to P%d Active[%d]" % [target_player_id, slot_index]
-
-
-class ActionSwapActiveSlotWithBenchIndex extends GameAction:
-	var board_player_id: int
-	var active_slot_index: int
-	var bench_index: int
-
-	func _init(actor: int, board_id: int, active_i: int, bench_i: int) -> void:
-		actor_id = actor
-		board_player_id = board_id
-		active_slot_index = active_i
-		bench_index = bench_i
-
-	func validate(state: GameState) -> ActionResult:
-		if state.phase != TurnPhase.Phase.MAIN:
-			return ActionResult.fail("Swapping only allowed during MAIN phase.")
-		var table_state := state as TableGameState
-		if not table_state.can_swap_active_with_bench_3(board_player_id, active_slot_index, bench_index):
-			return ActionResult.fail("Illegal swap.")
-		return ActionResult.success()
-
-	func apply(state: GameState) -> void:
-		(state as TableGameState).swap_active_with_bench_3(board_player_id, active_slot_index, bench_index)
-
-	func description() -> String:
-		return "Swap P%d Active[%d] with Bench[%d]" % [board_player_id, active_slot_index, bench_index]
 
 
 # ============================================================
@@ -297,7 +121,7 @@ func _ready() -> void:
 
 
 	_on_phase_changed(_table_state.phase)
-	
+
 	_hover_timer = Timer.new()
 	_hover_timer.one_shot = true
 	_hover_timer.wait_time = 0.5
@@ -327,10 +151,8 @@ func _on_action_rejected(action: GameAction, reason: String) -> void:
 	_log_line("[REJECT] %s (%s)" % [action.description(), reason])
 
 func _on_action_committed(action: GameAction) -> void:
-	# Optional: keep actives filled for both players during prototyping
 	ensure_required_actives_if_possible(0)
 	ensure_required_actives_if_possible(1)
-	# Re-apply sizing to any newly moved cards
 	call_deferred("_refresh_playmat_layout")
 
 func _on_turn_log(text: String) -> void:
@@ -349,8 +171,6 @@ func _log_line(text: String) -> void:
 # ============================================================
 func _on_end_turn_pressed() -> void:
 	_log_line("Turn button pressed.")
-	# Use the player who is currently "acting" as the actor for phase changes.
-	# For now, just let player 0 advance phases; you can make this smarter later.
 	var actor := turn_controller.state.current_player_id
 	if _table_state.phase == TurnPhase.Phase.END:
 		turn_controller.end_turn(actor)
@@ -446,7 +266,7 @@ func _try_play_selected_to_bench(target_player_id: int) -> void:
 
 
 # ============================================================
-#	Swapping: Active <-> Bench (via turn_controller, Step 8)
+#	Swapping: Active <-> Bench (via turn_controller)
 # ============================================================
 func _try_swap_between_active_and_bench(a: Node, b: Node) -> bool:
 	if not is_instance_valid(a) or not is_instance_valid(b):
@@ -457,7 +277,6 @@ func _try_swap_between_active_and_bench(a: Node, b: Node) -> bool:
 	if a_owner == -1 or b_owner == -1:
 		return false
 
-	# Swap only within the same player's board: Active <-> Bench
 	if a_owner != b_owner:
 		return false
 
@@ -478,7 +297,6 @@ func _try_swap_between_active_and_bench(a: Node, b: Node) -> bool:
 		if active_slot_index == -1 or bench_index == -1:
 			return false
 
-		# Actor = board owner (since you control both for now)
 		turn_controller.request_action(ActionSwapActiveSlotWithBenchIndex.new(board_player_id, board_player_id, active_slot_index, bench_index))
 		return true
 
@@ -546,7 +364,6 @@ func _move_card_to_zone(card_view: Node, zone: Node, owner_player_id: int) -> vo
 	zone.add_child(card_view)
 	_log_line("Moved card to " + zone.name)
 
-	# Update instance zone
 	if zone == _hand_zones[owner_player_id]:
 		_sync_instance_zone(card_view, CardInstance.Zone.HAND)
 	elif zone == _bench_zones[owner_player_id]:
@@ -682,7 +499,6 @@ func _spawn_test_hand(player_id: int, count: int) -> void:
 	for child in zone.get_children():
 		child.queue_free()
 
-	# Note: don't clear selected globally when spawning opponent; keep it simple:
 	if player_id == 0:
 		selected_card_view = null
 
@@ -706,21 +522,19 @@ func _owner_from_card_parent(card_view: Node) -> int:
 		return -1
 	var p := card_view.get_parent()
 
-	# Player 0
 	if p == _hand_zones[0] or p == _bench_zones[0] or _active_slots_by_player[0].has(p):
 		return 0
 	if p == _hand_zones[1] or p == _bench_zones[1] or _active_slots_by_player[1].has(p):
 		return 1
 
-
 	return -1
-	
+
 func _connect_click_area(area: Control, label: String, cb: Callable) -> void:
 	if area == null:
 		push_error("%s is NULL. Update node path or set Unique Name and use %%NodeName." % label)
 		return
 	area.gui_input.connect(cb)
-	
+
 func _on_card_hover_started(card: CardView) -> void:
 	_hover_timer.stop()
 	_hover_card = card
@@ -741,152 +555,42 @@ func _on_hover_timer_timeout() -> void:
 
 
 # ============================================================
-#	Card container positioning with proper z-ordering and mouse filtering
+#	Playmat layout (delegates to TableLayout)
 # ============================================================
-func _position_card_containers(player_id: int, layout_info: Dictionary, overlay_global_pos: Vector2) -> void:
-	"""Position actual card containers to match the visual slot overlay positions."""
-	
-	var slots: Array = _active_slots_by_player[player_id]
-	var bench_zone: HBoxContainer = _bench_zones[player_id]
-	
-	# Get slot overlay reference for sizing info
-	var slot_overlay: SlotOverlay = player_slots if player_id == 0 else opponent_slots
-	
-	# Position active slots
-	var active_s: float = layout_info.get("active_s", 120.0)
-	var bench_s: float = layout_info.get("bench_s", 120.0)
-	var gap: float = slot_overlay.gap
-	
-	# Calculate active slot positions from overlay
-	var active_x0: float = layout_info.get("bench_x0", 0.0) + (layout_info.get("bench_w", 0.0) - (num_active_slots * active_s + (num_active_slots - 1) * gap)) * 0.5
-	var bench_y: float = layout_info.get("bench_y", 0.0)
-	var row_gap: float = slot_overlay.row_gap
-	var active_y: float = bench_y - active_s - row_gap
-	
-	for i in range(min(num_active_slots, slots.size())):
-		var slot := slots[i] as Control
-		if slot == null:
-			continue
-		
-		# Make slots top-level so they ignore parent transforms
-		slot.top_level = true
-		
-		# Position relative to overlay
-		var slot_x := overlay_global_pos.x + active_x0 + i * (active_s + gap)
-		var slot_y := overlay_global_pos.y + active_y
-		
-		slot.global_position = Vector2(slot_x, slot_y)
-		slot.custom_minimum_size = Vector2(active_s, active_s)
-		slot.size = Vector2(active_s, active_s)
-		slot.z_index = 0  # Above click areas
-		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Let clicks pass through empty slots
-		
-		# Resize any cards inside the slot to match
-		for child in slot.get_children():
-			if child is CardView:
-				child.custom_minimum_size = Vector2(active_s, active_s)
-				child.size = Vector2(active_s, active_s)
-				child.mouse_filter = Control.MOUSE_FILTER_STOP  # Cards should catch clicks
-	
-	# Position bench zone
-	if bench_zone != null:
-		var bench_x0: float = layout_info.get("bench_x0", 0.0)
-		var bench_w: float = layout_info.get("bench_w", 0.0)
-		
-		bench_zone.top_level = true
-		bench_zone.global_position = Vector2(overlay_global_pos.x + bench_x0, overlay_global_pos.y + bench_y)
-		bench_zone.custom_minimum_size = Vector2(bench_w, bench_s)
-		bench_zone.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		bench_zone.z_index = 0  # Above click areas
-		bench_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Let clicks pass through gaps
-		
-		# Resize cards in bench to match bench size
-		for child in bench_zone.get_children():
-			if child is CardView:
-				child.custom_minimum_size = Vector2(bench_s, bench_s)
-				child.size = Vector2(bench_s, bench_s)
-				child.mouse_filter = Control.MOUSE_FILTER_STOP  # Cards should catch clicks
-	
-	# Position click areas to match the zones
-	_position_click_areas(player_id, layout_info, overlay_global_pos, active_s, bench_s)
-
-
-func _position_click_areas(player_id: int, layout_info: Dictionary, overlay_global_pos: Vector2, active_s: float, bench_s: float) -> void:
-	"""Position click areas to match the repositioned card zones."""
-	
-	var slot_overlay: SlotOverlay = player_slots if player_id == 0 else opponent_slots
-	var gap: float = slot_overlay.gap
-	var row_gap: float = slot_overlay.row_gap
-	
-	# Calculate positions
-	var bench_x0: float = layout_info.get("bench_x0", 0.0)
-	var bench_w: float = layout_info.get("bench_w", 0.0)
-	var bench_y: float = layout_info.get("bench_y", 0.0)
-	
-	var active_x0: float = bench_x0 + (bench_w - (num_active_slots * active_s + (num_active_slots - 1) * gap)) * 0.5
-	var active_y: float = bench_y - active_s - row_gap
-	var active_w: float = num_active_slots * active_s + (num_active_slots - 1) * gap
-	
-	# Get the click area controls
-	var active_click: Control
-	var bench_click: Control
-	
-	if player_id == 0:
-		active_click = active_click_area
-		bench_click = bench_click_area
-	else:
-		active_click = opponent_active_click_area
-		bench_click = opponent_bench_click_area
-	
-	# Position active click area
-	if active_click != null:
-		active_click.top_level = true
-		active_click.global_position = Vector2(overlay_global_pos.x + active_x0, overlay_global_pos.y + active_y)
-		active_click.size = Vector2(active_w, active_s)
-		active_click.z_index = -10  # Behind everything
-		active_click.mouse_filter = Control.MOUSE_FILTER_STOP  # Catch clicks on empty space
-	
-	# Position bench click area
-	if bench_click != null:
-		bench_click.top_level = true
-		bench_click.global_position = Vector2(overlay_global_pos.x + bench_x0, overlay_global_pos.y + bench_y)
-		bench_click.size = Vector2(bench_w, bench_s)
-		bench_click.z_index = -10  # Behind everything
-		bench_click.mouse_filter = Control.MOUSE_FILTER_STOP  # Catch clicks on empty space
-
-
 func _refresh_playmat_layout() -> void:
 	if player_slots == null or opponent_slots == null or stadium_slot == null:
 		return
 
-	# Legal slot counts (for now: your exported config)
-	# Later: derive from turn_controller state / rule set.
-	var player_active := num_active_slots          # 1 or 2
-	var player_bench := max_bench                 # 3..5
-
+	var player_active := num_active_slots
+	var player_bench := max_bench
 	var opp_active := num_active_slots
 	var opp_bench := max_bench
 
-	# Update player/opponent overlays within their own rects
 	var p_rect := Rect2(Vector2.ZERO, player_slots.size)
 	var o_rect := Rect2(Vector2.ZERO, opponent_slots.size)
 
 	var p := player_slots.update_layout(p_rect, player_active, player_bench, "player")
 	var o := opponent_slots.update_layout(o_rect, opp_active, opp_bench, "opponent")
 
-	# Position actual card containers to match overlay slots
-	_position_card_containers(0, p, player_slots.global_position)
-	_position_card_containers(1, o, opponent_slots.global_position)
+	# Delegate card container positioning to TableLayout
+	TableLayout.position_card_containers(
+		0, p, player_slots.global_position,
+		num_active_slots, _active_slots_by_player[0], _bench_zones[0],
+		player_slots, active_click_area, bench_click_area,
+	)
+	TableLayout.position_card_containers(
+		1, o, opponent_slots.global_position,
+		num_active_slots, _active_slots_by_player[1], _bench_zones[1],
+		opponent_slots, opponent_active_click_area, opponent_bench_click_area,
+	)
 
 	# Stadium sizing: square, same scale as active
 	var stadium_s := player_slots.bench_sq * player_slots.stadium_scale
 	stadium_slot.size = Vector2(stadium_s, stadium_s)
 
-	# Align stadium with player's deck column, between boards
 	var deck_x_global := player_slots.global_position.x + float(p["deck_x"])
 	var stadium_x := deck_x_global + (player_slots.card_rect.x - stadium_s) * 0.5
 
-	# Midpoint between bottom of opponent overlay and top of player overlay
 	var opp_bottom := opponent_slots.global_position.y + opponent_slots.size.y
 	var player_top := player_slots.global_position.y
 	var mid_y := (opp_bottom + player_top) * 0.5
