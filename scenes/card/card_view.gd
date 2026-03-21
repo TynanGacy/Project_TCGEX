@@ -59,22 +59,7 @@ func _ready() -> void:
 		# Make art responsive to container size
 		art_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
-	# Listen for size changes to update art
-	resized.connect(_on_card_resized)
-	
 
-func _on_card_resized() -> void:
-	"""Called when the card is resized - ensures art scales properly"""
-	if art_rect and size.y > 0:
-		# Calculate available space for art (leaving room for labels)
-		var margin_total = 16  # top + bottom margins
-		var label_height = 24  # approximate height of name/hp labels
-		var available_height = size.y - margin_total - label_height
-		
-		# Set minimum size to encourage proper scaling
-		art_rect.custom_minimum_size = Vector2(size.x - margin_total, max(60, available_height))
-
-	
 func refresh_ui() -> void:
 	if card_instance == null or card_instance.data == null:
 		return
