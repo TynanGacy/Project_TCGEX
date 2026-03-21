@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://oj60p60ym8g6"]
 
 [ext_resource type="Script" uid="uid://btdkw20cgfcvh" path="res://scenes/table/table.gd" id="1_os2sl"]
-[ext_resource type="Texture2D" uid="uid://kihn14urjx0k" path="res://images/TestBackground.png" id="2_ov72x"]
+[ext_resource type="Texture2D" uid="uid://kihn14urjx0k" path="res://assets/images/TestBackground.png" id="2_ov72x"]
 [ext_resource type="Script" uid="uid://c1xoj2q4ak1fx" path="res://scenes/ui/slot_overlay.gd" id="3_qxbf1"]
 
 [node name="Table" type="Control" unique_id=1002999290]

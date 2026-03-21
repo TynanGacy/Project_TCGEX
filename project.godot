@@ -21,7 +21,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-TurnControllerSingleton="*res://game/turn_controller.gd"
+TurnControllerSingleton="*res://autoload/turn_controller.gd"
 
 [display]
 
@@ -33,3 +33,7 @@ window/stretch/mode="canvas_items"
 
 version_control/plugin_name="GitPlugin"
 version_control/autoload_on_startup=true
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")

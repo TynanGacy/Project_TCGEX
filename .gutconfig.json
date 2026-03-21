@@ -1,0 +1,7 @@
+{
+  "dirs": ["res://tests/"],
+  "prefix": "test_",
+  "suffix": ".gd",
+  "should_maximize": false,
+  "log_level": 1
+}
