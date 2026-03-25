@@ -1,33 +1,36 @@
-[gd_scene load_steps=2 format=3 uid="uid://drop_zone_scene"]
+[gd_scene load_steps=5 format=3 uid="uid://drop_zone_scene"]
 
 [ext_resource type="Script" path="res://scenes/board/drop_zone.gd" id="1_dropzone"]
 
-[node name="DropZone" type="Control"]
-custom_minimum_size = Vector2(170, 230)
-layout_mode = 3
-anchors_preset = 0
-offset_right = 170.0
-offset_bottom = 230.0
+[sub_resource type="PlaneMesh" id="PlaneMesh_zone"]
+size = Vector2(0.7, 0.95)
+
+[sub_resource type="StandardMaterial3D" id="Material_zone"]
+albedo_color = Color(0.2, 0.4, 0.2, 0.5)
+transparency = 1
+
+[sub_resource type="BoxShape3D" id="BoxShape_zone"]
+size = Vector3(0.7, 0.02, 0.95)
+
+[node name="DropZone" type="Node3D"]
 script = ExtResource("1_dropzone")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.2, 0.3, 0.2, 0.4)
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.001, 0)
+mesh = SubResource("PlaneMesh_zone")
+surface_material_override/0 = SubResource("Material_zone")
 
-[node name="Label" type="Label" parent="."]
-layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -40.0
-offset_top = 5.0
-offset_right = 40.0
-offset_bottom = 25.0
-grow_horizontal = 2
+[node name="Area3D" type="Area3D" parent="."]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D"]
+shape = SubResource("BoxShape_zone")
+
+[node name="Label3D" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0.002, -0.35)
+pixel_size = 0.001
+font_size = 36
+outline_size = 0
 text = "Zone"
 horizontal_alignment = 1

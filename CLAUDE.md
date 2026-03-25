@@ -3,8 +3,9 @@
 Tabletop card game simulator built in Godot 4.6.
 
 ## Overview
-- Arena-style UI with click-and-drag cards
-- 2D card game with zones (hand, board fields, graveyard, deck, etc.)
+- Arena-style UI with click-and-drag cards in a 3D environment
+- 3D tabletop with camera looking down at the table
+- Cards are 3D meshes picked via physics raycasting
 - Designed to simulate a physical tabletop card game
 
 ## Tech Stack
@@ -39,7 +40,10 @@ tests/          # GUT test scripts
 Tests use the GUT addon. Test files go in `tests/` with the prefix `test_`.
 
 ## Key Architecture
-- Cards are Control nodes with drag-and-drop via `_gui_input`
-- Hand manages card layout with horizontal fan/spread
-- Board contains DropZone areas where cards can be played
-- Drag state is managed on the card itself; drop validation on the zones
+- **3D scene tree**: Main (Node3D) → Camera3D, Lights, Board, Hand
+- **Cards** are Node3D with MeshInstance3D (BoxMesh) + StaticBody3D for raycast picking
+- **Hand** manages card layout as a 3D fan near the camera
+- **Board** is a table surface (PlaneMesh) with DropZone children (Area3D)
+- **Input**: Main scene raycasts from camera through mouse → picks cards or intersects table plane for drag
+- **Collision layers**: Layer 1 = Cards, Layer 4 = Drop zones
+- Drag state managed in main.gd; card appearance/tweens on card.gd; drop validation on zones

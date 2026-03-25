@@ -1,12 +1,12 @@
 class_name Hand
-extends Control
-## Manages a fan/spread of cards at the bottom of the screen.
+extends Node3D
+## Manages a fan of cards in 3D space.
 
 signal card_played(card: Card)
 
-const CARD_SPACING := 120.0
-const MAX_FAN_ANGLE := 20.0  ## Degrees of rotation at edges of hand
-const CURVE_HEIGHT := 20.0   ## How much cards curve upward in the center
+const CARD_SPACING := 0.7
+const MAX_FAN_ANGLE := 5.0  ## Degrees of rotation at edges
+const CURVE_HEIGHT := 0.05  ## Vertical curve in the fan
 
 var cards: Array[Card] = []
 
@@ -38,8 +38,8 @@ func _layout_cards() -> void:
 	if count == 0:
 		return
 
-	var total_width := (count - 1) * CARD_SPACING + Card.BASE_SIZE.x
-	var start_x := (size.x - total_width) / 2.0
+	var total_width := (count - 1) * CARD_SPACING
+	var start_x := -total_width / 2.0
 
 	for i in count:
 		var card := cards[i]
@@ -49,10 +49,15 @@ func _layout_cards() -> void:
 			t = (float(i) / (count - 1)) * 2.0 - 1.0
 
 		var x := start_x + i * CARD_SPACING
-		var y := size.y - Card.BASE_SIZE.y - 10.0 + abs(t) * CURVE_HEIGHT
-		var angle := -t * deg_to_rad(MAX_FAN_ANGLE)
+		var y := abs(t) * CURVE_HEIGHT
+		var z := 0.0
+		var rot_y := -t * deg_to_rad(MAX_FAN_ANGLE)
 
-		card.set_home(Vector2(x, y), angle, i)
+		card.set_home(
+			global_position + Vector3(x, y, z),
+			Vector3(0.0, rot_y, 0.0),
+			i
+		)
 		if not card.is_dragging:
 			card.return_to_home()
 
@@ -68,11 +73,3 @@ func _on_card_drag_started(_card: Card) -> void:
 func _on_card_drag_ended(card: Card) -> void:
 	if card in cards:
 		card.return_to_home()
-
-
-func _on_resized() -> void:
-	_layout_cards()
-
-
-func _ready() -> void:
-	resized.connect(_on_resized)

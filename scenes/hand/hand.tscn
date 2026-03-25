@@ -2,13 +2,6 @@
 
 [ext_resource type="Script" path="res://scenes/hand/hand.gd" id="1_hand"]
 
-[node name="Hand" type="Control"]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -250.0
-grow_horizontal = 2
-grow_vertical = 0
+[node name="Hand" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 3.5)
 script = ExtResource("1_hand")
