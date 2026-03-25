@@ -1,0 +1,76 @@
+[gd_scene load_steps=3 format=3 uid="uid://board_scene"]
+
+[ext_resource type="Script" path="res://scenes/board/board.gd" id="1_board"]
+[ext_resource type="PackedScene" uid="uid://drop_zone_scene" path="res://scenes/board/drop_zone.tscn" id="2_dropzone"]
+
+[node name="Board" type="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_board")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 40.0
+offset_bottom = -260.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="OpponentLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Opponent"
+horizontal_alignment = 1
+
+[node name="OpponentZones" type="HBoxContainer" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="Zone1" parent="VBox/OpponentZones" instance=ExtResource("2_dropzone")]
+layout_mode = 2
+zone_name = "Field 1"
+
+[node name="Zone2" parent="VBox/OpponentZones" instance=ExtResource("2_dropzone")]
+layout_mode = 2
+zone_name = "Field 2"
+
+[node name="Zone3" parent="VBox/OpponentZones" instance=ExtResource("2_dropzone")]
+layout_mode = 2
+zone_name = "Field 3"
+
+[node name="Separator" type="HSeparator" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="PlayerLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Player"
+horizontal_alignment = 1
+
+[node name="PlayerZones" type="HBoxContainer" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="Zone1" parent="VBox/PlayerZones" instance=ExtResource("2_dropzone")]
+layout_mode = 2
+zone_name = "Field 1"
+
+[node name="Zone2" parent="VBox/PlayerZones" instance=ExtResource("2_dropzone")]
+layout_mode = 2
+zone_name = "Field 2"
+
+[node name="Zone3" parent="VBox/PlayerZones" instance=ExtResource("2_dropzone")]
+layout_mode = 2
+zone_name = "Field 3"

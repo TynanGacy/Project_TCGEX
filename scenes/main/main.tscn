@@ -1,16 +1,29 @@
-[gd_scene format=3 uid="uid://d42t8lsxw6en"]
+[gd_scene load_steps=4 format=3 uid="uid://main_scene"]
 
-[ext_resource type="Script" uid="uid://djsp2ya1o2ept" path="res://scenes/main/main.gd" id="1_rbc3b"]
-[ext_resource type="PackedScene" uid="uid://oj60p60ym8g6" path="res://scenes/table/table.tscn" id="2_pjirt"]
+[ext_resource type="Script" path="res://scenes/main/main.gd" id="1_main"]
+[ext_resource type="PackedScene" uid="uid://board_scene" path="res://scenes/board/board.tscn" id="2_board"]
+[ext_resource type="PackedScene" uid="uid://hand_scene" path="res://scenes/hand/hand.tscn" id="3_hand"]
 
-[node name="Main" type="Control" unique_id=143612879]
+[node name="Main" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_rbc3b")
+script = ExtResource("1_main")
 
-[node name="Table" parent="." unique_id=1959015110 instance=ExtResource("2_pjirt")]
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.14, 0.18, 1)
+
+[node name="Board" parent="." instance=ExtResource("2_board")]
+layout_mode = 1
+
+[node name="PlayerHand" parent="." instance=ExtResource("3_hand")]
 layout_mode = 1
