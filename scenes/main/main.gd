@@ -135,6 +135,10 @@ func _screen_to_table(screen_pos: Vector2) -> Variant:
 
 
 func _on_card_played(card: Card) -> void:
+	if game_state.phase != TurnPhase.Phase.MAIN:
+		_log_line("Cards can only be played during the Main Phase.")
+		card.return_to_home()
+		return
 	var world_pos := card.global_position
 	if board.try_place_card(card, world_pos):
 		player_hand.remove_card(card)
@@ -142,11 +146,13 @@ func _on_card_played(card: Card) -> void:
 		if card.card_instance:
 			card.card_instance.zone = CardInstance.Zone.ACTIVE
 	else:
+		_log_line("No valid open slot at that position.")
 		card.return_to_home()
 
 
 func _on_card_drag_started(card: Card) -> void:
-	board.highlight_valid_zones(card)
+	if game_state.phase == TurnPhase.Phase.MAIN:
+		board.highlight_valid_zones(card)
 
 
 func _on_card_drag_ended(_card: Card) -> void:
