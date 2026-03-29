@@ -49,7 +49,7 @@ func _layout_cards() -> void:
 			t = (float(i) / (count - 1)) * 2.0 - 1.0
 
 		var x := start_x + i * CARD_SPACING
-		var y := abs(t) * CURVE_HEIGHT
+		var y := absf(t) * CURVE_HEIGHT
 		var z := 0.0
 		var rot_y := -t * deg_to_rad(MAX_FAN_ANGLE)
 
