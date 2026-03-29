@@ -24,17 +24,17 @@ var game_state: GameState
 const TABLE_Y := 0.0
 const DRAG_PLANE := Plane(Vector3.UP, 0.0)
 
-## Test content
-var test_cards: Array[CardData] = [
-	preload("res://data/cards/pokemon/pikachu_basic.tres"),
-	preload("res://data/cards/pokemon/pikachu_basic.tres"),
-]
 @export var test_hand_size: int = 5
+
+var _pikachu_data: CardData = null
 
 
 func _ready() -> void:
 	player_hand.card_played.connect(_on_card_played)
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
+
+	## Try loading test card data
+	_pikachu_data = load("res://data/cards/pokemon/pikachu_basic.tres") as CardData
 
 	## Set up game state
 	game_state = GameState.new(2, 2, 4)
@@ -52,10 +52,14 @@ func _ready() -> void:
 func _deal_starting_hand(count: int) -> void:
 	for i in count:
 		var card: Card = card_scene.instantiate()
-		var data := test_cards[i % test_cards.size()]
-		var inst := CardInstance.create(data)
-		inst.zone = CardInstance.Zone.HAND
-		card.set_instance(inst)
+
+		if _pikachu_data:
+			var inst := CardInstance.create(_pikachu_data)
+			inst.zone = CardInstance.Zone.HAND
+			card.set_instance(inst)
+		else:
+			card.card_name = "Card %d" % (i + 1)
+
 		card.drag_started.connect(_on_card_drag_started)
 		card.drag_ended.connect(_on_card_drag_ended)
 		player_hand.add_card(card)
