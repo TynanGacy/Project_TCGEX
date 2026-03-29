@@ -50,6 +50,7 @@ func _ready() -> void:
 
 
 func _deal_starting_hand(count: int) -> void:
+	print("Dealing %d cards. Hand position: %s" % [count, str(player_hand.global_position)])
 	for i in count:
 		var card: Card = card_scene.instantiate()
 

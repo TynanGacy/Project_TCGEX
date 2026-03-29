@@ -38,6 +38,7 @@ func _layout_cards() -> void:
 	if count == 0:
 		return
 
+	print("Hand layout: %d cards, global_pos=%s" % [count, str(global_position)])
 	var total_width := (count - 1) * CARD_SPACING
 	var start_x := -total_width / 2.0
 
@@ -53,13 +54,11 @@ func _layout_cards() -> void:
 		var z := 0.0
 		var rot_y := -t * deg_to_rad(MAX_FAN_ANGLE)
 
-		card.set_home(
-			Vector3(x, y, z),
-			Vector3(0.0, rot_y, 0.0),
-			i
-		)
+		var home := Vector3(x, y, z)
+		card.set_home(home, Vector3(0.0, rot_y, 0.0), i)
 		if not card.is_dragging:
 			card.return_to_home()
+		print("  Card %d home_local=%s global=%s" % [i, str(home), str(card.global_position)])
 
 
 func _on_card_dropped(card: Card) -> void:
