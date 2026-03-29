@@ -1,9 +1,14 @@
 extends Node3D
-## Main scene — camera, lighting, input raycasting, and game wiring.
+## Main scene — camera, lighting, input raycasting, turn engine, and game wiring.
 
 @onready var camera: Camera3D = $Camera3D
 @onready var board: Board = $Board
 @onready var player_hand: Hand = $Board/PlayerHand
+
+## HUD elements
+@onready var phase_label: Label = $HUD/TopBar/PhaseLabel
+@onready var end_turn_button: Button = $HUD/TopBar/EndTurnButton
+@onready var game_log: RichTextLabel = $HUD/LogPanel/GameLog
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 
@@ -11,20 +16,46 @@ var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 var dragged_card: Card = null
 var hovered_card: Card = null
 
+## Turn engine
+@onready var turn_controller: TurnController = TurnControllerSingleton
+var game_state: GameState
+
 ## The Y height of the table surface for drag plane intersection
 const TABLE_Y := 0.0
 const DRAG_PLANE := Plane(Vector3.UP, 0.0)
 
+## Test content
+var test_cards: Array[CardData] = [
+	preload("res://data/cards/pokemon/pikachu_basic.tres"),
+	preload("res://data/cards/pokemon/pikachu_basic.tres"),
+]
+@export var test_hand_size: int = 5
+
 
 func _ready() -> void:
 	player_hand.card_played.connect(_on_card_played)
-	_deal_starting_hand(5)
+	end_turn_button.pressed.connect(_on_end_turn_pressed)
+
+	## Set up game state
+	game_state = GameState.new(2, 2, 4)
+	turn_controller.set_state(game_state)
+
+	turn_controller.phase_changed.connect(_on_phase_changed)
+	turn_controller.action_rejected.connect(_on_action_rejected)
+	turn_controller.action_committed.connect(_on_action_committed)
+	turn_controller.log_message.connect(_on_turn_log)
+
+	_on_phase_changed(game_state.phase)
+	_deal_starting_hand(test_hand_size)
 
 
 func _deal_starting_hand(count: int) -> void:
 	for i in count:
 		var card: Card = card_scene.instantiate()
-		card.card_name = "Card %d" % (i + 1)
+		var data := test_cards[i % test_cards.size()]
+		var inst := CardInstance.create(data)
+		inst.zone = CardInstance.Zone.HAND
+		card.set_instance(inst)
 		card.drag_started.connect(_on_card_drag_started)
 		card.drag_ended.connect(_on_card_drag_ended)
 		player_hand.add_card(card)
@@ -103,6 +134,8 @@ func _on_card_played(card: Card) -> void:
 	if board.try_place_card(card, world_pos):
 		player_hand.remove_card(card)
 		board.add_child(card)
+		if card.card_instance:
+			card.card_instance.zone = CardInstance.Zone.ACTIVE
 	else:
 		card.return_to_home()
 
@@ -113,3 +146,34 @@ func _on_card_drag_started(card: Card) -> void:
 
 func _on_card_drag_ended(_card: Card) -> void:
 	board.clear_highlights()
+
+
+## Turn engine handlers
+func _on_end_turn_pressed() -> void:
+	var actor := turn_controller.state.current_player_id
+	if game_state.phase == TurnPhase.Phase.END:
+		turn_controller.end_turn(actor)
+	else:
+		turn_controller.next_phase(actor)
+
+
+func _on_phase_changed(phase: int) -> void:
+	if phase_label:
+		phase_label.text = "Phase: %s" % TurnPhase.phase_to_string(phase)
+
+
+func _on_action_rejected(action: GameAction, reason: String) -> void:
+	_log_line("[REJECT] %s (%s)" % [action.description(), reason])
+
+
+func _on_action_committed(_action: GameAction) -> void:
+	pass
+
+
+func _on_turn_log(text: String) -> void:
+	_log_line(text)
+
+
+func _log_line(text: String) -> void:
+	if game_log:
+		game_log.append_text(text + "\n")

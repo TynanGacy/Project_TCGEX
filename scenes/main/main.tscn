@@ -23,3 +23,35 @@ light_energy = 0.3
 [node name="Board" parent="." instance=ExtResource("2_board")]
 
 [node name="PlayerHand" parent="Board" instance=ExtResource("3_hand")]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="TopBar" type="HBoxContainer" parent="HUD"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 40.0
+grow_horizontal = 2
+theme_override_constants/separation = 20
+
+[node name="PhaseLabel" type="Label" parent="HUD/TopBar"]
+layout_mode = 2
+text = "Phase: START"
+
+[node name="EndTurnButton" type="Button" parent="HUD/TopBar"]
+layout_mode = 2
+text = "Next Phase"
+
+[node name="LogPanel" type="PanelContainer" parent="HUD"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -200.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="GameLog" type="RichTextLabel" parent="HUD/LogPanel"]
+layout_mode = 2
+scroll_following = true

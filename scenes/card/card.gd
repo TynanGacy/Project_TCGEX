@@ -9,6 +9,9 @@ signal card_dropped(card: Card)
 @export var card_name: String = "Card"
 @export var card_art: Texture2D
 
+## Runtime card data binding
+var card_instance: CardInstance = null
+
 ## Card dimensions (roughly standard playing card proportions)
 const CARD_WIDTH := 0.63
 const CARD_HEIGHT := 0.88
@@ -33,6 +36,18 @@ var hand_index := 0
 
 func _ready() -> void:
 	_update_visuals()
+
+
+func set_instance(inst: CardInstance) -> void:
+	card_instance = inst
+	if inst and inst.data:
+		card_name = inst.data.display_name
+		card_art = inst.data.art
+	_update_visuals()
+
+
+func get_instance() -> CardInstance:
+	return card_instance
 
 
 func _update_visuals() -> void:
