@@ -1,4 +1,3 @@
-# res://scripts/actions/action_result.gd
 class_name ActionResult
 
 var ok: bool

@@ -1,16 +1,57 @@
-[gd_scene format=3 uid="uid://d42t8lsxw6en"]
+[gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" uid="uid://djsp2ya1o2ept" path="res://scenes/main/main.gd" id="1_rbc3b"]
-[ext_resource type="PackedScene" uid="uid://oj60p60ym8g6" path="res://scenes/table/table.tscn" id="2_pjirt"]
+[ext_resource type="Script" path="res://scenes/main/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/board/board.tscn" id="2_board"]
+[ext_resource type="PackedScene" path="res://scenes/hand/hand.tscn" id="3_hand"]
 
-[node name="Main" type="Control" unique_id=143612879]
-layout_mode = 3
-anchors_preset = 15
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.5, 0.866025, 0, -0.866025, 0.5, 0, 5.5, 4.5)
+fov = 50.0
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 5, 0)
+shadow_enabled = true
+
+[node name="AmbientLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.707107, 0.707107, 0, -0.707107, -0.707107, 0, 3, 0)
+light_color = Color(0.7, 0.75, 0.85, 1)
+light_energy = 0.3
+
+[node name="Board" parent="." instance=ExtResource("2_board")]
+
+[node name="PlayerHand" parent="Board" instance=ExtResource("3_hand")]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="TopBar" type="HBoxContainer" parent="HUD"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 40.0
+grow_horizontal = 2
+theme_override_constants/separation = 20
+
+[node name="PhaseLabel" type="Label" parent="HUD/TopBar"]
+layout_mode = 2
+text = "Phase: START"
+
+[node name="EndTurnButton" type="Button" parent="HUD/TopBar"]
+layout_mode = 2
+text = "Next Phase"
+
+[node name="LogPanel" type="PanelContainer" parent="HUD"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_rbc3b")
+offset_left = -400.0
+offset_top = -200.0
+grow_horizontal = 0
+grow_vertical = 0
 
-[node name="Table" parent="." unique_id=1959015110 instance=ExtResource("2_pjirt")]
-layout_mode = 1
+[node name="GameLog" type="RichTextLabel" parent="HUD/LogPanel"]
+layout_mode = 2
+scroll_following = true

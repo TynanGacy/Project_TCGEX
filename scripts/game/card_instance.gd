@@ -3,22 +3,18 @@ class_name CardInstance
 
 enum Zone { DECK, HAND, ACTIVE, BENCH, DISCARD, PRIZES, OTHER }
 
-# Optional: keep status generic for now (Pokemon-specific statuses can live here too)
 enum SpecialCondition { NONE, ASLEEP, BURNED, CONFUSED, PARALYZED, POISONED }
 
 var instance_id: int
 var data: CardData
 var zone: Zone = Zone.OTHER
 
-# Runtime state (mostly meaningful for Pokémon)
 var damage: int = 0
 var special_conditions: Array[SpecialCondition] = []
 
-# Attachments (Pokémon-like)
 var attached_energy: Array[CardInstance] = []
 var attached_tools: Array[CardInstance] = []
 
-# For future: owner/controller
 var owner_id: int = 0
 var controller_id: int = 0
 

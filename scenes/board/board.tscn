@@ -1,0 +1,45 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scenes/board/board.gd" id="1_board"]
+[ext_resource type="PackedScene" path="res://scenes/board/drop_zone.tscn" id="2_dropzone"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_table"]
+size = Vector2(8, 6)
+
+[sub_resource type="StandardMaterial3D" id="Material_table"]
+albedo_color = Color(0.22, 0.16, 0.1, 1)
+
+[node name="Board" type="Node3D"]
+script = ExtResource("1_board")
+
+[node name="TableSurface" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_table")
+surface_material_override/0 = SubResource("Material_table")
+
+[node name="OpponentZones" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.2)
+
+[node name="Zone1" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 0, 0)
+zone_name = "Opp Field 1"
+
+[node name="Zone2" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+zone_name = "Opp Field 2"
+
+[node name="Zone3" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 0, 0)
+zone_name = "Opp Field 3"
+
+[node name="PlayerZones" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
+
+[node name="Zone1" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 0, 0)
+zone_name = "Field 1"
+
+[node name="Zone2" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+zone_name = "Field 2"
+
+[node name="Zone3" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 0, 0)
+zone_name = "Field 3"

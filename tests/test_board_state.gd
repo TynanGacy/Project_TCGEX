@@ -5,21 +5,21 @@ var card_a: CardInstance
 var card_b: CardInstance
 
 
-func before_each():
+func before_each() -> void:
 	board = BoardState.new(2, 1, 5)
 
-	var data_a = CardData.new()
+	var data_a := CardData.new()
 	data_a.card_id = "TEST_A"
 	data_a.display_name = "Test Card A"
 	card_a = CardInstance.create(data_a)
 
-	var data_b = CardData.new()
+	var data_b := CardData.new()
 	data_b.card_id = "TEST_B"
 	data_b.display_name = "Test Card B"
 	card_b = CardInstance.create(data_b)
 
 
-func test_zones_created():
+func test_zones_created() -> void:
 	assert_true(board.zones.has("p0_hand"))
 	assert_true(board.zones.has("p1_hand"))
 	assert_true(board.zones.has("p0_active_0"))
@@ -27,33 +27,33 @@ func test_zones_created():
 	assert_true(board.zones.has("stadium"))
 
 
-func test_move_card_to_hand():
+func test_move_card_to_hand() -> void:
 	board.move_card(card_a, "p0_hand")
-	var hand = board.get_zone("p0_hand")
+	var hand := board.get_zone("p0_hand")
 	assert_eq(hand.size(), 1)
 	assert_eq(hand[0], card_a)
 
 
-func test_move_card_between_zones():
+func test_move_card_between_zones() -> void:
 	board.move_card(card_a, "p0_hand")
 	board.move_card(card_a, "p0_bench")
 	assert_eq(board.get_zone("p0_hand").size(), 0)
 	assert_eq(board.get_zone("p0_bench").size(), 1)
 
 
-func test_get_active_card():
+func test_get_active_card() -> void:
 	board.move_card(card_a, "p0_active_0")
-	var active = board.get_active_card(0, 0)
+	var active := board.get_active_card(0, 0)
 	assert_eq(active, card_a)
 
 
-func test_get_active_card_empty():
-	var active = board.get_active_card(0, 0)
+func test_get_active_card_empty() -> void:
+	var active := board.get_active_card(0, 0)
 	assert_null(active)
 
 
-func test_get_first_empty_active_slot():
-	var slot = board.get_first_empty_active_slot(0)
+func test_get_first_empty_active_slot() -> void:
+	var slot := board.get_first_empty_active_slot(0)
 	assert_eq(slot, 0)
 
 	board.move_card(card_a, "p0_active_0")
@@ -61,7 +61,7 @@ func test_get_first_empty_active_slot():
 	assert_eq(slot, -1)
 
 
-func test_swap_cards():
+func test_swap_cards() -> void:
 	board.move_card(card_a, "p0_active_0")
 	board.move_card(card_b, "p0_bench")
 	board.swap_cards(card_a, card_b)

@@ -1,10 +1,9 @@
-[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3 uid="uid://bytqlvbbdelth"]
+[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3]
 
-[ext_resource type="Script" uid="uid://if60df2q6bbw" path="res://scripts/cards/attack_data.gd" id="1_uuakl"]
+[ext_resource type="Script" path="res://scripts/cards/attack_data.gd" id="1_attack"]
 
 [resource]
-script = ExtResource("1_uuakl")
+script = ExtResource("1_attack")
 name = "Tackle"
 cost_colorless = 1
 base_damage = 10
-metadata/_custom_type_script = "uid://if60df2q6bbw"

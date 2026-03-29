@@ -1,4 +1,3 @@
-# res://scripts/actions/action_promote_from_bench.gd
 class_name ActionPromoteFromBench
 extends GameAction
 
@@ -11,18 +10,15 @@ func _init(actor: int = -1, p_id: int = -1, bench_i: int = -1) -> void:
 	bench_index = bench_i
 
 func validate(state: GameState) -> ActionResult:
-	# Promotion typically occurs in a special window (after KO).
-	# For now, allow during MAIN/START as before.
 	if state.phase != TurnPhase.Phase.MAIN and state.phase != TurnPhase.Phase.START:
 		return ActionResult.fail("Promotion not allowed in this phase.")
 
-	# Validate that actor is performing action on their own board
 	if actor_id != player_id:
 		return ActionResult.fail("Can only promote cards on your own board.")
 
 	if not state.can_promote_from_bench(player_id, bench_index):
 		return ActionResult.fail("Illegal promotion.")
-	
+
 	return ActionResult.success()
 
 func apply(state: GameState) -> void:

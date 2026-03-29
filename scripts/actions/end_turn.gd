@@ -1,4 +1,3 @@
-# res://scripts/actions/end_turn.gd
 class_name ActionEndTurn
 extends GameAction
 

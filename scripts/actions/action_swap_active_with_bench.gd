@@ -1,4 +1,3 @@
-# res://scripts/actions/action_swap_active_with_bench.gd
 class_name ActionSwapActiveWithBench
 extends GameAction
 
@@ -15,14 +14,13 @@ func _init(actor: int = -1, p_id: int = -1, active_i: int = -1, bench_i: int = -
 func validate(state: GameState) -> ActionResult:
 	if state.phase != TurnPhase.Phase.MAIN:
 		return ActionResult.fail("Swapping is only allowed during MAIN phase.")
-	
-	# Validate that actor is performing action on their own board
+
 	if actor_id != player_id:
 		return ActionResult.fail("Can only swap cards on your own board.")
-	
+
 	if not state.can_swap_active_with_bench(player_id, active_slot, bench_index):
 		return ActionResult.fail("Illegal swap (empty slot / invalid index / etc).")
-	
+
 	return ActionResult.success()
 
 func apply(state: GameState) -> void:

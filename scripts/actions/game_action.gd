@@ -1,18 +1,13 @@
-# res://scripts/actions/game_action.gd
 class_name GameAction
 extends RefCounted
 
-# Who is performing this action (0/1, or however you index players).
 var actor_id: int = -1
 
-func validate(state) -> ActionResult:
-	# Override in subclasses.
+func validate(_state: GameState) -> ActionResult:
 	return ActionResult.success()
 
-func apply(state) -> void:
-	# Override in subclasses.
+func apply(_state: GameState) -> void:
 	pass
 
 func description() -> String:
-	# Override for log readability.
 	return "GameAction"
