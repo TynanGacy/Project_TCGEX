@@ -62,9 +62,9 @@ func _try_drop_card() -> void:
 
 
 func _move_dragged_card(screen_pos: Vector2) -> void:
-	var world_pos := _screen_to_table(screen_pos)
+	var world_pos: Variant = _screen_to_table(screen_pos)
 	if world_pos != null:
-		dragged_card.move_to_drag_position(world_pos)
+		dragged_card.move_to_drag_position(world_pos as Vector3)
 
 
 func _update_hover(screen_pos: Vector2) -> void:
@@ -85,7 +85,7 @@ func _raycast_card(screen_pos: Vector2) -> Card:
 	var result := space.intersect_ray(query)
 	if result.is_empty():
 		return null
-	var body := result.collider
+	var body: Object = result.collider
 	if body is StaticBody3D and body.get_parent() is Card:
 		return body.get_parent() as Card
 	return null
@@ -94,7 +94,7 @@ func _raycast_card(screen_pos: Vector2) -> Card:
 func _screen_to_table(screen_pos: Vector2) -> Variant:
 	var from := camera.project_ray_origin(screen_pos)
 	var dir := camera.project_ray_normal(screen_pos)
-	var hit := DRAG_PLANE.intersects_ray(from, dir)
+	var hit: Variant = DRAG_PLANE.intersects_ray(from, dir)
 	return hit
 
 
