@@ -54,7 +54,7 @@ func _layout_cards() -> void:
 		var rot_y := -t * deg_to_rad(MAX_FAN_ANGLE)
 
 		card.set_home(
-			global_position + Vector3(x, y, z),
+			Vector3(x, y, z),
 			Vector3(0.0, rot_y, 0.0),
 			i
 		)
