@@ -60,6 +60,23 @@ func end_turn() -> void:
 	begin_turn(current_player_id)
 
 
+func setup_player_deck(player_id: int, card_data_array: Array[CardData]) -> void:
+	var player := get_player(player_id)
+	if player == null:
+		return
+	player.setup_deck(card_data_array)
+	player.load_deck_into_board(board)
+	player.shuffle_deck_zone(board)
+
+
+func draw_starting_hand(player_id: int, count: int = 7) -> void:
+	var player := get_player(player_id)
+	if player == null:
+		return
+	for i in count:
+		player.draw_card(board)
+
+
 func can_swap_active_with_bench(player_id: int, active_slot: int, bench_index: int) -> bool:
 	return board.can_swap_active_with_bench(player_id, active_slot, bench_index)
 
