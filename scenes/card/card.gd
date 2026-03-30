@@ -29,6 +29,8 @@ var home_position := Vector3.ZERO
 var home_rotation := Vector3.ZERO
 var hand_index := 0
 
+var _tween: Tween = null
+
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var static_body: StaticBody3D = $StaticBody3D
 @onready var label_3d: Label3D = $Label3D
@@ -71,10 +73,17 @@ func set_hovered(value: bool) -> void:
 		_on_hover_end()
 
 
+func _new_tween() -> Tween:
+	if _tween != null and _tween.is_valid():
+		_tween.kill()
+	_tween = create_tween().set_parallel(true)
+	return _tween
+
+
 func start_drag() -> void:
 	is_dragging = true
 	is_hovered = false
-	var tween := create_tween().set_parallel(true)
+	var tween := _new_tween()
 	tween.tween_property(self, "position:y", home_position.y + DRAG_LIFT, TWEEN_SPEED)
 	tween.tween_property(self, "rotation", Vector3.ZERO, TWEEN_SPEED)
 	drag_started.emit(self)
@@ -93,7 +102,7 @@ func move_to_drag_position(world_pos: Vector3) -> void:
 
 
 func _on_hover_start() -> void:
-	var tween := create_tween().set_parallel(true)
+	var tween := _new_tween()
 	tween.tween_property(self, "position:y", home_position.y + HOVER_LIFT, TWEEN_SPEED)
 	tween.tween_property(self, "rotation", Vector3.ZERO, TWEEN_SPEED)
 
@@ -103,12 +112,15 @@ func _on_hover_end() -> void:
 
 
 func return_to_home() -> void:
-	var tween := create_tween().set_parallel(true)
+	var tween := _new_tween()
 	tween.tween_property(self, "position", home_position, TWEEN_SPEED)
 	tween.tween_property(self, "rotation", home_rotation, TWEEN_SPEED)
 
 
 func snap_to_home() -> void:
+	if _tween != null and _tween.is_valid():
+		_tween.kill()
+	_tween = null
 	position = home_position
 	rotation = home_rotation
 

@@ -71,4 +71,4 @@ func _on_card_drag_started(_card: Card) -> void:
 
 func _on_card_drag_ended(card: Card) -> void:
 	if card in cards:
-		card.return_to_home()
+		card.snap_to_home()
