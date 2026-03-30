@@ -15,6 +15,7 @@ var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 ## Drag state
 var dragged_card: Card = null
 var hovered_card: Card = null
+var _source_zone: DropZone = null
 
 ## Turn engine
 @onready var turn_controller: TurnController = TurnControllerSingleton
@@ -86,6 +87,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func _try_pick_card(screen_pos: Vector2) -> void:
 	var card := _raycast_card(screen_pos)
 	if card:
+		_source_zone = board.get_zone_containing(card)
+		if _source_zone:
+			_source_zone.remove_card(card)
 		dragged_card = card
 		card.start_drag()
 
@@ -93,8 +97,36 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 func _try_drop_card() -> void:
 	if not dragged_card:
 		return
-	dragged_card.end_drag()
+	var card := dragged_card
+	var from_zone := _source_zone
 	dragged_card = null
+	_source_zone = null
+	card.end_drag()
+
+	if game_state.phase != TurnPhase.Phase.MAIN:
+		_log_line("Cards can only be played during the Main Phase.")
+		_snap_back(card, from_zone)
+		return
+
+	var world_pos := card.global_position
+	var target_zone := board.get_zone_at_position(world_pos)
+	if target_zone and target_zone.can_accept_card(card):
+		if from_zone == null:
+			## Coming from hand: reparent to board before zone receives it
+			player_hand.remove_card(card)
+			board.add_child(card)
+			if card.card_instance:
+				card.card_instance.zone = CardInstance.Zone.ACTIVE
+		target_zone.receive_card(card)
+	else:
+		_snap_back(card, from_zone)
+
+
+func _snap_back(card: Card, from_zone: DropZone) -> void:
+	if from_zone != null:
+		from_zone.receive_card(card)
+	else:
+		card.snap_to_home()
 
 
 func _move_dragged_card(screen_pos: Vector2) -> void:
@@ -134,19 +166,13 @@ func _screen_to_table(screen_pos: Vector2) -> Variant:
 	return hit
 
 
-func _on_card_played(card: Card) -> void:
-	var world_pos := card.global_position
-	if board.try_place_card(card, world_pos):
-		player_hand.remove_card(card)
-		board.add_child(card)
-		if card.card_instance:
-			card.card_instance.zone = CardInstance.Zone.ACTIVE
-	else:
-		card.return_to_home()
+func _on_card_played(_card: Card) -> void:
+	pass  ## Placement is handled in _try_drop_card.
 
 
 func _on_card_drag_started(card: Card) -> void:
-	board.highlight_valid_zones(card)
+	if game_state.phase == TurnPhase.Phase.MAIN:
+		board.highlight_valid_zones(card)
 
 
 func _on_card_drag_ended(_card: Card) -> void:

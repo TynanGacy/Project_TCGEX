@@ -69,6 +69,5 @@ func _on_card_drag_started(_card: Card) -> void:
 	pass
 
 
-func _on_card_drag_ended(card: Card) -> void:
-	if card in cards:
-		card.return_to_home()
+func _on_card_drag_ended(_card: Card) -> void:
+	pass
