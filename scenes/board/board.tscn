@@ -16,30 +16,122 @@ script = ExtResource("1_board")
 mesh = SubResource("PlaneMesh_table")
 surface_material_override/0 = SubResource("Material_table")
 
-[node name="OpponentZones" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.2)
-
-[node name="Zone1" parent="OpponentZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 0, 0)
-zone_name = "Opp Field 1"
-
-[node name="Zone2" parent="OpponentZones" instance=ExtResource("2_dropzone")]
-zone_name = "Opp Field 2"
-
-[node name="Zone3" parent="OpponentZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 0, 0)
-zone_name = "Opp Field 3"
-
 [node name="PlayerZones" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
 
-[node name="Zone1" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 0, 0)
-zone_name = "Field 1"
+[node name="PlayerActive" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.7)
+zone_name = "Active"
 
-[node name="Zone2" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-zone_name = "Field 2"
+[node name="PlayerBench1" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 0, 1.75)
+zone_name = "Bench 1"
 
-[node name="Zone3" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 0, 0)
-zone_name = "Field 3"
+[node name="PlayerBench2" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7, 0, 1.75)
+zone_name = "Bench 2"
+
+[node name="PlayerBench3" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.75)
+zone_name = "Bench 3"
+
+[node name="PlayerBench4" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0, 1.75)
+zone_name = "Bench 4"
+
+[node name="PlayerBench5" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0, 1.75)
+zone_name = "Bench 5"
+
+[node name="PlayerPrize1" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.1, 0, 0.5)
+zone_name = "Prize 1"
+
+[node name="PlayerPrize2" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.1, 0, 1.55)
+zone_name = "Prize 2"
+
+[node name="PlayerPrize3" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.1, 0, 2.6)
+zone_name = "Prize 3"
+
+[node name="PlayerPrize4" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.35, 0, 0.5)
+zone_name = "Prize 4"
+
+[node name="PlayerPrize5" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.35, 0, 1.55)
+zone_name = "Prize 5"
+
+[node name="PlayerPrize6" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.35, 0, 2.6)
+zone_name = "Prize 6"
+
+[node name="PlayerDeck" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 0, 0.5)
+zone_name = "Deck"
+max_cards = 60
+
+[node name="PlayerDiscard" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 0, 1.55)
+zone_name = "Discard"
+max_cards = 60
+
+[node name="OpponentZones" type="Node3D" parent="."]
+
+[node name="OppActive" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.7)
+zone_name = "Opp Active"
+
+[node name="OppBench1" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0, -1.75)
+zone_name = "Opp Bench 1"
+
+[node name="OppBench2" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0, -1.75)
+zone_name = "Opp Bench 2"
+
+[node name="OppBench3" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.75)
+zone_name = "Opp Bench 3"
+
+[node name="OppBench4" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7, 0, -1.75)
+zone_name = "Opp Bench 4"
+
+[node name="OppBench5" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 0, -1.75)
+zone_name = "Opp Bench 5"
+
+[node name="OppPrize1" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 0, -0.5)
+zone_name = "Opp Prize 1"
+
+[node name="OppPrize2" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 0, -1.55)
+zone_name = "Opp Prize 2"
+
+[node name="OppPrize3" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 0, -2.6)
+zone_name = "Opp Prize 3"
+
+[node name="OppPrize4" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.35, 0, -0.5)
+zone_name = "Opp Prize 4"
+
+[node name="OppPrize5" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.35, 0, -1.55)
+zone_name = "Opp Prize 5"
+
+[node name="OppPrize6" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.35, 0, -2.6)
+zone_name = "Opp Prize 6"
+
+[node name="OppDeck" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.1, 0, -0.5)
+zone_name = "Opp Deck"
+max_cards = 60
+
+[node name="OppDiscard" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.1, 0, -1.55)
+zone_name = "Opp Discard"
+max_cards = 60
