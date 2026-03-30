@@ -21,6 +21,13 @@ func _collect_zones() -> void:
 				all_zones.append(grandchild)
 
 
+func get_zone_containing(card: Card) -> DropZone:
+	for zone in all_zones:
+		if card in zone.held_cards:
+			return zone
+	return null
+
+
 func get_zone_at_position(world_pos: Vector3) -> DropZone:
 	for zone in all_zones:
 		if zone.contains_point(world_pos):
