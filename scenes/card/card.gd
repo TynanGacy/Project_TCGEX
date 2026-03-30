@@ -108,6 +108,11 @@ func return_to_home() -> void:
 	tween.tween_property(self, "rotation", home_rotation, TWEEN_SPEED)
 
 
+func snap_to_home() -> void:
+	position = home_position
+	rotation = home_rotation
+
+
 func set_home(pos: Vector3, rot: Vector3, index: int) -> void:
 	home_position = pos
 	home_rotation = rot
