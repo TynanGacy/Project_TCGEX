@@ -48,6 +48,7 @@ func _ready() -> void:
 
 	_on_phase_changed(game_state.phase)
 	_deal_starting_hand(test_hand_size)
+	_spawn_deck_visual(0)
 
 
 func _deal_starting_hand(count: int) -> void:
@@ -76,6 +77,18 @@ func _deal_starting_hand(count: int) -> void:
 			card.drag_started.connect(_on_card_drag_started)
 			card.drag_ended.connect(_on_card_drag_ended)
 			player_hand.add_card(card)
+
+
+func _spawn_deck_visual(pid: int) -> void:
+	var deck_zone := board.get_zone_by_name("Deck")
+	if deck_zone == null:
+		return
+	for inst in game_state.board.get_zone("p%d_deck" % pid):
+		var card: Card = card_scene.instantiate()
+		card.set_instance(inst as CardInstance)
+		card.face_down = true
+		board.add_child(card)
+		deck_zone.receive_card(card)
 
 
 func _unhandled_input(event: InputEvent) -> void:

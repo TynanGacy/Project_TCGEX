@@ -25,6 +25,10 @@ const TWEEN_SPEED := 0.15
 ## State
 var is_dragging := false
 var is_hovered := false
+var face_down: bool = false:
+	set(value):
+		face_down = value
+		_update_visuals()
 var home_position := Vector3.ZERO
 var home_rotation := Vector3.ZERO
 var hand_index := 0
@@ -54,8 +58,9 @@ func get_instance() -> CardInstance:
 
 func _update_visuals() -> void:
 	if label_3d:
+		label_3d.visible = not face_down
 		label_3d.text = card_name
-	if mesh_instance and card_art:
+	if mesh_instance and card_art and not face_down:
 		var mat := mesh_instance.get_active_material(0) as StandardMaterial3D
 		if mat:
 			mat = mat.duplicate()
