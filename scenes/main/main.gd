@@ -50,17 +50,19 @@ func _ready() -> void:
 	_on_phase_changed(game_state.phase)
 	_deal_starting_hand(test_hand_size)
 	_spawn_deck_visual(0)
+	_spawn_deck_visual(1)
 
 
 func _deal_starting_hand(count: int) -> void:
 	print("Dealing %d cards. Hand position: %s" % [count, str(player_hand.global_position)])
 
 	if _pikachu_data:
-		# Build a test deck via the game state
+		# Build a test deck via the game state for both players
 		var deck: Array[CardData] = []
 		for i in 20:
 			deck.append(_pikachu_data)
 		game_state.setup_player_deck(0, deck)
+		game_state.setup_player_deck(1, deck)
 		game_state.draw_starting_hand(0, count)
 
 		for inst in game_state.board.get_hand_cards(0):
@@ -80,8 +82,12 @@ func _deal_starting_hand(count: int) -> void:
 			player_hand.add_card(card)
 
 
+func _deck_zone_name(pid: int) -> String:
+	return "Deck" if pid == 0 else "Opp Deck"
+
+
 func _spawn_deck_visual(pid: int) -> void:
-	var deck_zone := board.get_zone_by_name("Deck")
+	var deck_zone := board.get_zone_by_name(_deck_zone_name(pid))
 	if deck_zone == null:
 		return
 	for inst in game_state.board.get_zone("p%d_deck" % pid):
@@ -225,11 +231,12 @@ func _on_phase_changed(phase: int) -> void:
 
 func _on_board_card_moved(inst: CardInstance, from_zone: String, to_zone: String) -> void:
 	if from_zone.ends_with("_deck") and to_zone.ends_with("_hand"):
-		_sync_deck_draw_visual(inst)
+		var pid := int(from_zone.substr(1).split("_")[0])
+		_sync_deck_draw_visual(inst, pid)
 
 
-func _sync_deck_draw_visual(inst: CardInstance) -> void:
-	var deck_zone := board.get_zone_by_name("Deck")
+func _sync_deck_draw_visual(inst: CardInstance, pid: int) -> void:
+	var deck_zone := board.get_zone_by_name(_deck_zone_name(pid))
 	if deck_zone == null:
 		return
 	var drawn_card: Card = null
@@ -242,9 +249,11 @@ func _sync_deck_draw_visual(inst: CardInstance) -> void:
 	deck_zone.remove_card(drawn_card)
 	board.remove_child(drawn_card)
 	drawn_card.face_down = false
-	drawn_card.drag_started.connect(_on_card_drag_started)
-	drawn_card.drag_ended.connect(_on_card_drag_ended)
-	player_hand.add_card(drawn_card)
+	## Only wire main's drag handlers for the local player's drawn cards.
+	if pid == 0:
+		drawn_card.drag_started.connect(_on_card_drag_started)
+		drawn_card.drag_ended.connect(_on_card_drag_ended)
+		player_hand.add_card(drawn_card)
 
 
 func _on_action_rejected(action: GameAction, reason: String) -> void:
