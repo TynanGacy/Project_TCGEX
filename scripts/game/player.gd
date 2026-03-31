@@ -31,12 +31,13 @@ func setup_deck(card_data_array: Array[CardData]) -> void:
 
 func load_deck_into_board(board: BoardState) -> Array[CardInstance]:
 	var instances: Array[CardInstance] = []
+	var deck_zone_id := "p%d_deck" % player_id
 
 	for data in deck_list:
 		var inst := CardInstance.create(data)
 		inst.owner_id = player_id
 		inst.controller_id = player_id
-		inst.zone = CardInstance.Zone.DECK
+		board.move_card(inst, deck_zone_id)
 		instances.append(inst)
 
 	return instances
@@ -66,7 +67,8 @@ func draw_card(board: BoardState) -> CardInstance:
 		deck_empty.emit()
 		return null
 
-	var card: CardInstance = deck_cards.pop_back()
+	var card: CardInstance = deck_cards.back()
+	board.move_card(card, "p%d_hand" % player_id)
 	return card
 
 

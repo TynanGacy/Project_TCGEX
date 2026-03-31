@@ -52,16 +52,20 @@ func _ready() -> void:
 
 func _deal_starting_hand(count: int) -> void:
 	print("Dealing %d cards. Hand position: %s" % [count, str(player_hand.global_position)])
-	for i in count:
+
+	# Build a test deck and populate the game state
+	if _pikachu_data:
+		var deck: Array[CardData] = []
+		for i in 20:
+			deck.append(_pikachu_data)
+		game_state.setup_player_deck(0, deck)
+		game_state.draw_starting_hand(0, count)
+
+	# Create visual cards from the hand zone
+	var hand_instances := game_state.board.get_hand_cards(0)
+	for idx in hand_instances.size():
 		var card: Card = card_scene.instantiate()
-
-		if _pikachu_data:
-			var inst := CardInstance.create(_pikachu_data)
-			inst.zone = CardInstance.Zone.HAND
-			card.set_instance(inst)
-		else:
-			card.card_name = "Card %d" % (i + 1)
-
+		card.set_instance(hand_instances[idx])
 		card.drag_started.connect(_on_card_drag_started)
 		card.drag_ended.connect(_on_card_drag_ended)
 		player_hand.add_card(card)
