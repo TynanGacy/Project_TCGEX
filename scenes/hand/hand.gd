@@ -71,7 +71,11 @@ func _layout_cards() -> void:
 		## Normalised position: -1 (left) to 1 (right)
 		var t := 0.0 if count == 1 else (float(i) / (count - 1)) * 2.0 - 1.0
 
-		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, 0.0)
+		## Leftmost card gets the highest Z (closest to camera), ensuring it
+		## always renders on top when cards overlap.
+		var z_depth := (count - 1 - i) * 0.002
+
+		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, z_depth)
 		card.set_home(home, Vector3(0.0, -t * deg_to_rad(MAX_FAN_ANGLE), 0.0), i)
 		if not card.is_dragging:
 			card.return_to_home()
