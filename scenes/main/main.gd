@@ -18,6 +18,12 @@ var dragged_card: Card = null
 var hovered_card: Card = null
 var _source_zone: DropZone = null
 
+## Card inspector popup
+var _card_popup: PanelContainer = null
+var _popup_name_label: Label = null
+var _popup_type_label: Label = null
+var _popup_details_label: Label = null
+
 ## Turn engine
 @onready var turn_controller: TurnController = TurnControllerSingleton
 var game_state: GameState
@@ -46,6 +52,7 @@ func _ready() -> void:
 	_deal_starting_hand(test_hand_size)
 	_spawn_deck_visual(0)
 	_spawn_deck_visual(1)
+	_build_card_popup()
 
 
 func _deal_starting_hand(count: int) -> void:
@@ -92,11 +99,23 @@ func _spawn_deck_visual(pid: int) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
+
+		## Any click dismisses the popup (right-click may also re-open it below).
+		if mb.pressed and _card_popup != null and _card_popup.visible:
+			_card_popup.visible = false
+
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				_try_pick_card(mb.position)
 			else:
 				_try_drop_card()
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_handle_right_click(mb.position)
+
+	elif event is InputEventKey:
+		var ke := event as InputEventKey
+		if ke.pressed and ke.keycode == KEY_ESCAPE and _card_popup != null:
+			_card_popup.visible = false
 
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
@@ -310,6 +329,138 @@ func _on_card_drag_started(card: Card) -> void:
 
 func _on_card_drag_ended(_card: Card) -> void:
 	board.clear_highlights()
+
+
+# ---------------------------------------------------------------------------
+# Card inspector popup
+# ---------------------------------------------------------------------------
+
+func _build_card_popup() -> void:
+	_card_popup = PanelContainer.new()
+	_card_popup.visible = false
+	_card_popup.custom_minimum_size = Vector2(270, 0)
+	_card_popup.gui_input.connect(_on_popup_gui_input)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	_card_popup.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 5)
+	margin.add_child(vbox)
+
+	_popup_name_label = Label.new()
+	_popup_name_label.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(_popup_name_label)
+
+	_popup_type_label = Label.new()
+	_popup_type_label.add_theme_color_override("font_color", Color(0.35, 0.35, 0.6))
+	vbox.add_child(_popup_type_label)
+
+	vbox.add_child(HSeparator.new())
+
+	_popup_details_label = Label.new()
+	_popup_details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_popup_details_label.custom_minimum_size = Vector2(246, 0)
+	vbox.add_child(_popup_details_label)
+
+	$HUD.add_child(_card_popup)
+
+
+func _handle_right_click(screen_pos: Vector2) -> void:
+	var card := _raycast_card(screen_pos)
+	if card == null or card.face_down or card.card_instance == null:
+		return
+	_populate_card_popup(card.card_instance)
+	## Position near cursor; clamp so the popup stays inside the viewport.
+	var vp_size := get_viewport().get_visible_rect().size
+	var min_size := Vector2(_card_popup.custom_minimum_size.x, 200.0)
+	var pos := screen_pos + Vector2(14, 14)
+	pos.x = minf(pos.x, vp_size.x - min_size.x - 4.0)
+	pos.y = minf(pos.y, vp_size.y - min_size.y - 4.0)
+	_card_popup.position = pos
+	_card_popup.visible = true
+
+
+func _populate_card_popup(inst: CardInstance) -> void:
+	_popup_name_label.text = inst.data.display_name
+
+	var type_str := ""
+	var details := ""
+
+	if inst.data is PokemonCardData:
+		var pdata := inst.data as PokemonCardData
+		var stage_label := ""
+		match pdata.stage:
+			PokemonCardData.Stage.BASIC:   stage_label = "Basic"
+			PokemonCardData.Stage.STAGE1:  stage_label = "Stage 1"
+			PokemonCardData.Stage.STAGE2:  stage_label = "Stage 2"
+		type_str = "Pokemon — %s" % stage_label
+
+		details = "HP: %d   Type: %s" % [
+			pdata.hp_max,
+			PokemonCardData.energy_type_to_string(pdata.pokemon_type)
+		]
+		if pdata.evolves_from != "":
+			details += "\nEvolves from: %s" % pdata.evolves_from
+		if pdata.weakness != PokemonCardData.EnergyType.NONE:
+			details += "\nWeakness: %s ×2" % PokemonCardData.energy_type_to_string(pdata.weakness)
+		if pdata.resistance != PokemonCardData.EnergyType.NONE:
+			details += "\nResistance: %s -30" % PokemonCardData.energy_type_to_string(pdata.resistance)
+		details += "\nRetreat: %d" % pdata.retreat_cost
+		if inst.damage > 0:
+			details += "\nDamage taken: %d  (%d HP left)" % [inst.damage, inst.hp_remaining()]
+		for atk in pdata.attacks:
+			details += "\n\n[%s]  %d dmg" % [atk.name, atk.base_damage]
+			if atk.text != "":
+				details += "\n%s" % atk.text
+
+	elif inst.data is EnergyCardData:
+		var edata := inst.data as EnergyCardData
+		type_str = "Energy"
+		details = "Type: %s\nProvides: %d" % [
+			PokemonCardData.energy_type_to_string(edata.energy_type),
+			edata.provides
+		]
+
+	elif inst.data is TrainerCardData:
+		var tdata := inst.data as TrainerCardData
+		var kind_label := ""
+		match tdata.trainer_kind:
+			TrainerCardData.TrainerKind.ITEM:      kind_label = "Item"
+			TrainerCardData.TrainerKind.SUPPORTER: kind_label = "Supporter"
+			TrainerCardData.TrainerKind.STADIUM:   kind_label = "Stadium"
+			TrainerCardData.TrainerKind.TOOL:      kind_label = "Tool"
+		type_str = "Trainer — %s" % kind_label
+
+	if inst.data.rules_text != "":
+		details += "\n\n%s" % inst.data.rules_text
+
+	## Show attached energy/tools when inspecting a board Pokemon.
+	if not inst.attached_energy.is_empty():
+		var names := ""
+		for e in inst.attached_energy:
+			if e.data != null:
+				names += (", " if names != "" else "") + e.data.display_name
+		details += "\nAttached energy: %s" % names
+	if not inst.attached_tools.is_empty():
+		var names := ""
+		for t in inst.attached_tools:
+			if t.data != null:
+				names += (", " if names != "" else "") + t.data.display_name
+		details += "\nTool: %s" % names
+
+	_popup_type_label.text = type_str
+	_popup_details_label.text = details.strip_edges()
+
+
+func _on_popup_gui_input(event: InputEvent) -> void:
+	## Clicking anywhere on the popup dismisses it.
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		_card_popup.visible = false
 
 
 ## Highlights only the zones that are valid drop targets for this card.

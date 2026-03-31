@@ -27,6 +27,7 @@ shape = SubResource("BoxShape_card")
 
 [node name="Label3D" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0.006, -0.3)
+modulate = Color(0, 0, 0, 1)
 pixel_size = 0.001
 font_size = 48
 outline_size = 0
