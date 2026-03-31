@@ -4,6 +4,7 @@ extends Node3D
 @onready var camera: Camera3D = $Camera3D
 @onready var board: Board = $Board
 @onready var player_hand: Hand = $Board/PlayerHand
+@onready var opp_hand: Hand = $Board/OppHand
 
 ## HUD elements
 @onready var phase_label: Label = $HUD/TopBar/PhaseLabel
@@ -45,30 +46,66 @@ func _ready() -> void:
 	turn_controller.action_rejected.connect(_on_action_rejected)
 	turn_controller.action_committed.connect(_on_action_committed)
 	turn_controller.log_message.connect(_on_turn_log)
+	game_state.board.card_moved.connect(_on_board_card_moved)
 
 	_on_phase_changed(game_state.phase)
 	_deal_starting_hand(test_hand_size)
+	_spawn_deck_visual(0)
+	_spawn_deck_visual(1)
 
 
 func _deal_starting_hand(count: int) -> void:
 	print("Dealing %d cards. Hand position: %s" % [count, str(player_hand.global_position)])
 
-	# Build a test deck and populate the game state
 	if _pikachu_data:
+		# Build a test deck via the game state for both players
 		var deck: Array[CardData] = []
 		for i in 20:
 			deck.append(_pikachu_data)
 		game_state.setup_player_deck(0, deck)
+		game_state.setup_player_deck(1, deck)
 		game_state.draw_starting_hand(0, count)
+		game_state.draw_starting_hand(1, count)
 
-	# Create visual cards from the hand zone
-	var hand_instances := game_state.board.get_hand_cards(0)
-	for idx in hand_instances.size():
+		var p0_from: Vector3 = board.get_zone_by_name("Deck").global_position + Vector3(0, 0.1, 0)
+		for inst in game_state.board.get_hand_cards(0):
+			var card: Card = card_scene.instantiate()
+			card.set_instance(inst)
+			card.drag_started.connect(_on_card_drag_started)
+			card.drag_ended.connect(_on_card_drag_ended)
+			player_hand.add_card_animated(card, p0_from)
+
+		var p1_from: Vector3 = board.get_zone_by_name("Opp Deck").global_position + Vector3(0, 0.1, 0)
+		for inst in game_state.board.get_hand_cards(1):
+			var card: Card = card_scene.instantiate()
+			card.set_instance(inst)
+			card.face_down = true
+			opp_hand.add_card_animated(card, p1_from)
+	else:
+		# Fallback: spawn placeholder cards when no card data is available
+		push_warning("_deal_starting_hand: pikachu_basic.tres failed to load, using placeholders")
+		for i in count:
+			var card: Card = card_scene.instantiate()
+			card.card_name = "Card %d" % (i + 1)
+			card.drag_started.connect(_on_card_drag_started)
+			card.drag_ended.connect(_on_card_drag_ended)
+			player_hand.add_card(card)
+
+
+func _deck_zone_name(pid: int) -> String:
+	return "Deck" if pid == 0 else "Opp Deck"
+
+
+func _spawn_deck_visual(pid: int) -> void:
+	var deck_zone := board.get_zone_by_name(_deck_zone_name(pid))
+	if deck_zone == null:
+		return
+	for inst in game_state.board.get_zone("p%d_deck" % pid):
 		var card: Card = card_scene.instantiate()
-		card.set_instance(hand_instances[idx])
-		card.drag_started.connect(_on_card_drag_started)
-		card.drag_ended.connect(_on_card_drag_ended)
-		player_hand.add_card(card)
+		card.set_instance(inst as CardInstance)
+		card.face_down = true
+		board.add_child(card)
+		deck_zone.receive_card(card)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -195,6 +232,42 @@ func _on_end_turn_pressed() -> void:
 func _on_phase_changed(phase: int) -> void:
 	if phase_label:
 		phase_label.text = "Phase: %s" % TurnPhase.phase_to_string(phase)
+	## Turn 1 hand is dealt manually in _deal_starting_hand; skip auto-draw.
+	if phase == TurnPhase.Phase.START and game_state.turn_number > 1:
+		turn_controller.request_action(
+			ActionDrawCard.new(game_state.current_player_id, 1)
+		)
+
+
+func _on_board_card_moved(inst: CardInstance, from_zone: String, to_zone: String) -> void:
+	if from_zone.ends_with("_deck") and to_zone.ends_with("_hand"):
+		var pid := int(from_zone.substr(1).split("_")[0])
+		_sync_deck_draw_visual(inst, pid)
+
+
+func _sync_deck_draw_visual(inst: CardInstance, pid: int) -> void:
+	var deck_zone := board.get_zone_by_name(_deck_zone_name(pid))
+	if deck_zone == null:
+		return
+	var drawn_card: Card = null
+	for card in deck_zone.held_cards:
+		if card.card_instance == inst:
+			drawn_card = card
+			break
+	if drawn_card == null:
+		return
+	## Save world position before detaching from the scene tree.
+	var from_global := drawn_card.global_position
+	deck_zone.remove_card(drawn_card)
+	board.remove_child(drawn_card)
+	if pid == 0:
+		drawn_card.face_down = false
+		drawn_card.drag_started.connect(_on_card_drag_started)
+		drawn_card.drag_ended.connect(_on_card_drag_ended)
+		player_hand.add_card_animated(drawn_card, from_global)
+	else:
+		## Opponent card stays face-down; no drag wiring needed.
+		opp_hand.add_card_animated(drawn_card, from_global)
 
 
 func _on_action_rejected(action: GameAction, reason: String) -> void:

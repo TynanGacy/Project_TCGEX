@@ -21,10 +21,15 @@ const CARD_THICKNESS := 0.01
 const HOVER_LIFT := 0.15
 const DRAG_LIFT := 0.3
 const TWEEN_SPEED := 0.15
+const DRAW_SPEED := 0.5
 
 ## State
 var is_dragging := false
 var is_hovered := false
+var face_down: bool = false:
+	set(value):
+		face_down = value
+		_update_visuals()
 var home_position := Vector3.ZERO
 var home_rotation := Vector3.ZERO
 var hand_index := 0
@@ -54,8 +59,9 @@ func get_instance() -> CardInstance:
 
 func _update_visuals() -> void:
 	if label_3d:
+		label_3d.visible = not face_down
 		label_3d.text = card_name
-	if mesh_instance and card_art:
+	if mesh_instance and card_art and not face_down:
 		var mat := mesh_instance.get_active_material(0) as StandardMaterial3D
 		if mat:
 			mat = mat.duplicate()
@@ -115,6 +121,14 @@ func return_to_home() -> void:
 	var tween := _new_tween()
 	tween.tween_property(self, "position", home_position, TWEEN_SPEED)
 	tween.tween_property(self, "rotation", home_rotation, TWEEN_SPEED)
+
+
+func animate_draw() -> void:
+	var tween := _new_tween()
+	tween.tween_property(self, "position", home_position, DRAW_SPEED) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "rotation", home_rotation, DRAW_SPEED) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 func snap_to_home() -> void:

@@ -21,6 +21,13 @@ func _collect_zones() -> void:
 				all_zones.append(grandchild)
 
 
+func get_zone_by_name(zone_name: String) -> DropZone:
+	for zone in all_zones:
+		if zone.zone_name == zone_name:
+			return zone
+	return null
+
+
 func get_zone_containing(card: Card) -> DropZone:
 	for zone in all_zones:
 		if card in zone.held_cards:
