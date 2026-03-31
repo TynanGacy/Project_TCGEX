@@ -15,6 +15,9 @@ var special_conditions: Array[SpecialCondition] = []
 var attached_energy: Array[CardInstance] = []
 var attached_tools: Array[CardInstance] = []
 
+var prior_stage: CardInstance = null
+var turn_entered_play: int = -1
+
 var owner_id: int = 0
 var controller_id: int = 0
 
