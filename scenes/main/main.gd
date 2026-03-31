@@ -4,6 +4,7 @@ extends Node3D
 @onready var camera: Camera3D = $Camera3D
 @onready var board: Board = $Board
 @onready var player_hand: Hand = $Board/PlayerHand
+@onready var opp_hand: Hand = $Board/OppHand
 
 ## HUD elements
 @onready var phase_label: Label = $HUD/TopBar/PhaseLabel
@@ -11,9 +12,6 @@ extends Node3D
 @onready var game_log: RichTextLabel = $HUD/LogPanel/GameLog
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
-var _hand_scene: PackedScene = preload("res://scenes/hand/hand.tscn")
-
-var opp_hand: Hand
 
 ## Drag state
 var dragged_card: Card = null
@@ -39,12 +37,6 @@ func _ready() -> void:
 
 	## Try loading test card data
 	_pikachu_data = load("res://data/cards/pokemon/pikachu_basic.tres") as CardData
-
-	## Create opponent hand at the far end of the table, facing inward
-	opp_hand = _hand_scene.instantiate() as Hand
-	opp_hand.position = Vector3(0, 0.05, -3.5)
-	opp_hand.rotation_degrees.y = 180.0
-	board.add_child(opp_hand)
 
 	## Set up game state
 	game_state = GameState.new(2, 2, 4)
