@@ -45,6 +45,7 @@ func _ready() -> void:
 	turn_controller.action_rejected.connect(_on_action_rejected)
 	turn_controller.action_committed.connect(_on_action_committed)
 	turn_controller.log_message.connect(_on_turn_log)
+	game_state.board.card_moved.connect(_on_board_card_moved)
 
 	_on_phase_changed(game_state.phase)
 	_deal_starting_hand(test_hand_size)
@@ -215,6 +216,35 @@ func _on_end_turn_pressed() -> void:
 func _on_phase_changed(phase: int) -> void:
 	if phase_label:
 		phase_label.text = "Phase: %s" % TurnPhase.phase_to_string(phase)
+	## Turn 1 hand is dealt manually in _deal_starting_hand; skip auto-draw.
+	if phase == TurnPhase.Phase.START and game_state.turn_number > 1:
+		turn_controller.request_action(
+			ActionDrawCard.new(game_state.current_player_id, 1)
+		)
+
+
+func _on_board_card_moved(inst: CardInstance, from_zone: String, to_zone: String) -> void:
+	if from_zone.ends_with("_deck") and to_zone.ends_with("_hand"):
+		_sync_deck_draw_visual(inst)
+
+
+func _sync_deck_draw_visual(inst: CardInstance) -> void:
+	var deck_zone := board.get_zone_by_name("Deck")
+	if deck_zone == null:
+		return
+	var drawn_card: Card = null
+	for card in deck_zone.held_cards:
+		if card.card_instance == inst:
+			drawn_card = card
+			break
+	if drawn_card == null:
+		return
+	deck_zone.remove_card(drawn_card)
+	board.remove_child(drawn_card)
+	drawn_card.face_down = false
+	drawn_card.drag_started.connect(_on_card_drag_started)
+	drawn_card.drag_ended.connect(_on_card_drag_ended)
+	player_hand.add_card(drawn_card)
 
 
 func _on_action_rejected(action: GameAction, reason: String) -> void:
