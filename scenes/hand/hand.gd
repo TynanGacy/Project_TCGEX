@@ -7,6 +7,8 @@ signal card_played(card: Card)
 const CARD_SPACING := 0.7
 const MAX_FAN_ANGLE := 5.0  ## Degrees of rotation at edges
 const CURVE_HEIGHT := 0.05  ## Vertical curve in the fan
+const MAX_HAND_WIDTH := 6.5  ## World-unit cap before spacing compresses
+const MIN_CARD_SPACING := 0.2  ## Never overlap cards more than this
 
 var cards: Array[Card] = []
 
@@ -54,27 +56,25 @@ func _layout_cards() -> void:
 	if count == 0:
 		return
 
-	print("Hand layout: %d cards, global_pos=%s" % [count, str(global_position)])
-	var total_width := (count - 1) * CARD_SPACING
+	## Compress spacing only when the natural spread would overflow.
+	var spacing := CARD_SPACING
+	if count > 1:
+		var natural_width := (count - 1) * CARD_SPACING
+		if natural_width > MAX_HAND_WIDTH:
+			spacing = maxf(MAX_HAND_WIDTH / (count - 1), MIN_CARD_SPACING)
+
+	var total_width := (count - 1) * spacing
 	var start_x := -total_width / 2.0
 
 	for i in count:
 		var card := cards[i]
-		## Normalized position: -1 to 1 from left to right
-		var t := 0.0
-		if count > 1:
-			t = (float(i) / (count - 1)) * 2.0 - 1.0
+		## Normalised position: -1 (left) to 1 (right)
+		var t := 0.0 if count == 1 else (float(i) / (count - 1)) * 2.0 - 1.0
 
-		var x := start_x + i * CARD_SPACING
-		var y := absf(t) * CURVE_HEIGHT
-		var z := 0.0
-		var rot_y := -t * deg_to_rad(MAX_FAN_ANGLE)
-
-		var home := Vector3(x, y, z)
-		card.set_home(home, Vector3(0.0, rot_y, 0.0), i)
+		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, 0.0)
+		card.set_home(home, Vector3(0.0, -t * deg_to_rad(MAX_FAN_ANGLE), 0.0), i)
 		if not card.is_dragging:
 			card.return_to_home()
-		print("  Card %d home_local=%s global=%s" % [i, str(home), str(card.global_position)])
 
 
 func _on_card_dropped(card: Card) -> void:
