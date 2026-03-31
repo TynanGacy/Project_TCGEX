@@ -125,23 +125,134 @@ func _try_drop_card() -> void:
 	_source_zone = null
 	card.end_drag()
 
-	if game_state.phase != TurnPhase.Phase.MAIN:
-		_log_line("Cards can only be played during the Main Phase.")
+	var inst := card.card_instance
+	if inst == null:
 		_snap_back(card, from_zone)
 		return
 
-	var world_pos := card.global_position
-	var target_zone := board.get_zone_at_position(world_pos)
-	if target_zone and target_zone.can_accept_card(card):
-		if from_zone == null:
-			## Coming from hand: reparent to board before zone receives it
-			player_hand.remove_card(card)
-			board.add_child(card)
-			if card.card_instance:
-				card.card_instance.zone = CardInstance.Zone.ACTIVE
-		target_zone.receive_card(card)
-	else:
+	var target_drop_zone := board.get_zone_at_position(card.global_position)
+	var action := _build_play_action(inst, target_drop_zone)
+
+	if action == null:
 		_snap_back(card, from_zone)
+		return
+
+	var result := action.validate(game_state)
+	if not result.ok:
+		_log_line(result.reason)
+		_snap_back(card, from_zone)
+		return
+
+	action.apply(game_state)
+	_apply_card_visual(card, from_zone, inst, target_drop_zone)
+	_log_line("[P%d][%s] %s" % [
+		0, TurnPhase.phase_to_string(game_state.phase), action.description()
+	])
+
+
+## Builds the appropriate GameAction for dropping inst onto drop_zone.
+## Returns null when no valid play exists for this card+zone combination.
+func _build_play_action(inst: CardInstance, drop_zone: DropZone) -> GameAction:
+	const PID := 0
+
+	if inst.data is PokemonCardData:
+		var pdata := inst.data as PokemonCardData
+		var slot := _zone_name_to_pokemon_slot(drop_zone)
+		if slot == "":
+			return null
+		if pdata.stage == PokemonCardData.Stage.BASIC:
+			return ActionPlayBasicPokemon.new(PID, inst, slot)
+		else:
+			var target := _instance_in_drop_zone(drop_zone)
+			if target == null:
+				return null
+			return ActionEvolvePokemon.new(PID, inst, target)
+
+	elif inst.data is EnergyCardData:
+		var target := _instance_in_drop_zone(drop_zone)
+		if target == null:
+			return null
+		return ActionAttachEnergy.new(PID, inst, target)
+
+	elif inst.data is TrainerCardData:
+		var tdata := inst.data as TrainerCardData
+		match tdata.trainer_kind:
+			TrainerCardData.TrainerKind.ITEM:
+				return ActionPlayTrainerItem.new(PID, inst)
+			TrainerCardData.TrainerKind.SUPPORTER:
+				return ActionPlayTrainerSupporter.new(PID, inst)
+			TrainerCardData.TrainerKind.STADIUM:
+				return ActionPlayTrainerStadium.new(PID, inst)
+			TrainerCardData.TrainerKind.TOOL:
+				var target := _instance_in_drop_zone(drop_zone)
+				if target == null:
+					return null
+				return ActionPlayTrainerTool.new(PID, inst, target)
+
+	return null
+
+
+## After a valid action has been applied, moves the card node to its new home.
+func _apply_card_visual(
+	card: Card,
+	from_zone: DropZone,
+	inst: CardInstance,
+	target_drop_zone: DropZone
+) -> void:
+	# Detach from hand if it was dragged from there.
+	if from_zone == null:
+		player_hand.remove_card(card)
+		board.add_child(card)
+
+	var logic_location := game_state.board.find_card_location(inst)
+
+	if "active" in logic_location or "bench" in logic_location:
+		# For evolution: remove the prior stage card node from the zone first.
+		if inst.prior_stage != null and target_drop_zone != null:
+			_remove_prior_stage_visual(target_drop_zone, inst.prior_stage)
+		if target_drop_zone != null:
+			target_drop_zone.receive_card(card)
+
+	elif "discard" in logic_location:
+		var discard := board.get_zone_by_name("Discard")
+		if discard != null:
+			discard.receive_card(card)
+
+	elif logic_location == "stadium":
+		# No dedicated visual zone for the stadium — snap to centre table.
+		card.set_home(Vector3(0.0, 0.05, 0.0), Vector3.ZERO, 0)
+		card.return_to_home()
+
+	else:
+		# Card removed from all board zones (energy or tool attached to pokemon).
+		card.queue_free()
+
+
+## Removes and frees the Card node for prior_inst from a visual DropZone.
+func _remove_prior_stage_visual(zone: DropZone, prior_inst: CardInstance) -> void:
+	for held in zone.held_cards:
+		if held.card_instance == prior_inst:
+			zone.remove_card(held)
+			held.queue_free()
+			return
+
+
+## Returns "active" or "bench" for player-owned play zones, "" for everything else.
+func _zone_name_to_pokemon_slot(drop_zone: DropZone) -> String:
+	if drop_zone == null:
+		return ""
+	if drop_zone.zone_name == "Active":
+		return "active"
+	if drop_zone.zone_name.begins_with("Bench"):
+		return "bench"
+	return ""
+
+
+## Returns the CardInstance of the first card held in a visual DropZone.
+func _instance_in_drop_zone(drop_zone: DropZone) -> CardInstance:
+	if drop_zone == null or drop_zone.held_cards.is_empty():
+		return null
+	return drop_zone.held_cards[0].card_instance
 
 
 func _snap_back(card: Card, from_zone: DropZone) -> void:
@@ -194,11 +305,79 @@ func _on_card_played(_card: Card) -> void:
 
 func _on_card_drag_started(card: Card) -> void:
 	if game_state.phase == TurnPhase.Phase.MAIN:
-		board.highlight_valid_zones(card)
+		_highlight_valid_zones_for(card)
 
 
 func _on_card_drag_ended(_card: Card) -> void:
 	board.clear_highlights()
+
+
+## Highlights only the zones that are valid drop targets for this card.
+func _highlight_valid_zones_for(card: Card) -> void:
+	board.clear_highlights()
+	var inst := card.card_instance
+	if inst == null:
+		return
+
+	if inst.data is PokemonCardData:
+		var pdata := inst.data as PokemonCardData
+		if pdata.stage == PokemonCardData.Stage.BASIC:
+			_highlight_pokemon_play_zones()
+		else:
+			_highlight_evolution_zones_for(inst)
+
+	elif inst.data is EnergyCardData:
+		_highlight_zones_with_pokemon()
+
+	elif inst.data is TrainerCardData:
+		var tdata := inst.data as TrainerCardData
+		if tdata.trainer_kind == TrainerCardData.TrainerKind.TOOL:
+			_highlight_zones_with_pokemon()
+		# Item / Supporter / Stadium need no specific drop target.
+
+
+## Highlights empty Active and non-full Bench zones.
+func _highlight_pokemon_play_zones() -> void:
+	var active := board.get_zone_by_name("Active")
+	if active != null and active.held_cards.is_empty():
+		active.set_highlighted(true)
+	for i in range(1, 6):
+		var bench := board.get_zone_by_name("Bench %d" % i)
+		if bench != null and bench.held_cards.size() < bench.max_cards:
+			bench.set_highlighted(true)
+
+
+## Highlights Active / Bench zones that hold a valid prior-stage target.
+func _highlight_evolution_zones_for(inst: CardInstance) -> void:
+	if not (inst.data is PokemonCardData):
+		return
+	var pdata := inst.data as PokemonCardData
+	var candidate_names: Array[String] = ["Active"]
+	for i in range(1, 6):
+		candidate_names.append("Bench %d" % i)
+	for zone_name in candidate_names:
+		var zone := board.get_zone_by_name(zone_name)
+		if zone == null or zone.held_cards.is_empty():
+			continue
+		var target_inst := zone.held_cards[0].card_instance
+		if target_inst == null or not (target_inst.data is PokemonCardData):
+			continue
+		if (target_inst.data as PokemonCardData).card_id == pdata.evolves_from:
+			zone.set_highlighted(true)
+
+
+## Highlights Active / Bench zones that currently hold a Pokemon.
+func _highlight_zones_with_pokemon() -> void:
+	var candidate_names: Array[String] = ["Active"]
+	for i in range(1, 6):
+		candidate_names.append("Bench %d" % i)
+	for zone_name in candidate_names:
+		var zone := board.get_zone_by_name(zone_name)
+		if zone == null or zone.held_cards.is_empty():
+			continue
+		var target_inst := zone.held_cards[0].card_instance
+		if target_inst != null and target_inst.data is PokemonCardData:
+			zone.set_highlighted(true)
 
 
 ## Turn engine handlers
