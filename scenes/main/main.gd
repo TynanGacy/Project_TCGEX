@@ -28,15 +28,9 @@ const DRAG_PLANE := Plane(Vector3.UP, 0.0)
 
 @export var test_hand_size: int = 5
 
-var _pikachu_data: CardData = null
-
-
 func _ready() -> void:
 	player_hand.card_played.connect(_on_card_played)
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
-
-	## Try loading test card data
-	_pikachu_data = load("res://data/cards/pokemon/pikachu_basic.tres") as CardData
 
 	## Set up game state
 	game_state = GameState.new(2, 2, 4)
@@ -57,39 +51,26 @@ func _ready() -> void:
 func _deal_starting_hand(count: int) -> void:
 	print("Dealing %d cards. Hand position: %s" % [count, str(player_hand.global_position)])
 
-	if _pikachu_data:
-		# Build a test deck via the game state for both players
-		var deck: Array[CardData] = []
-		for i in 20:
-			deck.append(_pikachu_data)
-		game_state.setup_player_deck(0, deck)
-		game_state.setup_player_deck(1, deck)
-		game_state.draw_starting_hand(0, count)
-		game_state.draw_starting_hand(1, count)
+	# Build a randomised test deck for each player.
+	game_state.setup_player_deck(0, TestDeckFactory.build_deck(20))
+	game_state.setup_player_deck(1, TestDeckFactory.build_deck(20))
+	game_state.draw_starting_hand(0, count)
+	game_state.draw_starting_hand(1, count)
 
-		var p0_from: Vector3 = board.get_zone_by_name("Deck").global_position + Vector3(0, 0.1, 0)
-		for inst in game_state.board.get_hand_cards(0):
-			var card: Card = card_scene.instantiate()
-			card.set_instance(inst)
-			card.drag_started.connect(_on_card_drag_started)
-			card.drag_ended.connect(_on_card_drag_ended)
-			player_hand.add_card_animated(card, p0_from)
+	var p0_from: Vector3 = board.get_zone_by_name("Deck").global_position + Vector3(0, 0.1, 0)
+	for inst in game_state.board.get_hand_cards(0):
+		var card: Card = card_scene.instantiate()
+		card.set_instance(inst)
+		card.drag_started.connect(_on_card_drag_started)
+		card.drag_ended.connect(_on_card_drag_ended)
+		player_hand.add_card_animated(card, p0_from)
 
-		var p1_from: Vector3 = board.get_zone_by_name("Opp Deck").global_position + Vector3(0, 0.1, 0)
-		for inst in game_state.board.get_hand_cards(1):
-			var card: Card = card_scene.instantiate()
-			card.set_instance(inst)
-			card.face_down = true
-			opp_hand.add_card_animated(card, p1_from)
-	else:
-		# Fallback: spawn placeholder cards when no card data is available
-		push_warning("_deal_starting_hand: pikachu_basic.tres failed to load, using placeholders")
-		for i in count:
-			var card: Card = card_scene.instantiate()
-			card.card_name = "Card %d" % (i + 1)
-			card.drag_started.connect(_on_card_drag_started)
-			card.drag_ended.connect(_on_card_drag_ended)
-			player_hand.add_card(card)
+	var p1_from: Vector3 = board.get_zone_by_name("Opp Deck").global_position + Vector3(0, 0.1, 0)
+	for inst in game_state.board.get_hand_cards(1):
+		var card: Card = card_scene.instantiate()
+		card.set_instance(inst)
+		card.face_down = true
+		opp_hand.add_card_animated(card, p1_from)
 
 
 func _deck_zone_name(pid: int) -> String:
