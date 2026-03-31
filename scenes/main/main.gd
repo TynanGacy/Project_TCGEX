@@ -53,22 +53,29 @@ func _ready() -> void:
 func _deal_starting_hand(count: int) -> void:
 	print("Dealing %d cards. Hand position: %s" % [count, str(player_hand.global_position)])
 
-	# Build a test deck and populate the game state
 	if _pikachu_data:
+		# Build a test deck via the game state
 		var deck: Array[CardData] = []
 		for i in 20:
 			deck.append(_pikachu_data)
 		game_state.setup_player_deck(0, deck)
 		game_state.draw_starting_hand(0, count)
 
-	# Create visual cards from the hand zone
-	var hand_instances := game_state.board.get_hand_cards(0)
-	for idx in hand_instances.size():
-		var card: Card = card_scene.instantiate()
-		card.set_instance(hand_instances[idx])
-		card.drag_started.connect(_on_card_drag_started)
-		card.drag_ended.connect(_on_card_drag_ended)
-		player_hand.add_card(card)
+		for inst in game_state.board.get_hand_cards(0):
+			var card: Card = card_scene.instantiate()
+			card.set_instance(inst)
+			card.drag_started.connect(_on_card_drag_started)
+			card.drag_ended.connect(_on_card_drag_ended)
+			player_hand.add_card(card)
+	else:
+		# Fallback: spawn placeholder cards when no card data is available
+		push_warning("_deal_starting_hand: pikachu_basic.tres failed to load, using placeholders")
+		for i in count:
+			var card: Card = card_scene.instantiate()
+			card.card_name = "Card %d" % (i + 1)
+			card.drag_started.connect(_on_card_drag_started)
+			card.drag_ended.connect(_on_card_drag_ended)
+			player_hand.add_card(card)
 
 
 func _unhandled_input(event: InputEvent) -> void:
