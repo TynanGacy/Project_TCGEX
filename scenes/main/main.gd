@@ -11,6 +11,9 @@ extends Node3D
 @onready var game_log: RichTextLabel = $HUD/LogPanel/GameLog
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
+var _hand_scene: PackedScene = preload("res://scenes/hand/hand.tscn")
+
+var opp_hand: Hand
 
 ## Drag state
 var dragged_card: Card = null
@@ -36,6 +39,12 @@ func _ready() -> void:
 
 	## Try loading test card data
 	_pikachu_data = load("res://data/cards/pokemon/pikachu_basic.tres") as CardData
+
+	## Create opponent hand at the far end of the table, facing inward
+	opp_hand = _hand_scene.instantiate() as Hand
+	opp_hand.position = Vector3(0, 0.05, -3.5)
+	opp_hand.rotation_degrees.y = 180.0
+	board.add_child(opp_hand)
 
 	## Set up game state
 	game_state = GameState.new(2, 2, 4)
@@ -64,13 +73,22 @@ func _deal_starting_hand(count: int) -> void:
 		game_state.setup_player_deck(0, deck)
 		game_state.setup_player_deck(1, deck)
 		game_state.draw_starting_hand(0, count)
+		game_state.draw_starting_hand(1, count)
 
+		var p0_from: Vector3 = board.get_zone_by_name("Deck").global_position + Vector3(0, 0.1, 0)
 		for inst in game_state.board.get_hand_cards(0):
 			var card: Card = card_scene.instantiate()
 			card.set_instance(inst)
 			card.drag_started.connect(_on_card_drag_started)
 			card.drag_ended.connect(_on_card_drag_ended)
-			player_hand.add_card(card)
+			player_hand.add_card_animated(card, p0_from)
+
+		var p1_from: Vector3 = board.get_zone_by_name("Opp Deck").global_position + Vector3(0, 0.1, 0)
+		for inst in game_state.board.get_hand_cards(1):
+			var card: Card = card_scene.instantiate()
+			card.set_instance(inst)
+			card.face_down = true
+			opp_hand.add_card_animated(card, p1_from)
 	else:
 		# Fallback: spawn placeholder cards when no card data is available
 		push_warning("_deal_starting_hand: pikachu_basic.tres failed to load, using placeholders")
@@ -246,14 +264,18 @@ func _sync_deck_draw_visual(inst: CardInstance, pid: int) -> void:
 			break
 	if drawn_card == null:
 		return
+	## Save world position before detaching from the scene tree.
+	var from_global := drawn_card.global_position
 	deck_zone.remove_card(drawn_card)
 	board.remove_child(drawn_card)
-	drawn_card.face_down = false
-	## Only wire main's drag handlers for the local player's drawn cards.
 	if pid == 0:
+		drawn_card.face_down = false
 		drawn_card.drag_started.connect(_on_card_drag_started)
 		drawn_card.drag_ended.connect(_on_card_drag_ended)
-		player_hand.add_card(drawn_card)
+		player_hand.add_card_animated(drawn_card, from_global)
+	else:
+		## Opponent card stays face-down; no drag wiring needed.
+		opp_hand.add_card_animated(drawn_card, from_global)
 
 
 func _on_action_rejected(action: GameAction, reason: String) -> void:
