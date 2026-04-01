@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/card/card_zoom_popup.gd" id="1_czp"]
+
+[node name="CardZoomPopup" type="PanelContainer"]
+script = ExtResource("1_czp")
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 240.0
+offset_bottom = 480.0
+visible = false
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CardArt" type="TextureRect" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(214, 299)
+size_flags_horizontal = 3
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CardName" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+
+[node name="RulesText" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12

@@ -10,6 +10,7 @@ extends Node3D
 @onready var phase_label: Label = $HUD/TopBar/PhaseLabel
 @onready var end_turn_button: Button = $HUD/TopBar/EndTurnButton
 @onready var game_log: RichTextLabel = $HUD/LogPanel/GameLog
+@onready var card_zoom_popup: CardZoomPopup = $HUD/CardZoomPopup
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 
@@ -113,9 +114,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
+				card_zoom_popup.hide_popup()
 				_try_pick_card(mb.position)
 			else:
 				_try_drop_card()
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_try_zoom_card(mb.position)
+			get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
@@ -198,6 +203,14 @@ func _raycast_card(screen_pos: Vector2) -> Card:
 	if body is StaticBody3D and body.get_parent() is Card:
 		return body.get_parent() as Card
 	return null
+
+
+func _try_zoom_card(screen_pos: Vector2) -> void:
+	var card := _raycast_card(screen_pos)
+	if card and not card.face_down:
+		card_zoom_popup.show_card(card)
+	else:
+		card_zoom_popup.hide_popup()
 
 
 func _screen_to_table(screen_pos: Vector2) -> Variant:
