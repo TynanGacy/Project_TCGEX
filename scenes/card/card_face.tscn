@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/card/card_face.gd" id="1_face"]
+
+[node name="CardFace" type="Control"]
+custom_minimum_size = Vector2(252, 352)
+size = Vector2(252, 352)
+script = ExtResource("1_face")
