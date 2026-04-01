@@ -5,6 +5,7 @@ enum Stage { BASIC, STAGE1, STAGE2 }
 enum EnergyType { NONE, FIRE, WATER, GRASS, LIGHTNING, PSYCHIC, FIGHTING, DARKNESS, METAL, DRAGON, COLORLESS }
 
 @export var stage: Stage = Stage.BASIC
+@export var evolves_from: String = ""
 @export var hp_max: int = 50
 @export var pokemon_type: EnergyType = EnergyType.COLORLESS
 

@@ -1,6 +1,7 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scenes/card/card.gd" id="1_card"]
+[ext_resource type="PackedScene" path="res://scenes/card/card_face.tscn" id="2_face"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_card"]
 size = Vector3(0.63, 0.01, 0.88)
@@ -10,6 +11,9 @@ albedo_color = Color(0.92, 0.9, 0.85, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape_card"]
 size = Vector3(0.63, 0.02, 0.88)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_face"]
+size = Vector2(0.63, 0.88)
 
 [node name="Card" type="Node3D"]
 script = ExtResource("1_card")
@@ -25,11 +29,12 @@ collision_mask = 0
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
 shape = SubResource("BoxShape_card")
 
-[node name="Label3D" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0.006, -0.3)
-pixel_size = 0.001
-font_size = 48
-outline_size = 0
-text = "Card Name"
-horizontal_alignment = 1
-vertical_alignment = 1
+[node name="FaceViewport" type="SubViewport" parent="."]
+size = Vector2i(252, 352)
+render_target_update_mode = 0
+
+[node name="CardFace" parent="FaceViewport" instance=ExtResource("2_face")]
+
+[node name="FaceMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.006, 0)
+mesh = SubResource("PlaneMesh_face")
