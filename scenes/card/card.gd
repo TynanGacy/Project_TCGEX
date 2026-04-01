@@ -93,9 +93,13 @@ func _update_visuals() -> void:
 	if not _face_material:
 		return
 	if face_down or card_instance == null:
-		## Show back: texture if assigned, otherwise solid colour.
-		_face_material.albedo_texture = back_texture
-		_face_material.albedo_color = BACK_COLOR if back_texture == null else Color.WHITE
+		## SleevesManager takes priority; fall back to back_texture export, then BACK_COLOR.
+		var owner_id: int = card_instance.owner_id if card_instance != null else 0
+		var back_tex: Texture2D = SleevesManager.get_sleeve(owner_id)
+		if back_tex == null:
+			back_tex = back_texture
+		_face_material.albedo_texture = back_tex
+		_face_material.albedo_color = BACK_COLOR if back_tex == null else Color.WHITE
 	else:
 		## Show face: use viewport texture, white tint so colours are accurate.
 		_face_material.albedo_texture = face_viewport.get_texture()
