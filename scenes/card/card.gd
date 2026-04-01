@@ -40,6 +40,8 @@ var hand_index := 0
 
 var _tween: Tween = null
 var _face_material: StandardMaterial3D = null
+## Holds an instance assigned before _ready() runs (nodes not yet available).
+var _pending_instance: CardInstance = null
 
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var static_body: StaticBody3D = $StaticBody3D
@@ -55,10 +57,22 @@ func _ready() -> void:
 	## Disable back-face culling so the face is visible from any angle.
 	_face_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	face_mesh.set_surface_override_material(0, _face_material)
-	_update_visuals()
+	## Apply any instance that was set before the node was in the tree.
+	if _pending_instance != null:
+		set_instance(_pending_instance)
+		_pending_instance = null
+	else:
+		_update_visuals()
 
 
 func set_instance(inst: CardInstance) -> void:
+	## If called before _ready(), stash and apply once nodes are available.
+	if not is_node_ready():
+		_pending_instance = inst
+		card_instance = inst
+		if inst and inst.data:
+			card_name = inst.data.display_name
+		return
 	card_instance = inst
 	if inst and inst.data:
 		card_name = inst.data.display_name
