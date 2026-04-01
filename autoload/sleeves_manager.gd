@@ -1,4 +1,3 @@
-class_name SleevesManager
 extends Node
 ## Manages card sleeve (back-face) textures per player.
 ## Both players default to the shared card_back.png.
