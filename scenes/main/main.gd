@@ -248,6 +248,9 @@ func _apply_card_visual(
 	else:
 		# Card removed from all board zones (energy or tool attached to pokemon).
 		card.queue_free()
+		# Refresh the attachment icons on the target Pokemon's card node.
+		if target_drop_zone != null and not target_drop_zone.held_cards.is_empty():
+			(target_drop_zone.held_cards[0] as Card).update_attachment_icons()
 
 
 ## Removes and frees the Card node for prior_inst from a visual DropZone.

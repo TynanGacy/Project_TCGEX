@@ -30,6 +30,29 @@ const DRAW_SPEED := 0.5
 ## Colour shown on the face mesh when the card is face-down (back design).
 const BACK_COLOR := Color(0.08, 0.12, 0.40)
 
+## Attachment icon layout
+const ICON_RADIUS := 0.08
+const ICON_HEIGHT := 0.004
+const ICON_Y := 0.012
+const ICON_START_Z := -0.25
+const ICON_SPACING := 0.20
+
+## Energy type colours — order must match PokemonCardData.EnergyType enum.
+const ENERGY_TYPE_COLORS: Array[Color] = [
+	Color(0.70, 0.70, 0.70),  # NONE
+	Color(0.95, 0.40, 0.10),  # FIRE
+	Color(0.20, 0.50, 0.95),  # WATER
+	Color(0.20, 0.75, 0.20),  # GRASS
+	Color(0.95, 0.85, 0.10),  # LIGHTNING
+	Color(0.70, 0.20, 0.90),  # PSYCHIC
+	Color(0.75, 0.35, 0.10),  # FIGHTING
+	Color(0.15, 0.08, 0.28),  # DARKNESS
+	Color(0.55, 0.60, 0.65),  # METAL
+	Color(0.10, 0.55, 0.50),  # DRAGON
+	Color(0.85, 0.82, 0.75),  # COLORLESS
+]
+const TOOL_ICON_COLOR := Color(0.50, 0.20, 0.70)
+
 ## State
 var is_dragging := false
 var is_hovered := false
@@ -206,3 +229,71 @@ func set_home(pos: Vector3, rot: Vector3, index: int) -> void:
 	home_position = pos
 	home_rotation = rot
 	hand_index = index
+
+
+## Rebuilds the small overlay circles showing attached energy and tools.
+## Call this whenever the card's attached_energy or attached_tools change.
+func update_attachment_icons() -> void:
+	for child in get_children():
+		if child.name.begins_with("AttachIcon_"):
+			child.queue_free()
+	if card_instance == null:
+		return
+	var index := 0
+	for energy in card_instance.attached_energy:
+		_spawn_attachment_icon(energy, index)
+		index += 1
+	for tool in card_instance.attached_tools:
+		_spawn_attachment_icon(tool, index)
+		index += 1
+
+
+func _spawn_attachment_icon(inst: CardInstance, index: int) -> void:
+	var icon := Node3D.new()
+	icon.name = "AttachIcon_%d" % index
+
+	var disc := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = ICON_RADIUS
+	cyl.bottom_radius = ICON_RADIUS
+	cyl.height = ICON_HEIGHT
+	disc.mesh = cyl
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = _icon_color(inst)
+	disc.set_surface_override_material(0, mat)
+	icon.add_child(disc)
+
+	var lbl := Label3D.new()
+	lbl.text = _icon_label(inst)
+	lbl.pixel_size = 0.0018
+	lbl.font_size = 22
+	lbl.modulate = Color.WHITE
+	lbl.position = Vector3(0.0, ICON_HEIGHT * 0.5 + 0.001, 0.0)
+	icon.add_child(lbl)
+
+	icon.position = Vector3(
+		-(CARD_WIDTH * 0.5),
+		ICON_Y,
+		ICON_START_Z + index * ICON_SPACING
+	)
+	add_child(icon)
+
+
+func _icon_color(inst: CardInstance) -> Color:
+	if inst.data is EnergyCardData:
+		var idx := int((inst.data as EnergyCardData).energy_type)
+		if idx >= 0 and idx < ENERGY_TYPE_COLORS.size():
+			return ENERGY_TYPE_COLORS[idx]
+	elif inst.data is TrainerCardData:
+		return TOOL_ICON_COLOR
+	return Color(0.5, 0.5, 0.5)
+
+
+func _icon_label(inst: CardInstance) -> String:
+	if inst.data is EnergyCardData:
+		return PokemonCardData.energy_type_to_string(
+			(inst.data as EnergyCardData).energy_type
+		).substr(0, 1)
+	elif inst.data is TrainerCardData:
+		return "T"
+	return "?"
