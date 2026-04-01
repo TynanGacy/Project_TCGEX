@@ -10,6 +10,7 @@ extends Node3D
 @onready var phase_label: Label = $HUD/TopBar/PhaseLabel
 @onready var end_turn_button: Button = $HUD/TopBar/EndTurnButton
 @onready var game_log: RichTextLabel = $HUD/LogPanel/GameLog
+@onready var card_zoom_popup: CardZoomPopup = $HUD/CardZoomPopup
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 
@@ -20,6 +21,7 @@ var _source_zone: DropZone = null
 
 ## Card inspector popup
 var _card_popup: PanelContainer = null
+var _popup_art: TextureRect = null
 var _popup_name_label: Label = null
 var _popup_type_label: Label = null
 var _popup_details_label: Label = null
@@ -106,6 +108,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
+				card_zoom_popup.hide_popup()
 				_try_pick_card(mb.position)
 			else:
 				_try_drop_card()
@@ -311,6 +314,14 @@ func _raycast_card(screen_pos: Vector2) -> Card:
 	return null
 
 
+func _try_zoom_card(screen_pos: Vector2) -> void:
+	var card := _raycast_card(screen_pos)
+	if card and not card.face_down:
+		card_zoom_popup.show_card(card)
+	else:
+		card_zoom_popup.hide_popup()
+
+
 func _screen_to_table(screen_pos: Vector2) -> Variant:
 	var from := camera.project_ray_origin(screen_pos)
 	var dir := camera.project_ray_normal(screen_pos)
@@ -332,13 +343,14 @@ func _on_card_drag_ended(_card: Card) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Card inspector popup
+# Card inspector popup — fixed panel on the left side of the screen.
 # ---------------------------------------------------------------------------
 
 func _build_card_popup() -> void:
 	_card_popup = PanelContainer.new()
 	_card_popup.visible = false
 	_card_popup.custom_minimum_size = Vector2(270, 0)
+	_card_popup.position = Vector2(10, 50)
 	_card_popup.gui_input.connect(_on_popup_gui_input)
 
 	var margin := MarginContainer.new()
@@ -351,6 +363,14 @@ func _build_card_popup() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 5)
 	margin.add_child(vbox)
+
+	_popup_art = TextureRect.new()
+	_popup_art.custom_minimum_size = Vector2(246, 344)
+	_popup_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_popup_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	vbox.add_child(_popup_art)
+
+	vbox.add_child(HSeparator.new())
 
 	_popup_name_label = Label.new()
 	_popup_name_label.add_theme_font_size_override("font_size", 16)
@@ -375,17 +395,12 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 	if card == null or card.face_down or card.card_instance == null:
 		return
 	_populate_card_popup(card.card_instance)
-	## Position near cursor; clamp so the popup stays inside the viewport.
-	var vp_size := get_viewport().get_visible_rect().size
-	var min_size := Vector2(_card_popup.custom_minimum_size.x, 200.0)
-	var pos := screen_pos + Vector2(14, 14)
-	pos.x = minf(pos.x, vp_size.x - min_size.x - 4.0)
-	pos.y = minf(pos.y, vp_size.y - min_size.y - 4.0)
-	_card_popup.position = pos
 	_card_popup.visible = true
 
 
 func _populate_card_popup(inst: CardInstance) -> void:
+	_popup_art.texture = inst.data.art
+
 	_popup_name_label.text = inst.data.display_name
 
 	var type_str := ""
