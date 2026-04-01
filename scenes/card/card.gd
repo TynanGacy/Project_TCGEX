@@ -43,6 +43,7 @@ var hand_index := 0
 
 var _tween: Tween = null
 var _face_material: StandardMaterial3D = null
+var _body_material: StandardMaterial3D = null
 ## Holds an instance assigned before _ready() runs (nodes not yet available).
 var _pending_instance: CardInstance = null
 
@@ -60,6 +61,10 @@ func _ready() -> void:
 	## Disable back-face culling so the face is visible from any angle.
 	_face_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	face_mesh.set_surface_override_material(0, _face_material)
+	## Duplicate the body material so each card owns its instance (for alpha toggling).
+	var src := mesh_instance.get_surface_override_material(0) as StandardMaterial3D
+	_body_material = src.duplicate() as StandardMaterial3D
+	mesh_instance.set_surface_override_material(0, _body_material)
 	## Apply any instance that was set before the node was in the tree.
 	if _pending_instance != null:
 		set_instance(_pending_instance)
@@ -98,12 +103,33 @@ func _update_visuals() -> void:
 		var back_tex: Texture2D = SleevesManager.get_sleeve(owner_id)
 		if back_tex == null:
 			back_tex = back_texture
-		_face_material.albedo_texture = back_tex
-		_face_material.albedo_color = BACK_COLOR if back_tex == null else Color.WHITE
+		if back_tex != null:
+			## Texture-based back: honour the image's alpha channel for rounded corners.
+			## ALPHA_SCISSOR clips pixels cleanly without depth-sort issues on stacked cards.
+			_face_material.albedo_texture = back_tex
+			_face_material.albedo_color = Color.WHITE
+			_face_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+			_face_material.alpha_scissor_threshold = 0.5
+			## Hide the body mesh so its opaque top face doesn't bleed through the clipped corners.
+			if _body_material:
+				_body_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				_body_material.albedo_color.a = 0.0
+		else:
+			## Solid-colour fallback — keep everything opaque (rectangular card shape).
+			_face_material.albedo_texture = null
+			_face_material.albedo_color = BACK_COLOR
+			_face_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			if _body_material:
+				_body_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+				_body_material.albedo_color.a = 1.0
 	else:
-		## Show face: use viewport texture, white tint so colours are accurate.
+		## Show face: use viewport texture, restore opaque body (visible card thickness).
 		_face_material.albedo_texture = face_viewport.get_texture()
 		_face_material.albedo_color = Color.WHITE
+		_face_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		if _body_material:
+			_body_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			_body_material.albedo_color.a = 1.0
 
 
 func set_hovered(value: bool) -> void:
