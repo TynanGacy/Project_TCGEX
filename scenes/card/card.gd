@@ -1,13 +1,14 @@
 class_name Card
 extends Node3D
 ## A 3D draggable card. Picked via raycast on its StaticBody3D.
+## The visible face is rendered into a SubViewport and displayed on a PlaneMesh
+## that sits just above the card body.
 
 signal drag_started(card: Card)
 signal drag_ended(card: Card)
 signal card_dropped(card: Card)
 
 @export var card_name: String = "Card"
-@export var card_art: Texture2D
 
 ## Runtime card data binding
 var card_instance: CardInstance = null
@@ -23,6 +24,9 @@ const DRAG_LIFT := 0.3
 const TWEEN_SPEED := 0.15
 const DRAW_SPEED := 0.5
 
+## Colour shown on the face mesh when the card is face-down (back design).
+const BACK_COLOR := Color(0.08, 0.12, 0.40)
+
 ## State
 var is_dragging := false
 var is_hovered := false
@@ -35,13 +39,22 @@ var home_rotation := Vector3.ZERO
 var hand_index := 0
 
 var _tween: Tween = null
+var _face_material: StandardMaterial3D = null
 
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var static_body: StaticBody3D = $StaticBody3D
-@onready var label_3d: Label3D = $Label3D
+@onready var face_viewport: SubViewport = $FaceViewport
+@onready var card_face: CardFace = $FaceViewport/CardFace
+@onready var face_mesh: MeshInstance3D = $FaceMesh
 
 
 func _ready() -> void:
+	## Build the face material once and keep a reference to swap textures on.
+	_face_material = StandardMaterial3D.new()
+	_face_material.albedo_color = BACK_COLOR
+	## Disable back-face culling so the face is visible from any angle.
+	_face_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	face_mesh.set_surface_override_material(0, _face_material)
 	_update_visuals()
 
 
@@ -49,7 +62,9 @@ func set_instance(inst: CardInstance) -> void:
 	card_instance = inst
 	if inst and inst.data:
 		card_name = inst.data.display_name
-		card_art = inst.data.art
+		card_face.setup(inst.data)
+		## Trigger exactly one render frame from the SubViewport.
+		face_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	_update_visuals()
 
 
@@ -58,15 +73,16 @@ func get_instance() -> CardInstance:
 
 
 func _update_visuals() -> void:
-	if label_3d:
-		label_3d.visible = not face_down
-		label_3d.text = card_name
-	if mesh_instance and card_art and not face_down:
-		var mat := mesh_instance.get_active_material(0) as StandardMaterial3D
-		if mat:
-			mat = mat.duplicate()
-			mat.albedo_texture = card_art
-			mesh_instance.set_surface_override_material(0, mat)
+	if not _face_material:
+		return
+	if face_down or card_instance == null:
+		## Show back: solid colour, no texture.
+		_face_material.albedo_texture = null
+		_face_material.albedo_color = BACK_COLOR
+	else:
+		## Show face: use viewport texture, white tint so colours are accurate.
+		_face_material.albedo_texture = face_viewport.get_texture()
+		_face_material.albedo_color = Color.WHITE
 
 
 func set_hovered(value: bool) -> void:
