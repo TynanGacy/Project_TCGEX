@@ -43,6 +43,7 @@ func _ready() -> void:
 	## Set up game state
 	game_state = GameState.new(2, 2, 4)
 	turn_controller.set_state(game_state)
+	board.configure_slots(game_state.board.num_active_slots, game_state.board.max_bench_size)
 
 	turn_controller.phase_changed.connect(_on_phase_changed)
 	turn_controller.action_rejected.connect(_on_action_rejected)
@@ -266,7 +267,7 @@ func _remove_prior_stage_visual(zone: DropZone, prior_inst: CardInstance) -> voi
 func _zone_name_to_pokemon_slot(drop_zone: DropZone) -> String:
 	if drop_zone == null:
 		return ""
-	if drop_zone.zone_name == "Active":
+	if drop_zone.zone_name == "Active" or drop_zone.zone_name.begins_with("Active "):
 		return "active"
 	if drop_zone.zone_name.begins_with("Bench"):
 		return "bench"
@@ -507,10 +508,12 @@ func _highlight_valid_zones_for(card: Card) -> void:
 
 ## Highlights empty Active and non-full Bench zones.
 func _highlight_pokemon_play_zones() -> void:
-	var active := board.get_zone_by_name("Active")
-	if active != null and active.held_cards.is_empty():
-		active.set_highlighted(true)
-	for i in range(1, 6):
+	for i in range(game_state.board.num_active_slots):
+		var aname := "Active" if i == 0 else "Active %d" % (i + 1)
+		var active := board.get_zone_by_name(aname)
+		if active != null and active.held_cards.is_empty():
+			active.set_highlighted(true)
+	for i in range(1, game_state.board.max_bench_size + 1):
 		var bench := board.get_zone_by_name("Bench %d" % i)
 		if bench != null and bench.held_cards.size() < bench.max_cards:
 			bench.set_highlighted(true)
@@ -521,8 +524,10 @@ func _highlight_evolution_zones_for(inst: CardInstance) -> void:
 	if not (inst.data is PokemonCardData):
 		return
 	var pdata := inst.data as PokemonCardData
-	var candidate_names: Array[String] = ["Active"]
-	for i in range(1, 6):
+	var candidate_names: Array[String] = []
+	for i in range(game_state.board.num_active_slots):
+		candidate_names.append("Active" if i == 0 else "Active %d" % (i + 1))
+	for i in range(1, game_state.board.max_bench_size + 1):
 		candidate_names.append("Bench %d" % i)
 	for zone_name in candidate_names:
 		var zone := board.get_zone_by_name(zone_name)
@@ -537,8 +542,10 @@ func _highlight_evolution_zones_for(inst: CardInstance) -> void:
 
 ## Highlights Active / Bench zones that currently hold a Pokemon.
 func _highlight_zones_with_pokemon() -> void:
-	var candidate_names: Array[String] = ["Active"]
-	for i in range(1, 6):
+	var candidate_names: Array[String] = []
+	for i in range(game_state.board.num_active_slots):
+		candidate_names.append("Active" if i == 0 else "Active %d" % (i + 1))
+	for i in range(1, game_state.board.max_bench_size + 1):
 		candidate_names.append("Bench %d" % i)
 	for zone_name in candidate_names:
 		var zone := board.get_zone_by_name(zone_name)

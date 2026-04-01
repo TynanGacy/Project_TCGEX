@@ -22,6 +22,11 @@ surface_material_override/0 = SubResource("Material_table")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.7)
 zone_name = "Active"
 
+[node name="PlayerActive2" parent="PlayerZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0, 0.7)
+visible = false
+zone_name = "Active 2"
+
 [node name="PlayerBench1" parent="PlayerZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 0, 1.75)
 zone_name = "Bench 1"
@@ -81,6 +86,11 @@ max_cards = 60
 [node name="OppActive" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.7)
 zone_name = "Opp Active"
+
+[node name="OppActive2" parent="OpponentZones" instance=ExtResource("2_dropzone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.35, 0, -0.7)
+visible = false
+zone_name = "Opp Active 2"
 
 [node name="OppBench1" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0, -1.75)
