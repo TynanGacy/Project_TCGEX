@@ -1,0 +1,22 @@
+{
+  "card_id": "makuhita_ex1",
+  "name_slug": "makuhita",
+  "display_name": "Makuhita",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 50,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Fake Out",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_fighting": 1
+    }
+  ]
+}

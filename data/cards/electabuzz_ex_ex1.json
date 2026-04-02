@@ -1,0 +1,29 @@
+{
+  "card_id": "electabuzz_ex_ex1",
+  "name_slug": "electabuzz_ex",
+  "display_name": "Electabuzz ex",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 90,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 2,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Thundershock",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_lightning": 1
+    },
+    {
+      "name": "Quick Attack",
+      "base_damage": 40,
+      "text": "Flip a coin. If heads, this attack does 40 damage plus 20 more damage.",
+      "cost_lightning": 2,
+      "cost_colorless": 1
+    }
+  ]
+}

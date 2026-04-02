@@ -1,0 +1,28 @@
+{
+  "card_id": "linoone_ex1",
+  "name_slug": "linoone",
+  "display_name": "Linoone",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "zigzagoon",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Seek Out",
+      "base_damage": 0,
+      "text": "Search your deck for up to 2 cards and put them into your hand. Shuffle your deck afterward.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Continuous Headbutt",
+      "base_damage": 40,
+      "text": "Flip a coin until you get tails. This attack does 40 damage times the number of heads.",
+      "cost_colorless": 2
+    }
+  ]
+}

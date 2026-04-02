@@ -1,0 +1,29 @@
+{
+  "card_id": "phanpy_ex1",
+  "name_slug": "phanpy",
+  "display_name": "Phanpy",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 50,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Stampede",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Trembler",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, this attack does 10 damage to each Defending Pokémon, and each Defending Pokémon is now Paralyzed.",
+      "cost_fighting": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

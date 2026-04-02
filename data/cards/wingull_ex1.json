@@ -1,0 +1,22 @@
+{
+  "card_id": "wingull_ex1",
+  "name_slug": "wingull",
+  "display_name": "Wingull",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 40,
+  "weakness": "LIGHTNING",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Surprise Attack",
+      "base_damage": 20,
+      "text": "Flip a coin. If tails, this attack does nothing.",
+      "cost_water": 1
+    }
+  ]
+}

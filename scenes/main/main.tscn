@@ -1,51 +1,51 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://3biiiwu3vffd"]
 
-[ext_resource type="Script" path="res://scenes/main/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://oqlm37bu3nk5" path="res://scenes/main/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/board/board.tscn" id="2_board"]
 [ext_resource type="PackedScene" path="res://scenes/hand/hand.tscn" id="3_hand"]
 [ext_resource type="PackedScene" path="res://scenes/card/card_zoom_popup.tscn" id="4_czp"]
 
-[node name="Main" type="Node3D"]
+[node name="Main" type="Node3D" unique_id=1389932364]
 script = ExtResource("1_main")
 
-[node name="Camera3D" type="Camera3D" parent="."]
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1599660667]
 transform = Transform3D(1, 0, 0, 0, 0.5, 0.866025, 0, -0.866025, 0.5, 0, 5.5, 4.5)
 fov = 50.0
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=970805497]
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 5, 0)
 shadow_enabled = true
 
-[node name="AmbientLight" type="DirectionalLight3D" parent="."]
+[node name="AmbientLight" type="DirectionalLight3D" parent="." unique_id=496971108]
 transform = Transform3D(1, 0, 0, 0, -0.707107, 0.707107, 0, -0.707107, -0.707107, 0, 3, 0)
 light_color = Color(0.7, 0.75, 0.85, 1)
 light_energy = 0.3
 
-[node name="Board" parent="." instance=ExtResource("2_board")]
+[node name="Board" parent="." unique_id=1448766466 instance=ExtResource("2_board")]
 
-[node name="PlayerHand" parent="Board" instance=ExtResource("3_hand")]
+[node name="PlayerHand" parent="Board" unique_id=138625151 instance=ExtResource("3_hand")]
 
-[node name="OppHand" parent="Board" instance=ExtResource("3_hand")]
+[node name="OppHand" parent="Board" unique_id=672689239 instance=ExtResource("3_hand")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0.05, -3.5)
 
-[node name="HUD" type="CanvasLayer" parent="."]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=887922774]
 
-[node name="TopBar" type="HBoxContainer" parent="HUD"]
+[node name="TopBar" type="HBoxContainer" parent="HUD" unique_id=56394776]
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 40.0
 grow_horizontal = 2
 theme_override_constants/separation = 20
 
-[node name="PhaseLabel" type="Label" parent="HUD/TopBar"]
+[node name="PhaseLabel" type="Label" parent="HUD/TopBar" unique_id=1478549774]
 layout_mode = 2
 text = "Phase: START"
 
-[node name="EndTurnButton" type="Button" parent="HUD/TopBar"]
+[node name="EndTurnButton" type="Button" parent="HUD/TopBar" unique_id=814068769]
 layout_mode = 2
 text = "Next Phase"
 
-[node name="LogPanel" type="PanelContainer" parent="HUD"]
+[node name="LogPanel" type="PanelContainer" parent="HUD" unique_id=1800717569]
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
@@ -56,8 +56,8 @@ offset_top = -200.0
 grow_horizontal = 0
 grow_vertical = 0
 
-[node name="GameLog" type="RichTextLabel" parent="HUD/LogPanel"]
+[node name="GameLog" type="RichTextLabel" parent="HUD/LogPanel" unique_id=814509840]
 layout_mode = 2
 scroll_following = true
 
-[node name="CardZoomPopup" parent="HUD" instance=ExtResource("4_czp")]
+[node name="CardZoomPopup" parent="HUD" unique_id=126310421 instance=ExtResource("4_czp")]

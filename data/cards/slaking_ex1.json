@@ -1,0 +1,22 @@
+{
+  "card_id": "slaking_ex1",
+  "name_slug": "slaking",
+  "display_name": "Slaking",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "vigoroth",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 120,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 3,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Critical Move",
+      "base_damage": 100,
+      "text": "Discard a basic Energy card attached to Slaking or this attack does nothing. Slaking can't attack during your next turn.",
+      "cost_colorless": 4
+    }
+  ]
+}

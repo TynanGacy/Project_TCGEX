@@ -13,37 +13,72 @@ static func build_deck(size: int = 20) -> Array[CardData]:
 	return deck
 
 
+static func _card_from_json(data: Dictionary) -> CardData:
+	match data.get("card_type", ""):
+		"POKEMON":
+			var energy_type = PokemonCardData.EnergyType[data.get("pokemon_type", "COLORLESS")]
+			match data.get("stage", "BASIC"):
+				"BASIC":
+					return _basic(
+						data["card_id"],
+						data["display_name"],
+						energy_type,
+						data.get("hp_max", 0)
+					)
+				"STAGE1":
+					return _stage1(
+						data["card_id"],
+						data["display_name"],
+						data.get("evolves_from", ""),
+						energy_type,
+						data.get("hp_max", 0)
+					)
+				"STAGE2":
+					return _stage2(
+						data["card_id"],
+						data["display_name"],
+						data.get("evolves_from", ""),
+						energy_type,
+						data.get("hp_max", 0)
+					)
+		"TRAINER":
+			match data.get("trainer_kind", "ITEM"):
+				"ITEM":      return _item(data["card_id"], data["display_name"])
+				"SUPPORTER": return _supporter(data["card_id"], data["display_name"])
+				"STADIUM":   return _stadium(data["card_id"], data["display_name"])
+				"TOOL":      return _tool(data["card_id"], data["display_name"])
+		"ENERGY":
+			var energy_type = PokemonCardData.EnergyType[data.get("energy_type", "COLORLESS")]
+			return _energy(data["card_id"], data["display_name"], energy_type)
+	push_warning("_card_from_json: unhandled card_type '%s' for %s" % [data.get("card_type"), data.get("card_id")])
+	return null
+
+
 static func _build_pool() -> Array[CardData]:
 	var pool: Array[CardData] = []
+	var dir := DirAccess.open("res://data/cards")
+	if dir == null:
+		push_error("_build_pool: could not open res://data/cards — is the folder in your project?")
+		return pool
 
-	# --- Basic Pokemon ---
-	pool.append(_basic("pikachu",    "Pikachu [Basic]",    PokemonCardData.EnergyType.LIGHTNING, 60))
-	pool.append(_basic("squirtle",   "Squirtle [Basic]",   PokemonCardData.EnergyType.WATER,     60))
-	pool.append(_basic("charmander", "Charmander [Basic]", PokemonCardData.EnergyType.FIRE,      70))
-
-	# --- Stage 1 Pokemon (evolve_from matches card_id of a Basic above) ---
-	pool.append(_stage1("raichu",    "Raichu [Stage 1]",    "pikachu",    PokemonCardData.EnergyType.LIGHTNING, 90))
-	pool.append(_stage1("wartortle", "Wartortle [Stage 1]", "squirtle",   PokemonCardData.EnergyType.WATER,     80))
-	pool.append(_stage1("charmeleon","Charmeleon [Stage 1]","charmander", PokemonCardData.EnergyType.FIRE,      80))
-
-	# --- Energy ---
-	pool.append(_energy("fire_energy",      "Fire Energy",      PokemonCardData.EnergyType.FIRE))
-	pool.append(_energy("water_energy",     "Water Energy",     PokemonCardData.EnergyType.WATER))
-	pool.append(_energy("lightning_energy", "Lightning Energy", PokemonCardData.EnergyType.LIGHTNING))
-	pool.append(_energy("colorless_energy", "Colorless Energy", PokemonCardData.EnergyType.COLORLESS))
-
-	# --- Trainer: Item ---
-	pool.append(_item("potion",   "Potion [Item]"))
-	pool.append(_item("pokeball", "Poké Ball [Item]"))
-
-	# --- Trainer: Supporter ---
-	pool.append(_supporter("professors_research", "Prof. Research [Supporter]"))
-
-	# --- Trainer: Stadium ---
-	pool.append(_stadium("gym", "Gym [Stadium]"))
-
-	# --- Trainer: Tool ---
-	pool.append(_tool("exp_share", "Exp. Share [Tool]"))
+	dir.list_dir_begin()
+	var filename := dir.get_next()
+	while filename != "":
+		if not dir.current_is_dir() and filename.ends_with(".json"):
+			var path := "res://data/cards/" + filename
+			var raw := FileAccess.get_file_as_string(path)
+			if raw == "":
+				push_warning("_build_pool: empty or unreadable file: " + path)
+			else:
+				var parsed = JSON.parse_string(raw)
+				if parsed == null:
+					push_warning("_build_pool: failed to parse JSON: " + path)
+				else:
+					var card := _card_from_json(parsed)
+					if card != null:
+						pool.append(card)
+		filename = dir.get_next()
+	dir.list_dir_end()
 
 	return pool
 
@@ -83,6 +118,21 @@ static func _stage1(
 	d.hp_max       = hp
 	return d
 
+static func _stage2(
+	id: String,
+	name: String,
+	evolves_from: String,
+	ptype: PokemonCardData.EnergyType,
+	hp: int
+) -> PokemonCardData:
+	var d := PokemonCardData.new()
+	d.card_id      = id
+	d.display_name = name
+	d.stage        = PokemonCardData.Stage.STAGE2
+	d.evolves_from = evolves_from
+	d.pokemon_type = ptype
+	d.hp_max       = hp
+	return d
 
 static func _energy(id: String, name: String, etype: PokemonCardData.EnergyType) -> EnergyCardData:
 	var d := EnergyCardData.new()

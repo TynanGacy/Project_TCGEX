@@ -1,0 +1,28 @@
+{
+  "card_id": "electrike_ex1",
+  "name_slug": "electrike",
+  "display_name": "Electrike",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Super Thunder Wave",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, each Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Tackle",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    }
+  ]
+}

@@ -1,7 +1,0 @@
-{
-  "card_id": "water_energy",
-  "display_name": "Water Energy",
-  "card_type": "ENERGY",
-  "energy_type": "WATER",
-  "provides": 1
-}

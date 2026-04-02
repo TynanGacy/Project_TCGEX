@@ -1,7 +1,0 @@
-{
-  "card_id": "gym",
-  "display_name": "Gym",
-  "card_type": "TRAINER",
-  "trainer_kind": "STADIUM",
-  "rules_text": "Each player's Basic Pokemon in play has no Weakness."
-}

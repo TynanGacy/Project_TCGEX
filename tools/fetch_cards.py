@@ -32,8 +32,12 @@ import re
 import sys
 import time
 
+
 try:
     import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+
 except ImportError:
     sys.exit("Missing dependency: run  pip install requests")
 
@@ -61,6 +65,20 @@ TYPE_MAP = {
     "fairy":     "COLORLESS",   # Fairy was retired; treat as Colorless
     "none":      "NONE",
 }
+
+def make_session(api_key: str | None) -> requests.Session:
+    session = requests.Session()
+    retry = Retry(
+        total=3,                          # retry up to 3 times
+        backoff_factor=1,                 # wait 1s, 2s, 4s between retries
+        status_forcelist=[500, 502, 503, 504],  # retry on these HTTP errors
+        allowed_methods=["GET"],
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    if api_key:
+        session.headers.update({"X-Api-Key": api_key})
+    return session
 
 def normalise_type(raw: str) -> str:
     return TYPE_MAP.get(raw.lower(), "COLORLESS")
@@ -182,9 +200,12 @@ def transform_trainer(card: dict) -> dict:
 
     rules_parts = card.get("rules") or []
     rules_text = "\n".join(rules_parts)
+    
+    name_slug = slugify(card["name"])
+    set_id = card.get("set", {}).get("id", "unknown")
 
     return {
-        "card_id":      slugify(card["name"]),
+        "card_id":      f"{name_slug}_{set_id}",
         "display_name": card["name"],
         "card_type":    "TRAINER",
         "trainer_kind": trainer_kind,
@@ -196,8 +217,6 @@ def transform_energy(card: dict) -> dict:
     subtypes = [s.lower() for s in card.get("subtypes", [])]
     types = card.get("types") or []
 
-    # Basic energy: type is in the types array
-    # Special energy: may have no types, fall back to COLORLESS
     if types:
         energy_type = normalise_type(types[0])
     elif "double" in " ".join(subtypes):
@@ -208,8 +227,11 @@ def transform_energy(card: dict) -> dict:
     rules_parts = card.get("rules") or []
     rules_text = "\n".join(rules_parts)
 
+    name_slug = slugify(card["name"])
+    set_id = card.get("set", {}).get("id", "unknown")
+
     return {
-        "card_id":      slugify(card["name"]),
+        "card_id":      f"{name_slug}_{set_id}",
         "display_name": card["name"],
         "card_type":    "ENERGY",
         "energy_type":  energy_type,
@@ -242,29 +264,39 @@ def build_headers(api_key: str | None) -> dict:
 
 
 def fetch_single(card_id: str, api_key: str | None) -> list:
+    session = make_session(api_key)
     url = f"{API_BASE}/cards/{card_id}"
-    resp = requests.get(url, headers=build_headers(api_key), timeout=10)
+    resp = session.get(url, timeout=30)
     resp.raise_for_status()
     return [resp.json()["data"]]
 
 
 def fetch_search(query: str, api_key: str | None) -> list:
+    session = make_session(api_key)
     results = []
     page = 1
     while True:
-        resp = requests.get(
-            f"{API_BASE}/cards",
-            headers=build_headers(api_key),
-            params={"q": query, "pageSize": 250, "page": page},
-            timeout=10,
-        )
-        resp.raise_for_status()
+        try:
+            resp = session.get(
+                f"{API_BASE}/cards",
+                params={"q": query, "pageSize": 250, "page": page},
+                timeout=30,
+            )
+            resp.raise_for_status()
+        except requests.exceptions.ReadTimeout:
+            print(f"  [warn] Timeout on page {page}, retrying after 5s …")
+            time.sleep(5)
+            continue
+        except requests.exceptions.HTTPError as e:
+            sys.exit(f"  [error] HTTP error on page {page}: {e}")
+
         body = resp.json()
         results.extend(body["data"])
+        print(f"  [page {page}] fetched {len(results)}/{body['totalCount']}")
         if len(results) >= body["totalCount"]:
             break
         page += 1
-        time.sleep(0.1)  # be polite
+        time.sleep(0.2)  # slightly more polite delay
     return results
 
 
