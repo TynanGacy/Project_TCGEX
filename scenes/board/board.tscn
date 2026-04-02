@@ -72,7 +72,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.35, 0, 2.6)
 zone_name = "Prize 6"
 
 [node name="PlayerDeck" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 3.1, 0, 0.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 0, 0.5)
 zone_name = "Deck"
 max_cards = 60
 
