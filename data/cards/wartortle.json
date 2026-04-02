@@ -1,0 +1,27 @@
+{
+  "card_id": "wartortle",
+  "display_name": "Wartortle",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "squirtle",
+  "pokemon_type": "WATER",
+  "hp_max": 80,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "attacks": [
+    {
+      "name": "Withdraw",
+      "cost_water": 1,
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, prevent all damage done to Wartortle during your opponent's next turn."
+    },
+    {
+      "name": "Water Gun",
+      "cost_water": 2,
+      "cost_colorless": 1,
+      "base_damage": 40,
+      "text": ""
+    }
+  ]
+}

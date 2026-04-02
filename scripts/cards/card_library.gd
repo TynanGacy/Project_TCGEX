@@ -1,20 +1,31 @@
 class_name CardLibrary
-## Loads card definitions from a JSON file and provides lookup by card_id.
+## Loads card definitions from a folder of per-card JSON files and provides
+## lookup by card_id.  Each file in the folder should contain one card object.
 ##
 ## Usage:
-##   var library := CardLibrary.load_from_file("res://data/cards.json")
+##   var library := CardLibrary.load_from_folder("res://data/cards")
 ##   var data := library.get_card("pikachu")          # CardData or null
-##   var all  := library.all_cards()                  # Array[CardData]
+##   var all  := library.all_cards()                  # Array of CardData
 ##   var deck := library.build_deck(["pikachu", ...]) # Array[CardData] (skips unknown ids)
 
 var _cards: Dictionary = {}  # card_id (String) -> CardData
 
 
-## Loads and returns a CardLibrary from the given JSON path.
-## Logs errors and returns an empty library on failure.
-static func load_from_file(path: String) -> CardLibrary:
+## Loads every *.json file in folder_path and returns a CardLibrary.
+## Non-JSON files are silently ignored.
+static func load_from_folder(folder_path: String) -> CardLibrary:
 	var lib := CardLibrary.new()
-	lib._load(path)
+	var dir := DirAccess.open(folder_path)
+	if dir == null:
+		push_error("CardLibrary: could not open folder '%s'" % folder_path)
+		return lib
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and file_name.ends_with(".json"):
+			lib._load(folder_path.path_join(file_name))
+		file_name = dir.get_next()
+	dir.list_dir_end()
 	return lib
 
 
@@ -52,19 +63,11 @@ func _load(path: String) -> void:
 		return
 	var parsed: Variant = JSON.parse_string(text)
 	if not parsed is Dictionary:
-		push_error("CardLibrary: expected a JSON object at root of '%s'" % path)
+		push_error("CardLibrary: expected a JSON object in '%s'" % path)
 		return
-	var root := parsed as Dictionary
-	if not root.has("cards") or not root["cards"] is Array:
-		push_error("CardLibrary: missing 'cards' array in '%s'" % path)
-		return
-	for entry in root["cards"] as Array:
-		if not entry is Dictionary:
-			push_warning("CardLibrary: skipping non-object entry in cards array")
-			continue
-		var card := _parse_entry(entry as Dictionary)
-		if card != null:
-			_cards[card.card_id] = card
+	var card := _parse_entry(parsed as Dictionary)
+	if card != null:
+		_cards[card.card_id] = card
 
 
 func _parse_entry(d: Dictionary) -> CardData:

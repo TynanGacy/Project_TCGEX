@@ -1,0 +1,26 @@
+{
+  "card_id": "squirtle",
+  "display_name": "Squirtle",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "pokemon_type": "WATER",
+  "hp_max": 60,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "attacks": [
+    {
+      "name": "Tackle",
+      "cost_colorless": 1,
+      "base_damage": 10,
+      "text": ""
+    },
+    {
+      "name": "Water Gun",
+      "cost_water": 1,
+      "cost_colorless": 1,
+      "base_damage": 20,
+      "text": ""
+    }
+  ]
+}

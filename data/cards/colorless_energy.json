@@ -1,0 +1,7 @@
+{
+  "card_id": "colorless_energy",
+  "display_name": "Colorless Energy",
+  "card_type": "ENERGY",
+  "energy_type": "COLORLESS",
+  "provides": 1
+}

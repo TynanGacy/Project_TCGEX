@@ -1,0 +1,7 @@
+{
+  "card_id": "potion",
+  "display_name": "Potion",
+  "card_type": "TRAINER",
+  "trainer_kind": "ITEM",
+  "rules_text": "Heal 30 damage from 1 of your Pokemon."
+}

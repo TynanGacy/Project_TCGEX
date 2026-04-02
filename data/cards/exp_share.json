@@ -1,0 +1,7 @@
+{
+  "card_id": "exp_share",
+  "display_name": "Exp. Share",
+  "card_type": "TRAINER",
+  "trainer_kind": "TOOL",
+  "rules_text": "When your Active Pokemon is Knocked Out and this Pokemon is on your Bench, you may move 1 Energy card attached to the Knocked Out Pokemon to this Pokemon."
+}

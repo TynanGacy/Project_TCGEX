@@ -1,0 +1,26 @@
+{
+  "card_id": "charmander",
+  "display_name": "Charmander",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "pokemon_type": "FIRE",
+  "hp_max": 70,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "attacks": [
+    {
+      "name": "Scratch",
+      "cost_colorless": 1,
+      "base_damage": 10,
+      "text": ""
+    },
+    {
+      "name": "Ember",
+      "cost_fire": 1,
+      "cost_colorless": 1,
+      "base_damage": 30,
+      "text": "Discard 1 Fire Energy from this Pokemon."
+    }
+  ]
+}
