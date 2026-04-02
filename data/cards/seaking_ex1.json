@@ -1,0 +1,28 @@
+{
+  "card_id": "seaking_ex1",
+  "name_slug": "seaking",
+  "display_name": "Seaking",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "goldeen",
+  "pokemon_type": "WATER",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 0,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Water Arrow",
+      "base_damage": 0,
+      "text": "Choose 1 of your opponent's Pokémon. This attack does 20 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_water": 1
+    },
+    {
+      "name": "Fast Stream",
+      "base_damage": 30,
+      "text": "Move 1 Energy card attached to the Defending Pokémon to the other Defending Pokémon. (Ignore this effect if your opponent has only 1 Defending Pokémon.)",
+      "cost_colorless": 2
+    }
+  ]
+}

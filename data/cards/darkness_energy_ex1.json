@@ -1,0 +1,8 @@
+{
+  "card_id": "darkness_energy_ex1",
+  "display_name": "Darkness Energy",
+  "card_type": "ENERGY",
+  "energy_type": "COLORLESS",
+  "provides": 1,
+  "rules_text": "If the Pokémon Darkness Energy is attached to attacks, the attack does 10 more damage to the Active Pokémon (before applying Weakness and Resistance). Ignore this effect unless the Attacking Pokémon is Darkness or has Dark in its name. Darkness Energy provides Darkness Energy. (Doesn't count as a basic Energy card.)"
+}

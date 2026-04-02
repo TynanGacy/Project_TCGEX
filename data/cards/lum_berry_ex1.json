@@ -1,0 +1,7 @@
+{
+  "card_id": "lum_berry_ex1",
+  "display_name": "Lum Berry",
+  "card_type": "TRAINER",
+  "trainer_kind": "TOOL",
+  "rules_text": "Attach Lum Berry to 1 of your Pokémon that doesn't already have a Pokémon Tool attached to it. If that Pokémon is Knocked Out, discard this card.\nAt any time between turns, if the Pokémon this card is attached to is affected by any Special Conditions, remove all of them. Then discard Lum Berry."
+}

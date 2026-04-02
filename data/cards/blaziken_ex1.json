@@ -1,0 +1,29 @@
+{
+  "card_id": "blaziken_ex1",
+  "name_slug": "blaziken",
+  "display_name": "Blaziken",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "combusken",
+  "pokemon_type": "FIRE",
+  "hp_max": 110,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Clutch",
+      "base_damage": 20,
+      "text": "The Defending Pokémon can't retreat until the end of your opponent's next turn.",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Flamethrower",
+      "base_damage": 80,
+      "text": "Discard a Fire Energy card attached to Blaziken.",
+      "cost_fire": 1,
+      "cost_colorless": 3
+    }
+  ]
+}

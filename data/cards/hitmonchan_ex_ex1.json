@@ -1,0 +1,29 @@
+{
+  "card_id": "hitmonchan_ex_ex1",
+  "name_slug": "hitmonchan_ex",
+  "display_name": "Hitmonchan ex",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 90,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Steady Punch",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, this attack does 10 damage plus 10 more damage.",
+      "cost_fighting": 1
+    },
+    {
+      "name": "Sky Uppercut",
+      "base_damage": 50,
+      "text": "This attack's damage is not affected by Resistance.",
+      "cost_fighting": 2,
+      "cost_colorless": 1
+    }
+  ]
+}

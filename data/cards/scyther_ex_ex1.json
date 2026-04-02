@@ -1,0 +1,29 @@
+{
+  "card_id": "scyther_ex_ex1",
+  "name_slug": "scyther_ex",
+  "display_name": "Scyther ex",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 80,
+  "weakness": "FIRE",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Agility",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, prevent all effects of an attack, including damage, done to Scyther ex during your opponent's next turn.",
+      "cost_grass": 1
+    },
+    {
+      "name": "Slash",
+      "base_damage": 50,
+      "text": "",
+      "cost_grass": 2,
+      "cost_colorless": 1
+    }
+  ]
+}

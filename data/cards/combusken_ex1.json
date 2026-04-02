@@ -1,0 +1,22 @@
+{
+  "card_id": "combusken_ex1",
+  "name_slug": "combusken",
+  "display_name": "Combusken",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "torchic",
+  "pokemon_type": "FIRE",
+  "hp_max": 80,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Lunge",
+      "base_damage": 50,
+      "text": "Flip a coin. If tails, this attack does nothing.",
+      "cost_colorless": 2
+    }
+  ]
+}

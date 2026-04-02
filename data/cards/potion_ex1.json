@@ -1,0 +1,7 @@
+{
+  "card_id": "potion_ex1",
+  "display_name": "Potion",
+  "card_type": "TRAINER",
+  "trainer_kind": "ITEM",
+  "rules_text": "Remove 2 damage counters from 1 of your Pokémon (remove 1 damage counter if that Pokémon has only 1)."
+}

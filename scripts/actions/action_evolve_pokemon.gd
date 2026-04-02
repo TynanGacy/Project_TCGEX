@@ -55,7 +55,7 @@ func validate(state: GameState) -> ActionResult:
 	if evolution_data.evolves_from == "":
 		return ActionResult.fail("Evolution card does not specify what it evolves from.")
 
-	if target_data.card_id != evolution_data.evolves_from:
+	if target_data.name_slug != evolution_data.evolves_from:
 		return ActionResult.fail(
 			"Cannot evolve %s onto %s." % [card.data.display_name, target.data.display_name]
 		)

@@ -1,0 +1,29 @@
+{
+  "card_id": "koffing_ex1",
+  "name_slug": "koffing",
+  "display_name": "Koffing",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 50,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Tackle",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Double-edge",
+      "base_damage": 30,
+      "text": "Koffing does 10 damage to itself.",
+      "cost_grass": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

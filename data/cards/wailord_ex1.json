@@ -1,0 +1,29 @@
+{
+  "card_id": "wailord_ex1",
+  "name_slug": "wailord",
+  "display_name": "Wailord",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "wailmer",
+  "pokemon_type": "WATER",
+  "hp_max": 120,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 4,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Take Down",
+      "base_damage": 50,
+      "text": "Wailord does 20 damage to itself.",
+      "cost_colorless": 3
+    },
+    {
+      "name": "Surf",
+      "base_damage": 70,
+      "text": "",
+      "cost_water": 3,
+      "cost_colorless": 2
+    }
+  ]
+}

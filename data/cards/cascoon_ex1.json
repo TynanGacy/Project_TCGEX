@@ -1,0 +1,22 @@
+{
+  "card_id": "cascoon_ex1",
+  "name_slug": "cascoon",
+  "display_name": "Cascoon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "wurmple",
+  "pokemon_type": "GRASS",
+  "hp_max": 70,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Poison Thread",
+      "base_damage": 0,
+      "text": "The Defending Pokémon is now Poisoned.",
+      "cost_grass": 1
+    }
+  ]
+}

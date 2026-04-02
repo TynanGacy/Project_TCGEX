@@ -1,0 +1,22 @@
+{
+  "card_id": "gardevoir_ex1",
+  "name_slug": "gardevoir",
+  "display_name": "Gardevoir",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "kirlia",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 100,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Energy Burst",
+      "base_damage": 10,
+      "text": "Does 10 damage times the total amount of Energy attached to Gardevoir and the Defending Pokémon.",
+      "cost_psychic": 1
+    }
+  ]
+}

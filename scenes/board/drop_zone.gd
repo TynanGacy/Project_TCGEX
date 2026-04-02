@@ -69,5 +69,5 @@ func _layout_held_cards() -> void:
 	for i in held_cards.size():
 		var card := held_cards[i]
 		var target := global_position + Vector3(0, 0.02 + i * 0.005, 0)
-		card.set_home(target, Vector3.ZERO, 0)
+		card.set_home(target, rotation, 0)
 		card.return_to_home()

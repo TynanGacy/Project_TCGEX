@@ -1,0 +1,8 @@
+{
+  "card_id": "grass_energy_ex1",
+  "display_name": "Grass Energy",
+  "card_type": "ENERGY",
+  "energy_type": "COLORLESS",
+  "provides": 1,
+  "rules_text": ""
+}

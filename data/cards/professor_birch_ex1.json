@@ -1,0 +1,7 @@
+{
+  "card_id": "professor_birch_ex1",
+  "display_name": "Professor Birch",
+  "card_type": "TRAINER",
+  "trainer_kind": "SUPPORTER",
+  "rules_text": "You can play only one Supporter card each turn. When you play this card, put it next to your Active Pokémon. When your turn ends, discard this card.\nDraw cards from your deck until you have 6 cards in your hand."
+}
