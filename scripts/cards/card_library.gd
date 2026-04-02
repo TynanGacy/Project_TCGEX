@@ -98,6 +98,9 @@ func _parse_pokemon(d: Dictionary) -> PokemonCardData:
 		"STAGE2": card.stage = PokemonCardData.Stage.STAGE2
 		_:        card.stage = PokemonCardData.Stage.BASIC
 
+	## name_slug is the name-only identifier used for evolution matching.
+	## Scraped cards store it explicitly; hand-written cards fall back to card_id.
+	card.name_slug    = d.get("name_slug", card.card_id)
 	card.evolves_from = d.get("evolves_from", "")
 	card.hp_max       = int(d.get("hp_max", 50))
 	card.retreat_cost = int(d.get("retreat_cost", 1))

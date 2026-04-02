@@ -148,8 +148,12 @@ def transform_pokemon(card: dict) -> dict:
         entry.update(cost_array_to_fields(atk.get("cost") or []))
         attacks_out.append(entry)
 
+    name_slug = slugify(card["name"])
+    set_id = card.get("set", {}).get("id", "unknown")
+
     return {
-        "card_id":      slugify(card["name"]),
+        "card_id":      f"{name_slug}_{set_id}",
+        "name_slug":    name_slug,
         "display_name": card["name"],
         "card_type":    "POKEMON",
         "stage":        stage,
