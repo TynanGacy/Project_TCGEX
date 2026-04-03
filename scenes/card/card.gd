@@ -78,14 +78,9 @@ var _pending_instance: CardInstance = null
 
 
 func _ready() -> void:
-	print("Viewport actual size: ", face_viewport.size)
-	print("Screen size: ", get_viewport().size)
 	## Build the face material once and keep a reference to swap textures on.
 	_face_material = StandardMaterial3D.new()
 	_face_material.albedo_color = BACK_COLOR
-	_face_material.uv1_scale = Vector3(1.0, 1.0, 1.0)
-	_face_material.uv1_offset = Vector3(0.0, 0.0, 0.0)
-	## Disable back-face culling so the face is visible from any angle.
 	_face_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	face_mesh.set_surface_override_material(0, _face_material)
 	## Duplicate the body material so each card owns its instance (for alpha toggling).
@@ -115,14 +110,6 @@ func set_instance(inst: CardInstance) -> void:
 		await get_tree().process_frame
 		face_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 		await get_tree().process_frame
-		## Convert viewport texture to ImageTexture to bypass ViewportTexture UV quirks.
-		var img := face_viewport.get_texture().get_image()
-		if img:
-			_face_material.albedo_texture = ImageTexture.create_from_image(img)
-			_face_material.albedo_color = Color.WHITE
-			_face_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-		else:
-			push_warning("set_instance: failed to capture viewport image for " + card_name)
 	_update_visuals()
 
 
@@ -159,9 +146,7 @@ func _update_visuals() -> void:
 				_body_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 				_body_material.albedo_color.a = 1.0
 	else:
-		var vp_tex := face_viewport.get_texture()
-		print("Texture flags: ", vp_tex.get_image().get_width(), "x", vp_tex.get_image().get_height())
-		_face_material.albedo_texture = vp_tex
+		_face_material.albedo_texture = face_viewport.get_texture()
 		_face_material.albedo_color = Color.WHITE
 		_face_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 		if _body_material:

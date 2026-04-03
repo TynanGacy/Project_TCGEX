@@ -182,7 +182,8 @@ func _add_fullbleed_art(tex: Texture2D) -> void:
 
 	var tex_rect := TextureRect.new()
 	tex_rect.texture = tex
+	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	tex_rect.position = Vector2.ZERO
 	tex_rect.size = FACE_SIZE
-	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	clipper.add_child(tex_rect)
