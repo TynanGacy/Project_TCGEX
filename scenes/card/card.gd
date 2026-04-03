@@ -67,6 +67,8 @@ var hand_index := 0
 var _tween: Tween = null
 var _face_material: StandardMaterial3D = null
 var _body_material: StandardMaterial3D = null
+## Captured ImageTexture of the card face (avoids ViewportTexture UV quirks).
+var _face_image_texture: ImageTexture = null
 ## Holds an instance assigned before _ready() runs (nodes not yet available).
 var _pending_instance: CardInstance = null
 
@@ -78,8 +80,6 @@ var _pending_instance: CardInstance = null
 
 
 func _ready() -> void:
-	print("Viewport actual size: ", face_viewport.size)
-	print("Screen size: ", get_viewport().size)
 	## Build the face material once and keep a reference to swap textures on.
 	_face_material = StandardMaterial3D.new()
 	_face_material.albedo_color = BACK_COLOR
@@ -118,9 +118,7 @@ func set_instance(inst: CardInstance) -> void:
 		## Convert viewport texture to ImageTexture to bypass ViewportTexture UV quirks.
 		var img := face_viewport.get_texture().get_image()
 		if img:
-			_face_material.albedo_texture = ImageTexture.create_from_image(img)
-			_face_material.albedo_color = Color.WHITE
-			_face_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			_face_image_texture = ImageTexture.create_from_image(img)
 		else:
 			push_warning("set_instance: failed to capture viewport image for " + card_name)
 	_update_visuals()
@@ -159,9 +157,7 @@ func _update_visuals() -> void:
 				_body_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 				_body_material.albedo_color.a = 1.0
 	else:
-		var vp_tex := face_viewport.get_texture()
-		print("Texture flags: ", vp_tex.get_image().get_width(), "x", vp_tex.get_image().get_height())
-		_face_material.albedo_texture = vp_tex
+		_face_material.albedo_texture = _face_image_texture
 		_face_material.albedo_color = Color.WHITE
 		_face_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 		if _body_material:
