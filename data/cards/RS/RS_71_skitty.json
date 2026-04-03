@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_71_skitty",
+  "name_slug": "skitty",
+  "display_name": "Skitty",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Tackle",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Lunge",
+      "base_damage": 30,
+      "text": "Flip a coin. If tails, this attack does nothing.",
+      "cost_colorless": 2
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_59_mudkip",
+  "name_slug": "mudkip",
+  "display_name": "Mudkip",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 50,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Bubble",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_water": 1
+    }
+  ]
+}

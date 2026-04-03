@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_31_grovyle",
+  "name_slug": "grovyle",
+  "display_name": "Grovyle",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "treecko",
+  "pokemon_type": "GRASS",
+  "hp_max": 70,
+  "weakness": "FIRE",
+  "resistance": "WATER",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Poison Breath",
+      "base_damage": 0,
+      "text": "The Defending Pokémon is now Poisoned.",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Swift",
+      "base_damage": 30,
+      "text": "This attack's damage isn't affected by Weakness, Resistance, Poké-Powers, Poké-Bodies, or any other effects on the Defending Pokémon.",
+      "cost_grass": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

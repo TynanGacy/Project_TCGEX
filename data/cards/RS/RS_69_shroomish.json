@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_69_shroomish",
+  "name_slug": "shroomish",
+  "display_name": "Shroomish",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 40,
+  "weakness": "FIRE",
+  "resistance": "WATER",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Sleep Powder",
+      "base_damage": 10,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_colorless": 1
+    }
+  ]
+}

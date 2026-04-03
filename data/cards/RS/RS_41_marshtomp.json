@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_41_marshtomp",
+  "name_slug": "marshtomp",
+  "display_name": "Marshtomp",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "mudkip",
+  "pokemon_type": "WATER",
+  "hp_max": 80,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Aqua Sonic",
+      "base_damage": 20,
+      "text": "This attack's damage is not affected by Resistance.",
+      "cost_colorless": 2
+    }
+  ]
+}

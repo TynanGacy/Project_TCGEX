@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_25_aron",
+  "name_slug": "aron",
+  "display_name": "Aron",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "METAL",
+  "hp_max": 50,
+  "weakness": "FIRE",
+  "resistance": "GRASS",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Rollout",
+      "base_damage": 10,
+      "text": "",
+      "cost_metal": 1
+    },
+    {
+      "name": "Double Stab",
+      "base_damage": 20,
+      "text": "Flip 2 coins. This attack does 20 damage times the number of heads.",
+      "cost_colorless": 2
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_11_sceptile",
+  "name_slug": "sceptile",
+  "display_name": "Sceptile",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "grovyle",
+  "pokemon_type": "GRASS",
+  "hp_max": 120,
+  "weakness": "FIRE",
+  "resistance": "WATER",
+  "retreat_cost": 3,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Lizard Poison",
+      "base_damage": 20,
+      "text": "If 1 Energy is attached to Sceptile, the Defending Pokémon is now Asleep. If 2 Energy is attached to Sceptile, the Defending Pokémon is now Poisoned. If 3 Energy is attached to Sceptile, the Defending Pokémon is now Asleep and Poisoned. If 4 or more Energy is attached to Sceptile, the Defending Pokémon is now Asleep, Burned, and Poisoned.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Solarbeam",
+      "base_damage": 70,
+      "text": "",
+      "cost_grass": 2,
+      "cost_colorless": 3
+    }
+  ]
+}

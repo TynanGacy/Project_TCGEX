@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_52_electrike",
+  "name_slug": "electrike",
+  "display_name": "Electrike",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Headbutt",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    }
+  ]
+}

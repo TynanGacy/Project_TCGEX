@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_35_kirlia",
+  "name_slug": "kirlia",
+  "display_name": "Kirlia",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "ralts",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 70,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Dazzle Dance",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, each Defending Pokémon is now Confused.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Life Drain",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, put damage counters on the Defending Pokémon until it is 10 HP away from being Knocked Out.",
+      "cost_psychic": 1
+    }
+  ]
+}

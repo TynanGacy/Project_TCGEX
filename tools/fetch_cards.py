@@ -23,6 +23,8 @@ Output goes to data/cards/<card_id>.json relative to the project root.
 Run from the project root, or set --out-dir to a different path.
 
 Requires: requests  (pip install requests)
+
+NOTE TO ME: retrieve via !python tools/fetch_cards.py --set ex1 --api-key fb809308-4a56-4099-a205-cba887d7edce
 """
 
 import argparse
@@ -44,6 +46,31 @@ except ImportError:
 
 API_BASE = "https://api.pokemontcg.io/v2"
 DEFAULT_OUT = os.path.join(os.path.dirname(__file__), "..", "data", "cards")
+DEFAULT_IMG = os.path.join(os.path.dirname(__file__), "..", "assets", "images")
+
+SET_ABBREVIATIONS = {
+    # EX Era
+    "ex1":  "RS",   # Ruby & Sapphire
+    "ex2":  "SS",   # Sandstorm
+    "ex3":  "DR",   # Dragon
+    "ex4":  "MA",   # Team Magma vs Team Aqua
+    "ex5":  "HL",   # Hidden Legends
+    "ex6":  "FL",   # FireRed & LeafGreen
+    "ex7":  "RR",   # Team Rocket Returns
+    "ex8":  "DE",   # Deoxys
+    "ex9":  "EM",   # Emerald
+    "ex10": "UF",   # Unseen Forces
+    "ex11": "DS",   # Delta Species
+    "ex12": "LM",   # Legend Maker
+    "ex13": "HP",   # Holon Phantoms
+    "ex14": "CG",   # Crystal Guardians
+    "ex15": "DF",   # Dragon Frontiers
+    "ex16": "PK",   # Power Keepers
+}
+
+def set_abbrev(card: dict) -> str:
+    set_id = card.get("set", {}).get("id", "unknown")
+    return SET_ABBREVIATIONS.get(set_id, slugify(set_id))
 
 # ---------------------------------------------------------------------------
 # Energy type normalisation
@@ -159,18 +186,19 @@ def transform_pokemon(card: dict) -> dict:
     attacks_out = []
     for atk in card.get("attacks") or []:
         entry = {
-            "name": atk.get("name", ""),
+            "name":        atk.get("name", ""),
             "base_damage": parse_damage(atk.get("damage", "")),
-            "text": atk.get("text", ""),
+            "text":        atk.get("text", ""),
         }
         entry.update(cost_array_to_fields(atk.get("cost") or []))
         attacks_out.append(entry)
 
-    name_slug = slugify(card["name"])
-    set_id = card.get("set", {}).get("id", "unknown")
-
+    name_slug  = slugify(card["name"])
+    abbrev      = set_abbrev(card)
+    card_number = card.get("number", "0")
+    
     return {
-        "card_id":      f"{name_slug}_{set_id}",
+        "card_id": f"{abbrev}_{card_number}_{name_slug}",
         "name_slug":    name_slug,
         "display_name": card["name"],
         "card_type":    "POKEMON",
@@ -199,13 +227,14 @@ def transform_trainer(card: dict) -> dict:
         trainer_kind = "ITEM"
 
     rules_parts = card.get("rules") or []
-    rules_text = "\n".join(rules_parts)
-    
-    name_slug = slugify(card["name"])
-    set_id = card.get("set", {}).get("id", "unknown")
+    rules_text  = "\n".join(rules_parts)
+
+    name_slug   = slugify(card["name"])
+    abbrev      = set_abbrev(card)
+    card_number = card.get("number", "0")
 
     return {
-        "card_id":      f"{name_slug}_{set_id}",
+        "card_id": f"{abbrev}_{card_number}_{name_slug}",
         "display_name": card["name"],
         "card_type":    "TRAINER",
         "trainer_kind": trainer_kind,
@@ -215,7 +244,7 @@ def transform_trainer(card: dict) -> dict:
 
 def transform_energy(card: dict) -> dict:
     subtypes = [s.lower() for s in card.get("subtypes", [])]
-    types = card.get("types") or []
+    types    = card.get("types") or []
 
     if types:
         energy_type = normalise_type(types[0])
@@ -225,13 +254,14 @@ def transform_energy(card: dict) -> dict:
         energy_type = "COLORLESS"
 
     rules_parts = card.get("rules") or []
-    rules_text = "\n".join(rules_parts)
+    rules_text  = "\n".join(rules_parts)
 
-    name_slug = slugify(card["name"])
-    set_id = card.get("set", {}).get("id", "unknown")
+    name_slug   = slugify(card["name"])
+    abbrev      = set_abbrev(card)
+    card_number = card.get("number", "0")
 
     return {
-        "card_id":      f"{name_slug}_{set_id}",
+        "card_id": f"{abbrev}_{card_number}_{name_slug}",
         "display_name": card["name"],
         "card_type":    "ENERGY",
         "energy_type":  energy_type,
@@ -262,25 +292,33 @@ def build_headers(api_key: str | None) -> dict:
         return {"X-Api-Key": api_key}
     return {}
 
-
-def fetch_single(card_id: str, api_key: str | None) -> list:
-    session = make_session(api_key)
-    url = f"{API_BASE}/cards/{card_id}"
-    resp = session.get(url, timeout=30)
+def download_image(url: str, out_path: str, session: requests.Session) -> bool:
+    try:
+        resp = session.get(url, timeout=30)
+        resp.raise_for_status()
+        with open(out_path, "wb") as f:
+            f.write(resp.content)
+        return True
+    except Exception as e:
+        print(f"  [warn] image download failed: {e}")
+        return False
+    
+def fetch_single(card_id: str, session: requests.Session) -> list:
+    url  = f"{API_BASE}/cards/{card_id}"
+    resp = session.get(url, timeout=(10, 60))
     resp.raise_for_status()
     return [resp.json()["data"]]
 
 
-def fetch_search(query: str, api_key: str | None) -> list:
-    session = make_session(api_key)
+def fetch_search(query: str, session: requests.Session) -> list:
     results = []
-    page = 1
+    page    = 1
     while True:
         try:
             resp = session.get(
                 f"{API_BASE}/cards",
                 params={"q": query, "pageSize": 250, "page": page},
-                timeout=30,
+                timeout=(10, 60),
             )
             resp.raise_for_status()
         except requests.exceptions.ReadTimeout:
@@ -296,9 +334,45 @@ def fetch_search(query: str, api_key: str | None) -> list:
         if len(results) >= body["totalCount"]:
             break
         page += 1
-        time.sleep(0.2)  # slightly more polite delay
+        time.sleep(0.2)
     return results
 
+def process_cards(cards: list, set_id: str, out_dir: str, img_dir: str, session: requests.Session) -> tuple[int, int]:
+    set_folder = SET_ABBREVIATIONS.get(set_id, slugify(set_id))  # fall back to slugified set id if not in table
+    set_out = os.path.join(out_dir, set_folder)
+    set_img = os.path.join(img_dir, set_folder)
+    os.makedirs(set_out, exist_ok=True)
+    os.makedirs(set_img, exist_ok=True)
+
+    written = 0
+    skipped = 0
+
+    for raw in cards:
+        result = transform(raw)
+        if result is None:
+            skipped += 1
+            continue
+
+        # Write JSON
+        out_path = os.path.join(set_out, f"{result['card_id']}.json")
+        if os.path.exists(out_path):
+            print(f"  [overwrite] {set_folder}/{result['card_id']}.json")
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
+        # Download image
+        img_url = raw.get("images", {}).get("large", "")
+        if img_url:
+            img_path = os.path.join(set_img, f"{result['card_id']}.png")
+            img_ok   = download_image(img_url, img_path, session)
+            print(f"  [ok] {set_folder}/{result['card_id']}.json" + (" + image" if img_ok else " (image failed)"))
+        else:
+            print(f"  [ok] {set_folder}/{result['card_id']}.json (no image url)")
+
+        written += 1
+
+    return written, skipped
 
 # ---------------------------------------------------------------------------
 # Main
@@ -312,48 +386,34 @@ def main() -> None:
     parser.add_argument("--api-key", help="pokemontcg.io API key (optional, increases rate limit)")
     parser.add_argument("--out-dir", default=DEFAULT_OUT,
                         help="Directory to write JSON files into (default: data/cards)")
+    parser.add_argument("--img-dir", default=DEFAULT_IMG,
+                        help="Directory to write images into (default: assets/images)")
     args = parser.parse_args()
 
     if not args.id and not args.name and not args.set:
         parser.error("Provide at least one of --id, --name, or --set")
 
     os.makedirs(args.out_dir, exist_ok=True)
+    os.makedirs(args.img_dir, exist_ok=True)
+
+    session = make_session(args.api_key)
 
     # --- Fetch ---
     print("Fetching from pokemontcg.io …")
     if args.id:
-        cards = fetch_single(args.id, args.api_key)
+        cards  = fetch_single(args.id, session)
+        set_id = cards[0].get("set", {}).get("id", "unknown") if cards else "unknown"
     else:
         parts = []
         if args.name:
             parts.append(f'name:"{args.name}"')
         if args.set:
             parts.append(f"set.id:{args.set}")
-        cards = fetch_search(" ".join(parts), args.api_key)
+        cards  = fetch_search(" ".join(parts), session)
+        set_id = args.set if args.set else (cards[0].get("set", {}).get("id", "unknown") if cards else "unknown")
 
     print(f"  {len(cards)} card(s) returned")
-
-    # --- Transform & write ---
-    written = 0
-    skipped = 0
-    for raw in cards:
-        result = transform(raw)
-        if result is None:
-            skipped += 1
-            continue
-
-        out_path = os.path.join(args.out_dir, f"{result['card_id']}.json")
-
-        # Warn if a file already exists with a different API id (name collision)
-        if os.path.exists(out_path):
-            print(f"  [overwrite] {result['card_id']}.json")
-
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-
-        print(f"  [ok] {result['card_id']}.json")
-        written += 1
+    written, skipped = process_cards(cards, set_id, args.out_dir, args.img_dir, session)
 
     print(f"\nDone — {written} written, {skipped} skipped.")
 

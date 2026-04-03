@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_49_aron",
+  "name_slug": "aron",
+  "display_name": "Aron",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "METAL",
+  "hp_max": 40,
+  "weakness": "FIRE",
+  "resistance": "GRASS",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Teary Eyes",
+      "base_damage": 0,
+      "text": "During your opponent's next turn, any damage done to Aron by attacks is reduced by 10.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Ram",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    }
+  ]
+}

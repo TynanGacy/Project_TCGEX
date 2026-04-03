@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_78_wurmple",
+  "name_slug": "wurmple",
+  "display_name": "Wurmple",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 50,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Signs of Evolution",
+      "base_damage": 0,
+      "text": "Search your deck for Silcoon and Beautifly, or Cascoon and Dustox cards. Show 1 card or both cards of a pair to your opponent and put them into your hand. Shuffle your deck afterward.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Poison Barb",
+      "base_damage": 0,
+      "text": "The Defending Pokémon is now Poisoned.",
+      "cost_grass": 1
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_44_skitty",
+  "name_slug": "skitty",
+  "display_name": "Skitty",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 40,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Minor Errand-Running",
+      "base_damage": 0,
+      "text": "Search your deck for 2 basic Energy cards, show them to your opponent, and put them into your hand. Shuffle your deck afterward.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Lullaby",
+      "base_damage": 10,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_colorless": 1
+    }
+  ]
+}

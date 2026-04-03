@@ -1,0 +1,23 @@
+{
+  "card_id": "RS_13_swampert",
+  "name_slug": "swampert",
+  "display_name": "Swampert",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "marshtomp",
+  "pokemon_type": "WATER",
+  "hp_max": 110,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 3,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Hypno Splash",
+      "base_damage": 50,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_water": 2,
+      "cost_colorless": 2
+    }
+  ]
+}

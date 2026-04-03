@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_50_aron",
+  "name_slug": "aron",
+  "display_name": "Aron",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "METAL",
+  "hp_max": 50,
+  "weakness": "FIRE",
+  "resistance": "GRASS",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Gnaw",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    }
+  ]
+}

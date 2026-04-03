@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_65_poochyena",
+  "name_slug": "poochyena",
+  "display_name": "Poochyena",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "DARKNESS",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "PSYCHIC",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Shadow Bind",
+      "base_damage": 10,
+      "text": "The Defending Pokémon can't retreat until the end of your opponent's next turn.",
+      "cost_darkness": 1
+    }
+  ]
+}

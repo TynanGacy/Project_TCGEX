@@ -1,0 +1,30 @@
+{
+  "card_id": "RS_6_dustox",
+  "name_slug": "dustox",
+  "display_name": "Dustox",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "cascoon",
+  "pokemon_type": "GRASS",
+  "hp_max": 90,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 0,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Toxic",
+      "base_damage": 0,
+      "text": "The Defending Pokémon is now Poisoned. Put 2 damage counters instead of 1 on the Defending Pokémon between turns.",
+      "cost_grass": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Gust",
+      "base_damage": 50,
+      "text": "",
+      "cost_grass": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

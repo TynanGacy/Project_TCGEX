@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_43_silcoon",
+  "name_slug": "silcoon",
+  "display_name": "Silcoon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "wurmple",
+  "pokemon_type": "GRASS",
+  "hp_max": 60,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Gooey Thread",
+      "base_damage": 10,
+      "text": "The Defending Pokémon can't retreat until the end of your opponent's next turn.",
+      "cost_grass": 1
+    }
+  ]
+}

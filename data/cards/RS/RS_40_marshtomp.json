@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_40_marshtomp",
+  "name_slug": "marshtomp",
+  "display_name": "Marshtomp",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "mudkip",
+  "pokemon_type": "WATER",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Bubble",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_water": 1
+    },
+    {
+      "name": "Slash",
+      "base_damage": 40,
+      "text": "",
+      "cost_colorless": 3
+    }
+  ]
+}

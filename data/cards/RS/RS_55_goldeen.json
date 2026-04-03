@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_55_goldeen",
+  "name_slug": "goldeen",
+  "display_name": "Goldeen",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 50,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Flail",
+      "base_damage": 10,
+      "text": "Does 10 damage for each damage counter on Goldeen.",
+      "cost_colorless": 1
+    }
+  ]
+}

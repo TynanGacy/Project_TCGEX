@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_63_poochyena",
+  "name_slug": "poochyena",
+  "display_name": "Poochyena",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "DARKNESS",
+  "hp_max": 40,
+  "weakness": "FIGHTING",
+  "resistance": "PSYCHIC",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Bite",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    }
+  ]
+}

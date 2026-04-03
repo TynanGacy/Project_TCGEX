@@ -1,0 +1,8 @@
+{
+  "card_id": "RS_107_psychic_energy",
+  "display_name": "Psychic Energy",
+  "card_type": "ENERGY",
+  "energy_type": "COLORLESS",
+  "provides": 1,
+  "rules_text": ""
+}

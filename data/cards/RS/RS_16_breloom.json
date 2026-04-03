@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_16_breloom",
+  "name_slug": "breloom",
+  "display_name": "Breloom",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "shroomish",
+  "pokemon_type": "GRASS",
+  "hp_max": 70,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Headbutt",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Battle Blast",
+      "base_damage": 40,
+      "text": "Does 40 damage plus 10 more damage for each Fighting Energy attached to Breloom.",
+      "cost_grass": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

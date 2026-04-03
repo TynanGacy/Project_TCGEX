@@ -7,26 +7,40 @@ class_name TestDeckFactory
 
 static func build_deck(size: int = 20) -> Array[CardData]:
 	var pool := _build_pool()
+	if pool.is_empty():
+		push_error("build_deck: pool is empty, cannot build deck")
+		return []
 	var deck: Array[CardData] = []
 	for i in size:
 		deck.append(pool[randi() % pool.size()])
 	return deck
 
-
+static func _load_art(card_id: String) -> Texture2D:
+	var parts := card_id.split("_")
+	if parts.size() < 2:
+		return null
+	var set_folder := parts[0]
+	var path := "res://assets/images/%s/%s.png" % [set_folder, card_id]
+	if ResourceLoader.exists(path):
+		return load(path)
+	push_warning("_load_art: no image found at %s" % path)
+	return null
+	
 static func _card_from_json(data: Dictionary) -> CardData:
+	var card: CardData = null
 	match data.get("card_type", ""):
 		"POKEMON":
 			var energy_type = PokemonCardData.EnergyType[data.get("pokemon_type", "COLORLESS")]
 			match data.get("stage", "BASIC"):
 				"BASIC":
-					return _basic(
+					card = _basic(
 						data["card_id"],
 						data["display_name"],
 						energy_type,
 						data.get("hp_max", 0)
 					)
 				"STAGE1":
-					return _stage1(
+					card = _stage1(
 						data["card_id"],
 						data["display_name"],
 						data.get("evolves_from", ""),
@@ -34,7 +48,7 @@ static func _card_from_json(data: Dictionary) -> CardData:
 						data.get("hp_max", 0)
 					)
 				"STAGE2":
-					return _stage2(
+					card = _stage2(
 						data["card_id"],
 						data["display_name"],
 						data.get("evolves_from", ""),
@@ -43,36 +57,41 @@ static func _card_from_json(data: Dictionary) -> CardData:
 					)
 		"TRAINER":
 			match data.get("trainer_kind", "ITEM"):
-				"ITEM":      return _item(data["card_id"], data["display_name"])
-				"SUPPORTER": return _supporter(data["card_id"], data["display_name"])
-				"STADIUM":   return _stadium(data["card_id"], data["display_name"])
-				"TOOL":      return _tool(data["card_id"], data["display_name"])
+				"ITEM":      card = _item(data["card_id"], data["display_name"])
+				"SUPPORTER": card = _supporter(data["card_id"], data["display_name"])
+				"STADIUM":   card = _stadium(data["card_id"], data["display_name"])
+				"TOOL":      card = _tool(data["card_id"], data["display_name"])
 		"ENERGY":
 			var energy_type = PokemonCardData.EnergyType[data.get("energy_type", "COLORLESS")]
-			return _energy(data["card_id"], data["display_name"], energy_type)
+			card = _energy(data["card_id"], data["display_name"], energy_type)
+
+	if card != null:
+		card.art = _load_art(data["card_id"])
+		return card
+
 	push_warning("_card_from_json: unhandled card_type '%s' for %s" % [data.get("card_type"), data.get("card_id")])
 	return null
 
-
-static func _build_pool() -> Array[CardData]:
-	var pool: Array[CardData] = []
-	var dir := DirAccess.open("res://data/cards")
+static func _load_folder(path: String, pool: Array[CardData]) -> void:
+	var dir := DirAccess.open(path)
 	if dir == null:
-		push_error("_build_pool: could not open res://data/cards — is the folder in your project?")
-		return pool
+		push_warning("_load_folder: could not open " + path)
+		return
 
 	dir.list_dir_begin()
 	var filename := dir.get_next()
 	while filename != "":
-		if not dir.current_is_dir() and filename.ends_with(".json"):
-			var path := "res://data/cards/" + filename
-			var raw := FileAccess.get_file_as_string(path)
+		if dir.current_is_dir():
+			_load_folder(path + filename + "/", pool)
+		elif filename.ends_with(".json"):
+			var full_path := path + filename
+			var raw := FileAccess.get_file_as_string(full_path)
 			if raw == "":
-				push_warning("_build_pool: empty or unreadable file: " + path)
+				push_warning("_load_folder: empty or unreadable file: " + full_path)
 			else:
 				var parsed = JSON.parse_string(raw)
 				if parsed == null:
-					push_warning("_build_pool: failed to parse JSON: " + path)
+					push_warning("_load_folder: failed to parse JSON: " + full_path)
 				else:
 					var card := _card_from_json(parsed)
 					if card != null:
@@ -80,6 +99,12 @@ static func _build_pool() -> Array[CardData]:
 		filename = dir.get_next()
 	dir.list_dir_end()
 
+
+static func _build_pool() -> Array[CardData]:
+	var pool: Array[CardData] = []
+	_load_folder("res://data/cards/", pool)
+	if pool.is_empty():
+		push_error("_build_pool: pool is empty — are the JSON files imported in Godot?")
 	return pool
 
 
@@ -118,6 +143,7 @@ static func _stage1(
 	d.hp_max       = hp
 	return d
 
+
 static func _stage2(
 	id: String,
 	name: String,
@@ -133,6 +159,7 @@ static func _stage2(
 	d.pokemon_type = ptype
 	d.hp_max       = hp
 	return d
+
 
 static func _energy(id: String, name: String, etype: PokemonCardData.EnergyType) -> EnergyCardData:
 	var d := EnergyCardData.new()

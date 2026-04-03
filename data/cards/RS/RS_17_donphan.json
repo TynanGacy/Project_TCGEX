@@ -1,0 +1,30 @@
+{
+  "card_id": "RS_17_donphan",
+  "name_slug": "donphan",
+  "display_name": "Donphan",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "phanpy",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 80,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Rend",
+      "base_damage": 20,
+      "text": "If the Defending Pokémon has any damage counters on it, this attack does 20 damage plus 20 more damage.",
+      "cost_fighting": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Double Spin",
+      "base_damage": 60,
+      "text": "Flip 2 coins. This attack does 60 damage times the number of heads.",
+      "cost_fighting": 1,
+      "cost_colorless": 3
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_67_ralts",
+  "name_slug": "ralts",
+  "display_name": "Ralts",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 50,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Headbutt",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Hypnoblast",
+      "base_damage": 20,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_psychic": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_5_delcatty",
+  "name_slug": "delcatty",
+  "display_name": "Delcatty",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "skitty",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Max Energy Source",
+      "base_damage": 10,
+      "text": "Does 10 damage times the amount of Energy attached to all of your Active Pokémon.",
+      "cost_colorless": 1
+    }
+  ]
+}

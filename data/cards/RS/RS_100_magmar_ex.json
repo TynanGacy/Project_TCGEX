@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_100_magmar_ex",
+  "name_slug": "magmar_ex",
+  "display_name": "Magmar ex",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIRE",
+  "hp_max": 90,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Smokescreen",
+      "base_damage": 10,
+      "text": "If the Defending Pokémon tries to attack during your opponent's next turn, your opponent flips a coin. If tails, that attack does nothing.",
+      "cost_fire": 1
+    },
+    {
+      "name": "Super Singe",
+      "base_damage": 40,
+      "text": "The Defending Pokémon is now Burned.",
+      "cost_fire": 2,
+      "cost_colorless": 1
+    }
+  ]
+}

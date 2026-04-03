@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_9_manectric",
+  "name_slug": "manectric",
+  "display_name": "Manectric",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "electrike",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 70,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Attract Current",
+      "base_damage": 10,
+      "text": "Search your deck for a Lightning Energy card and attach it to 1 of your Pokémon. Shuffle your deck afterward.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Thunder Jolt",
+      "base_damage": 50,
+      "text": "Flip a coin. If tails, Manectric does 10 damage to itself.",
+      "cost_lightning": 2,
+      "cost_colorless": 1
+    }
+  ]
+}

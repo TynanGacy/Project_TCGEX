@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_27_combusken",
+  "name_slug": "combusken",
+  "display_name": "Combusken",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "torchic",
+  "pokemon_type": "FIRE",
+  "hp_max": 70,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Flare",
+      "base_damage": 20,
+      "text": "",
+      "cost_fire": 1
+    },
+    {
+      "name": "Double Kick",
+      "base_damage": 40,
+      "text": "Flip 2 coins. This attack does 40 damage times the number of heads.",
+      "cost_colorless": 3
+    }
+  ]
+}

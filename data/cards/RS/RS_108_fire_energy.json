@@ -1,0 +1,8 @@
+{
+  "card_id": "RS_108_fire_energy",
+  "display_name": "Fire Energy",
+  "card_type": "ENERGY",
+  "energy_type": "COLORLESS",
+  "provides": 1,
+  "rules_text": ""
+}

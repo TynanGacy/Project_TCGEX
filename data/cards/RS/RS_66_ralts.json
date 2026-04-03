@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_66_ralts",
+  "name_slug": "ralts",
+  "display_name": "Ralts",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 50,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Confuse Ray",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "cost_psychic": 1
+    }
+  ]
+}

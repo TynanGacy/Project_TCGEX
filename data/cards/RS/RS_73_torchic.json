@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_73_torchic",
+  "name_slug": "torchic",
+  "display_name": "Torchic",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIRE",
+  "hp_max": 40,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Peck",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Fireworks",
+      "base_damage": 30,
+      "text": "Flip a coin. If tails, discard a Fire Energy card attached to Torchic.",
+      "cost_fire": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

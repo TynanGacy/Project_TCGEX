@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_36_lairon",
+  "name_slug": "lairon",
+  "display_name": "Lairon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "aron",
+  "pokemon_type": "METAL",
+  "hp_max": 70,
+  "weakness": "FIRE",
+  "resistance": "GRASS",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Ram",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Metal Claw",
+      "base_damage": 40,
+      "text": "",
+      "cost_metal": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

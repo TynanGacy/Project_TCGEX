@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_29_delcatty",
+  "name_slug": "delcatty",
+  "display_name": "Delcatty",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "skitty",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 80,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Energy Call",
+      "base_damage": 10,
+      "text": "Attach 1 Energy card from your discard pile to your Active Pokémon.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Cannonball",
+      "base_damage": 30,
+      "text": "Does 30 damage plus 10 more damage for each Energy attached to Delcatty but not used to pay for this attack's Energy cost.",
+      "cost_colorless": 2
+    }
+  ]
+}

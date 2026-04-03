@@ -1,6 +1,6 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3 uid="uid://gkm0xp3hnc7k"]
 
-[ext_resource type="Script" path="res://scenes/card/card.gd" id="1_card"]
+[ext_resource type="Script" uid="uid://wwugbxv8yd2d" path="res://scenes/card/card.gd" id="1_card"]
 [ext_resource type="PackedScene" path="res://scenes/card/card_face.tscn" id="2_face"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_card"]
@@ -13,28 +13,31 @@ albedo_color = Color(0.92, 0.9, 0.85, 1)
 size = Vector3(0.63, 0.02, 0.88)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_face"]
+uv2_padding = 0.0
 size = Vector2(0.63, 0.88)
+center_offset = Vector3(0, 0.1, 0)
 
-[node name="Card" type="Node3D"]
+[node name="Card" type="Node3D" unique_id=2009363533]
 script = ExtResource("1_card")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1323219701]
 mesh = SubResource("BoxMesh_card")
 surface_material_override/0 = SubResource("Material_card")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="."]
-collision_layer = 1
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=410612990]
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=1557594258]
 shape = SubResource("BoxShape_card")
 
-[node name="FaceViewport" type="SubViewport" parent="."]
+[node name="FaceViewport" type="SubViewport" parent="." unique_id=2045773705]
 size = Vector2i(252, 352)
-render_target_update_mode = 0
 
-[node name="CardFace" parent="FaceViewport" instance=ExtResource("2_face")]
+[node name="CardFace" parent="FaceViewport" unique_id=513752556 instance=ExtResource("2_face")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 252.0
+offset_bottom = 352.0
 
-[node name="FaceMesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.006, 0)
+[node name="FaceMesh" type="MeshInstance3D" parent="." unique_id=433048844]
 mesh = SubResource("PlaneMesh_face")

@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_75_treecko",
+  "name_slug": "treecko",
+  "display_name": "Treecko",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 40,
+  "weakness": "FIRE",
+  "resistance": "WATER",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Poison Breath",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Poisoned.",
+      "cost_grass": 1
+    }
+  ]
+}

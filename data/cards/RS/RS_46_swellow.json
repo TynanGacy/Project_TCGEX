@@ -1,0 +1,22 @@
+{
+  "card_id": "RS_46_swellow",
+  "name_slug": "swellow",
+  "display_name": "Swellow",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "taillow",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "FIGHTING",
+  "retreat_cost": 0,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Wing Attack",
+      "base_damage": 30,
+      "text": "",
+      "cost_colorless": 2
+    }
+  ]
+}

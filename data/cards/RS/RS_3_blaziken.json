@@ -1,0 +1,23 @@
+{
+  "card_id": "RS_3_blaziken",
+  "name_slug": "blaziken",
+  "display_name": "Blaziken",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "combusken",
+  "pokemon_type": "FIRE",
+  "hp_max": 100,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Fire Stream",
+      "base_damage": 50,
+      "text": "Discard a Fire Energy card attached to Blaziken. If you do, this attack does 10 damage to each of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_fire": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

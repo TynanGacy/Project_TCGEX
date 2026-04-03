@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_57_makuhita",
+  "name_slug": "makuhita",
+  "display_name": "Makuhita",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 50,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Fling",
+      "base_damage": 0,
+      "text": "Your opponent switches the Defending Pokémon with 1 of his or her Benched Pokémon.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Low Kick",
+      "base_damage": 30,
+      "text": "",
+      "cost_fighting": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

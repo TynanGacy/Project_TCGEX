@@ -1,0 +1,28 @@
+{
+  "card_id": "RS_37_lairon",
+  "name_slug": "lairon",
+  "display_name": "Lairon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "aron",
+  "pokemon_type": "METAL",
+  "hp_max": 80,
+  "weakness": "FIRE",
+  "resistance": "GRASS",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Magnitude",
+      "base_damage": 20,
+      "text": "Does 10 damage to each Benched Pokémon (both yours and your opponent's). (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_metal": 1
+    },
+    {
+      "name": "One-Two Strike",
+      "base_damage": 30,
+      "text": "Flip 2 coins. This attack does 30 damage plus 20 more damage for each heads.",
+      "cost_colorless": 4
+    }
+  ]
+}

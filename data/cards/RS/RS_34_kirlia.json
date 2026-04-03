@@ -1,0 +1,29 @@
+{
+  "card_id": "RS_34_kirlia",
+  "name_slug": "kirlia",
+  "display_name": "Kirlia",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "ralts",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 70,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Removal Beam",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, discard 1 Energy card attached to the Defending Pokémon.",
+      "cost_psychic": 1
+    },
+    {
+      "name": "Super Psy",
+      "base_damage": 50,
+      "text": "",
+      "cost_psychic": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

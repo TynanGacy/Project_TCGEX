@@ -38,7 +38,9 @@ func setup(data: CardData) -> void:
 		child.queue_free()
 	custom_minimum_size = FACE_SIZE
 	size = FACE_SIZE
-
+	# Clamp the parent SubViewport to match
+	if get_parent() is SubViewport:
+		get_parent().size = Vector2i(FACE_SIZE)
 	if data is PokemonCardData:
 		_build_pokemon_face(data as PokemonCardData)
 	elif data is EnergyCardData:
@@ -54,146 +56,80 @@ func setup(data: CardData) -> void:
 # ---------------------------------------------------------------------------
 
 func _build_pokemon_face(data: PokemonCardData) -> void:
+	if data.art:
+		_add_fullbleed_art(data.art)
+		return
+	# --- fallback: original layout ---
 	var type_color := _type_color(data.pokemon_type)
-
-	# Full background
 	_add_rect(Vector2.ZERO, FACE_SIZE, CARD_BG)
-
-	# Coloured header band
 	_add_rect(Vector2.ZERO, Vector2(FACE_SIZE.x, 64), type_color)
-
-	# Stage badge
-	var stage_lbl := _add_label(
-		STAGE_NAMES[data.stage], 15, Color.WHITE, Vector2(8, 6))
+	var stage_lbl := _add_label(STAGE_NAMES[data.stage], 15, Color.WHITE, Vector2(8, 6))
 	stage_lbl.size.x = 100
-
-	# Name
 	var name_lbl := _add_label(data.display_name, 22, Color.WHITE, Vector2(8, 28))
 	name_lbl.size.x = FACE_SIZE.x - 80
-
-	# HP (top-right)
-	var hp_lbl := _add_label("%d HP" % data.hp_max, 20, Color.WHITE,
-		Vector2(FACE_SIZE.x - 72, 28))
+	var hp_lbl := _add_label("%d HP" % data.hp_max, 20, Color.WHITE, Vector2(FACE_SIZE.x - 72, 28))
 	hp_lbl.size.x = 68
 	hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-
-	# Art placeholder or real texture
-	if data.art:
-		var tex_rect := TextureRect.new()
-		tex_rect.texture = data.art
-		tex_rect.position = Vector2(12, 68)
-		tex_rect.size = Vector2(228, 150)
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		add_child(tex_rect)
-	else:
-		_add_rect(Vector2(12, 68), Vector2(228, 150), type_color.darkened(0.35))
-		var type_lbl := _add_label(
-			PokemonCardData.energy_type_to_string(data.pokemon_type),
-			26, Color.WHITE, Vector2(12, 148))
-		type_lbl.size.x = 228
-		type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-
-	# Divider line
-	_add_rect(Vector2(8, 226), Vector2(FACE_SIZE.x - 16, 2),
-		type_color.darkened(0.2))
-
-	# Attacks
+	_add_rect(Vector2(12, 68), Vector2(228, 150), type_color.darkened(0.35))
+	var type_lbl := _add_label(PokemonCardData.energy_type_to_string(data.pokemon_type), 26, Color.WHITE, Vector2(12, 148))
+	type_lbl.size.x = 228
+	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_add_rect(Vector2(8, 226), Vector2(FACE_SIZE.x - 16, 2), type_color.darkened(0.2))
 	var atk_y := 234.0
 	for attack in data.attacks.slice(0, 2):
-		var atk_lbl := _add_label(
-			"%s  %d" % [attack.name, attack.base_damage],
-			16, Color(0.15, 0.15, 0.15), Vector2(12, atk_y))
+		var atk_lbl := _add_label("%s  %d" % [attack.name, attack.base_damage], 16, Color(0.15, 0.15, 0.15), Vector2(12, atk_y))
 		atk_lbl.size.x = FACE_SIZE.x - 24
 		atk_y += 30.0
-
-	# Bottom info bar
-	_add_rect(Vector2(0, FACE_SIZE.y - 34), Vector2(FACE_SIZE.x, 34),
-		type_color.darkened(0.15))
-	var retreat_lbl := _add_label(
-		"Retreat: %d" % data.retreat_cost,
-		13, Color.WHITE, Vector2(8, FACE_SIZE.y - 26))
+	_add_rect(Vector2(0, FACE_SIZE.y - 34), Vector2(FACE_SIZE.x, 34), type_color.darkened(0.15))
+	var retreat_lbl := _add_label("Retreat: %d" % data.retreat_cost, 13, Color.WHITE, Vector2(8, FACE_SIZE.y - 26))
 	retreat_lbl.size.x = FACE_SIZE.x / 2.0
 
 
-# ---------------------------------------------------------------------------
-# Energy
-# ---------------------------------------------------------------------------
-
 func _build_energy_face(data: EnergyCardData) -> void:
+	if data.art:
+		_add_fullbleed_art(data.art)
+		return
+	# --- fallback: original layout ---
 	var tc := _type_color(data.energy_type)
-
 	_add_rect(Vector2.ZERO, FACE_SIZE, tc)
-	# Subtle dark vignette overlay
 	_add_rect(Vector2.ZERO, FACE_SIZE, Color(0.0, 0.0, 0.0, 0.12))
-
 	var header_lbl := _add_label("ENERGY", 20, Color.WHITE, Vector2(0, 16))
 	header_lbl.size.x = FACE_SIZE.x
 	header_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-
-	# Big circle placeholder for energy symbol
 	_add_rect(Vector2(76, 60), Vector2(100, 100), tc.lightened(0.3))
-
-	var name_lbl := _add_label(data.display_name, 26, Color.WHITE,
-		Vector2(0, 180))
+	var name_lbl := _add_label(data.display_name, 26, Color.WHITE, Vector2(0, 180))
 	name_lbl.size.x = FACE_SIZE.x
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-
-	var type_lbl := _add_label(
-		PokemonCardData.energy_type_to_string(data.energy_type),
-		34, Color.WHITE, Vector2(0, 214))
+	var type_lbl := _add_label(PokemonCardData.energy_type_to_string(data.energy_type), 34, Color.WHITE, Vector2(0, 214))
 	type_lbl.size.x = FACE_SIZE.x
 	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-
-	var prov_lbl := _add_label("Provides: %d" % data.provides,
-		18, Color(1, 1, 1, 0.85), Vector2(0, 290))
+	var prov_lbl := _add_label("Provides: %d" % data.provides, 18, Color(1, 1, 1, 0.85), Vector2(0, 290))
 	prov_lbl.size.x = FACE_SIZE.x
 	prov_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
-# ---------------------------------------------------------------------------
-# Trainer
-# ---------------------------------------------------------------------------
-
 func _build_trainer_face(data: TrainerCardData) -> void:
+	if data.art:
+		_add_fullbleed_art(data.art)
+		return
+	# --- fallback: original layout ---
 	var kind: int = data.trainer_kind
 	var kc := TRAINER_KIND_COLORS[kind]
-
 	_add_rect(Vector2.ZERO, FACE_SIZE, CARD_BG)
 	_add_rect(Vector2.ZERO, Vector2(FACE_SIZE.x, 84), kc)
-
-	var sub_lbl := _add_label(
-		"Trainer — " + TRAINER_KIND_NAMES[kind], 15, Color.WHITE, Vector2(8, 8))
+	var sub_lbl := _add_label("Trainer — " + TRAINER_KIND_NAMES[kind], 15, Color.WHITE, Vector2(8, 8))
 	sub_lbl.size.x = FACE_SIZE.x - 16
-
 	var name_lbl := _add_label(data.display_name, 26, Color.WHITE, Vector2(8, 36))
 	name_lbl.size.x = FACE_SIZE.x - 16
-
-	# Art placeholder or real texture
-	if data.art:
-		var tex_rect := TextureRect.new()
-		tex_rect.texture = data.art
-		tex_rect.position = Vector2(12, 90)
-		tex_rect.size = Vector2(228, 148)
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		add_child(tex_rect)
-	else:
-		_add_rect(Vector2(12, 90), Vector2(228, 148), kc.darkened(0.4))
-
-	# Rules text box
-	_add_rect(Vector2(8, 246), Vector2(FACE_SIZE.x - 16, 2),
-		kc.darkened(0.2))
+	_add_rect(Vector2(12, 90), Vector2(228, 148), kc.darkened(0.4))
+	_add_rect(Vector2(8, 246), Vector2(FACE_SIZE.x - 16, 2), kc.darkened(0.2))
 	if data.rules_text != "":
-		var rules_lbl := _add_label(
-			data.rules_text, 14, Color(0.18, 0.18, 0.18), Vector2(12, 252))
+		var rules_lbl := _add_label(data.rules_text, 14, Color(0.18, 0.18, 0.18), Vector2(12, 252))
 		rules_lbl.size = Vector2(FACE_SIZE.x - 24, 88)
 		rules_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-
-	# Kind stamp bottom-right
-	var stamp_lbl := _add_label(TRAINER_KIND_NAMES[kind].to_upper(),
-		12, kc.darkened(0.3), Vector2(0, FACE_SIZE.y - 22))
+	var stamp_lbl := _add_label(TRAINER_KIND_NAMES[kind].to_upper(), 12, kc.darkened(0.3), Vector2(0, FACE_SIZE.y - 22))
 	stamp_lbl.size.x = FACE_SIZE.x - 8
 	stamp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-
 
 # ---------------------------------------------------------------------------
 # Generic fallback
@@ -236,3 +172,17 @@ func _add_label(text: String, font_size: int, col: Color,
 	lbl.position = pos
 	add_child(lbl)
 	return lbl
+
+func _add_fullbleed_art(tex: Texture2D) -> void:
+	var clipper := Control.new()
+	clipper.position = Vector2.ZERO
+	clipper.size = FACE_SIZE
+	clipper.clip_contents = true
+	add_child(clipper)
+
+	var tex_rect := TextureRect.new()
+	tex_rect.texture = tex
+	tex_rect.position = Vector2.ZERO
+	tex_rect.size = FACE_SIZE
+	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	clipper.add_child(tex_rect)
