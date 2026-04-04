@@ -53,6 +53,8 @@ const ENERGY_TYPE_COLORS: Array[Color] = [
 ]
 const TOOL_ICON_COLOR := Color(0.50, 0.20, 0.70)
 
+const FACE_ROUNDED_SHADER := preload("res://scenes/card/card_face_rounded.gdshader")
+
 ## State
 var is_dragging := false
 var is_hovered := false
@@ -67,6 +69,7 @@ var hand_index := 0
 var _tween: Tween = null
 var _face_material: StandardMaterial3D = null
 var _body_material: StandardMaterial3D = null
+var _face_shader_material: ShaderMaterial = null
 ## Holds an instance assigned before _ready() runs (nodes not yet available).
 var _pending_instance: CardInstance = null
 
@@ -83,6 +86,11 @@ func _ready() -> void:
 	_face_material.albedo_color = BACK_COLOR
 	_face_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	face_mesh.set_surface_override_material(0, _face_material)
+	## Build the shader material used for face-up cards with art (rounded corners).
+	_face_shader_material = ShaderMaterial.new()
+	_face_shader_material.shader = FACE_ROUNDED_SHADER
+	_face_shader_material.set_shader_parameter("corner_radius", 0.023)
+	_face_shader_material.set_shader_parameter("card_size", Vector2(CARD_WIDTH, CARD_HEIGHT))
 	## Duplicate the body material so each card owns its instance (for alpha toggling).
 	var src := mesh_instance.get_surface_override_material(0) as StandardMaterial3D
 	_body_material = src.duplicate() as StandardMaterial3D
@@ -128,6 +136,9 @@ func _update_visuals() -> void:
 		var back_tex: Texture2D = SleevesManager.get_sleeve(owner_id)
 		if back_tex == null:
 			back_tex = back_texture
+		## Ensure the standard material is active on the face mesh (may have been
+		## replaced by the shader material while the card was face-up).
+		face_mesh.set_surface_override_material(0, _face_material)
 		if back_tex != null:
 			## Texture-based back: honour the image's alpha channel for rounded corners.
 			## ALPHA_SCISSOR clips pixels cleanly without depth-sort issues on stacked cards.
@@ -148,12 +159,16 @@ func _update_visuals() -> void:
 				_body_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 				_body_material.albedo_color.a = 1.0
 	else:
-		_face_material.albedo_texture = face_viewport.get_texture()
-		_face_material.albedo_color = Color.WHITE
-		_face_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		## Face-up: use the rounded-corner shader material so the card silhouette
+		## matches the card_back.  Corner regions sample mirrored edge content
+		## rather than cutting off the card border abruptly.
+		_face_shader_material.set_shader_parameter("face_texture", face_viewport.get_texture())
+		face_mesh.set_surface_override_material(0, _face_shader_material)
+		## Hide the body mesh so its rectangular corners don't show through the
+		## clipped face, mirroring the card-back treatment.
 		if _body_material:
-			_body_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-			_body_material.albedo_color.a = 1.0
+			_body_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_body_material.albedo_color.a = 0.0
 
 
 func set_hovered(value: bool) -> void:
