@@ -30,6 +30,8 @@ var _popup_art: TextureRect = null
 var _popup_name_label: Label = null
 var _popup_type_label: Label = null
 var _popup_details_label: Label = null
+var _popup_attachments_section: VBoxContainer = null
+var _popup_attachments_row: HBoxContainer = null
 
 ## Turn engine
 @onready var turn_controller: TurnController = TurnControllerSingleton
@@ -426,6 +428,24 @@ func _build_card_popup() -> void:
 	_popup_details_label.custom_minimum_size = Vector2(246, 0)
 	vbox.add_child(_popup_details_label)
 
+	## Attachment icon section — hidden until a card with attachments is shown.
+	_popup_attachments_section = VBoxContainer.new()
+	_popup_attachments_section.visible = false
+	_popup_attachments_section.add_theme_constant_override("separation", 4)
+	vbox.add_child(_popup_attachments_section)
+
+	_popup_attachments_section.add_child(HSeparator.new())
+
+	var attach_header := Label.new()
+	attach_header.text = "Attached:"
+	attach_header.add_theme_font_size_override("font_size", 12)
+	attach_header.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
+	_popup_attachments_section.add_child(attach_header)
+
+	_popup_attachments_row = HBoxContainer.new()
+	_popup_attachments_row.add_theme_constant_override("separation", 4)
+	_popup_attachments_section.add_child(_popup_attachments_row)
+
 	$HUD.add_child(_card_popup)
 
 
@@ -493,22 +513,58 @@ func _populate_card_popup(inst: CardInstance) -> void:
 	if inst.data.rules_text != "":
 		details += "\n\n%s" % inst.data.rules_text
 
-	## Show attached energy/tools when inspecting a board Pokemon.
-	if not inst.attached_energy.is_empty():
-		var names := ""
-		for e in inst.attached_energy:
-			if e.data != null:
-				names += (", " if names != "" else "") + e.data.display_name
-		details += "\nAttached energy: %s" % names
-	if not inst.attached_tools.is_empty():
-		var names := ""
-		for t in inst.attached_tools:
-			if t.data != null:
-				names += (", " if names != "" else "") + t.data.display_name
-		details += "\nTool: %s" % names
-
 	_popup_type_label.text = type_str
 	_popup_details_label.text = details.strip_edges()
+
+	## Rebuild attachment icon circles.
+	for child in _popup_attachments_row.get_children():
+		child.queue_free()
+	var has_attachments := false
+	for energy in inst.attached_energy:
+		if energy.data is EnergyCardData:
+			var color := Card.ENERGY_TYPE_COLORS[(energy.data as EnergyCardData).energy_type]
+			_add_attachment_icon(energy, color)
+			has_attachments = true
+	for tool in inst.attached_tools:
+		_add_attachment_icon(tool, Card.TOOL_ICON_COLOR)
+		has_attachments = true
+	_popup_attachments_section.visible = has_attachments
+
+
+## Adds a coloured circle button for an attached card to _popup_attachments_row.
+## Right-clicking the circle navigates the popup to show that card's details.
+func _add_attachment_icon(inst: CardInstance, color: Color) -> void:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(22, 22)
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.text = ""
+	if inst.data != null:
+		btn.tooltip_text = inst.data.display_name
+
+	var normal_style := StyleBoxFlat.new()
+	normal_style.bg_color = color
+	normal_style.corner_radius_top_left    = 11
+	normal_style.corner_radius_top_right   = 11
+	normal_style.corner_radius_bottom_left = 11
+	normal_style.corner_radius_bottom_right = 11
+
+	var hover_style := normal_style.duplicate() as StyleBoxFlat
+	hover_style.bg_color = color.lightened(0.25)
+
+	btn.add_theme_stylebox_override("normal",  normal_style)
+	btn.add_theme_stylebox_override("hover",   hover_style)
+	btn.add_theme_stylebox_override("pressed", normal_style)
+
+	btn.gui_input.connect(_on_attachment_icon_input.bind(inst))
+	_popup_attachments_row.add_child(btn)
+
+
+func _on_attachment_icon_input(event: InputEvent, inst: CardInstance) -> void:
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_RIGHT:
+			_populate_card_popup(inst)
+			get_viewport().set_input_as_handled()
 
 
 func _on_popup_gui_input(event: InputEvent) -> void:

@@ -71,9 +71,9 @@ func _layout_cards() -> void:
 		## Normalised position: -1 (left) to 1 (right)
 		var t := 0.0 if count == 1 else (float(i) / (count - 1)) * 2.0 - 1.0
 
-		## Leftmost card gets the highest Z (closest to camera), ensuring it
-		## always renders on top when cards overlap.
-		var z_depth := (count - 1 - i) * 0.002
+		## Rightmost card gets the highest Z (closest to camera), so it renders
+		## on top when cards overlap — matching a physical hand held by a player.
+		var z_depth := i * 0.002
 
 		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, z_depth)
 		card.set_home(home, Vector3(0.0, -t * deg_to_rad(MAX_FAN_ANGLE), 0.0), i)
