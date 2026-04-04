@@ -82,8 +82,8 @@ func _deal_starting_hand(count: int) -> void:
 	print("Dealing %d cards. Hand position: %s" % [count, str(player_hand.global_position)])
 
 	# Build a randomised test deck for each player.
-	game_state.setup_player_deck(0, TestDeckFactory.build_deck(20))
-	game_state.setup_player_deck(1, TestDeckFactory.build_deck(20))
+	game_state.setup_player_deck(0, TestDeckFactory.build_deck(60))
+	game_state.setup_player_deck(1, TestDeckFactory.build_deck(60))
 	game_state.draw_starting_hand(0, count)
 	game_state.draw_starting_hand(1, count)
 

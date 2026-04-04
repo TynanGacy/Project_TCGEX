@@ -5,7 +5,7 @@ class_name TestDeckFactory
 ## card type / sub-type.  display_name is written so the Label3D on each
 ## card face makes the type immediately readable in-game.
 
-static func build_deck(size: int = 20) -> Array[CardData]:
+static func build_deck(size: int = 60) -> Array[CardData]:
 	var pool := _build_pool()
 	if pool.is_empty():
 		push_error("build_deck: pool is empty, cannot build deck")
