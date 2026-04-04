@@ -376,12 +376,13 @@ func _on_card_drag_ended(_card: Card) -> void:
 func _build_card_popup() -> void:
 	_card_popup = PanelContainer.new()
 	_card_popup.visible = false
-	_card_popup.custom_minimum_size = Vector2(400, 0)
+	# Left margin is wide enough for circles (radius ≈ 48px) to straddle the card's left edge.
+	_card_popup.custom_minimum_size = Vector2(448, 0)
 	_card_popup.position = Vector2(10, 50)
 	_card_popup.gui_input.connect(_on_popup_gui_input)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_left", 58)  # 10 base + 48 for circle overhang
 	margin.add_theme_constant_override("margin_right", 10)
 	margin.add_theme_constant_override("margin_top", 10)
 	margin.add_theme_constant_override("margin_bottom", 10)
@@ -399,11 +400,13 @@ func _build_card_popup() -> void:
 	_popup_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art_container.add_child(_popup_art)
 
-	## Attachment circles — vertical stack overlapping the right side of the card.
+	## Attachment circles — vertical stack, centered on the card's left edge to match the board.
+	## Circle diameter ≈ 25% of card width (matching ICON_RADIUS/CARD_WIDTH on the 3D card).
+	## x = -48 centres each 96px circle on the left edge (half inside, half outside the art).
 	_popup_attachments_row = VBoxContainer.new()
-	_popup_attachments_row.add_theme_constant_override("separation", -8)
+	_popup_attachments_row.add_theme_constant_override("separation", 25)
 	_popup_attachments_row.visible = false
-	_popup_attachments_row.position = Vector2(338, 30)
+	_popup_attachments_row.position = Vector2(-48, 30)
 	art_container.add_child(_popup_attachments_row)
 
 	$HUD.add_child(_card_popup)
@@ -439,7 +442,7 @@ func _populate_card_popup(inst: CardInstance) -> void:
 ## Right-clicking the circle navigates the popup to show that card's details.
 func _add_attachment_icon(inst: CardInstance, color: Color) -> void:
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(44, 44)
+	btn.custom_minimum_size = Vector2(96, 96)
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.text = ""
 	if inst.data != null:
@@ -447,10 +450,10 @@ func _add_attachment_icon(inst: CardInstance, color: Color) -> void:
 
 	var normal_style := StyleBoxFlat.new()
 	normal_style.bg_color = color
-	normal_style.corner_radius_top_left    = 22
-	normal_style.corner_radius_top_right   = 22
-	normal_style.corner_radius_bottom_left = 22
-	normal_style.corner_radius_bottom_right = 22
+	normal_style.corner_radius_top_left    = 48
+	normal_style.corner_radius_top_right   = 48
+	normal_style.corner_radius_bottom_left = 48
+	normal_style.corner_radius_bottom_right = 48
 
 	var hover_style := normal_style.duplicate() as StyleBoxFlat
 	hover_style.bg_color = color.lightened(0.25)
