@@ -233,7 +233,7 @@ func update_attachment_icons() -> void:
 	# Energy circles along the bottom edge in canonical order, left-justified.
 	var sorted_energy := AttachmentDisplay.sort_energy(card_instance.attached_energy)
 	var energy_count := sorted_energy.size()
-	var visible_count := min(energy_count, ENERGY_ICON_MAX)
+	var visible_count: int = min(energy_count, ENERGY_ICON_MAX)
 
 	for i in range(visible_count):
 		_spawn_energy_icon(sorted_energy[i], _energy_pos_x(i), i)
