@@ -161,13 +161,13 @@ func swap_cards(card_a: CardInstance, card_b: CardInstance) -> bool:
 	var index_a := array_a.find(card_a)
 	var index_b := array_b.find(card_b)
 
-	array_a.erase(card_a)
-	array_b.erase(card_b)
-
 	if zone_a == zone_b:
-		array_a.insert(index_b, card_a)
-		array_a.insert(index_a, card_b)
+		# In-place swap by index: no erase so positions stay valid.
+		array_a[index_a] = card_b
+		array_a[index_b] = card_a
 	else:
+		array_a.erase(card_a)
+		array_b.erase(card_b)
 		array_b.append(card_a)
 		array_a.append(card_b)
 
@@ -194,6 +194,9 @@ func remove_card(card: CardInstance) -> bool:
 	return true
 
 
+## Maps a zone_id string to the CardInstance.Zone enum used for per-card state.
+## "stadium" contains none of the keywords below, so it correctly falls through
+## to OTHER — stadium cards track ownership via owner_id, not the Zone enum.
 func _zone_id_to_enum(zone_id: String) -> CardInstance.Zone:
 	if "hand" in zone_id:
 		return CardInstance.Zone.HAND

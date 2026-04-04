@@ -10,7 +10,6 @@ extends Node3D
 @onready var phase_label: Label = $HUD/TopBar/PhaseLabel
 @onready var end_turn_button: Button = $HUD/TopBar/EndTurnButton
 @onready var game_log: RichTextLabel = $HUD/LogPanel/GameLog
-@onready var card_zoom_popup: CardZoomPopup = $HUD/CardZoomPopup
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 
@@ -129,7 +128,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
-				card_zoom_popup.hide_popup()
 				_try_pick_card(mb.position)
 			else:
 				_try_drop_card()
@@ -353,14 +351,6 @@ func _raycast_card(screen_pos: Vector2) -> Card:
 	if body is StaticBody3D and body.get_parent() is Card:
 		return body.get_parent() as Card
 	return null
-
-
-func _try_zoom_card(screen_pos: Vector2) -> void:
-	var card := _raycast_card(screen_pos)
-	if card and not card.face_down:
-		card_zoom_popup.show_card(card)
-	else:
-		card_zoom_popup.hide_popup()
 
 
 func _screen_to_table(screen_pos: Vector2) -> Variant:
@@ -640,6 +630,7 @@ func _highlight_evolution_zones_for(inst: CardInstance) -> void:
 		var target_inst := zone.held_cards[0].card_instance
 		if target_inst == null or not (target_inst.data is PokemonCardData):
 			continue
+		# evolves_from stores a name_slug, not a card_id — must match ActionEvolvePokemon.validate().
 		if (target_inst.data as PokemonCardData).name_slug == pdata.evolves_from:
 			zone.set_highlighted(true)
 
@@ -750,7 +741,7 @@ func _on_action_rejected(action: GameAction, reason: String) -> void:
 
 
 func _on_action_committed(_action: GameAction) -> void:
-	pass
+	pass  ## Reserved for future per-action visual feedback (e.g. animations).
 
 
 func _on_turn_log(text: String) -> void:

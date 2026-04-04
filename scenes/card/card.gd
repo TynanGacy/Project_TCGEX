@@ -106,15 +106,17 @@ func set_instance(inst: CardInstance) -> void:
 	if inst and inst.data:
 		card_name = inst.data.display_name
 		card_face.setup(inst.data)
-		## Wait two frames — one for layout, one for the viewport to render.
+		## Wait two frames — one for layout, one for the SubViewport to render.
+		## Guard each await: the card node may be freed (e.g. deck teardown) before
+		## the frame completes, which would cause a call on a freed instance.
 		await get_tree().process_frame
+		if not is_inside_tree():
+			return
 		face_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 		await get_tree().process_frame
+		if not is_inside_tree():
+			return
 	_update_visuals()
-
-
-func get_instance() -> CardInstance:
-	return card_instance
 
 
 func _update_visuals() -> void:
