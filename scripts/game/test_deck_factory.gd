@@ -67,6 +67,8 @@ static func _card_from_json(data: Dictionary) -> CardData:
 
 	if card != null:
 		card.art = _load_art(data["card_id"])
+		if card is PokemonCardData:
+			(card as PokemonCardData).name_slug = data.get("name_slug", data.get("card_id", ""))
 		return card
 
 	push_warning("_card_from_json: unhandled card_type '%s' for %s" % [data.get("card_type"), data.get("card_id")])
