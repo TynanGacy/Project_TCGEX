@@ -26,8 +26,7 @@ var _source_zone: DropZone = null
 ## Card inspector popup
 var _card_popup: PanelContainer = null
 var _popup_art: TextureRect = null
-var _popup_tool_row: VBoxContainer = null      # tool circles on left edge of art
-var _popup_energy_rows: VBoxContainer = null   # energy circles in rows of 5 below art
+var _popup_art_container: Control = null  # holds art + all absolutely-positioned attachment buttons
 
 ## Turn engine
 @onready var turn_controller: TurnController = TurnControllerSingleton
@@ -384,49 +383,25 @@ func _build_card_popup() -> void:
 	## Transparent background — no grey box.
 	_card_popup.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 
-	var outer := VBoxContainer.new()
-	_card_popup.add_child(outer)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 58)  # 10 base + 48 for tool circle overhang
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	_card_popup.add_child(margin)
 
-	## --- Art section with tool circles on the left edge ---
-	var art_margin := MarginContainer.new()
-	art_margin.add_theme_constant_override("margin_left", 58)   # 10 base + 48 for circle overhang
-	art_margin.add_theme_constant_override("margin_right", 10)
-	art_margin.add_theme_constant_override("margin_top", 10)
-	art_margin.add_theme_constant_override("margin_bottom", 0)
-	outer.add_child(art_margin)
-
-	## Fixed-size Control lets art and tool circles overlap freely.
-	var art_container := Control.new()
-	art_container.custom_minimum_size = Vector2(380, 533)
-	art_container.clip_contents = false
-	art_margin.add_child(art_container)
+	## Fixed-size Control holds the art and all absolutely-positioned attachment buttons.
+	## clip_contents = false so buttons at the card edges remain visible when they overlap.
+	_popup_art_container = Control.new()
+	_popup_art_container.custom_minimum_size = Vector2(380, 533)
+	_popup_art_container.clip_contents = false
+	margin.add_child(_popup_art_container)
 
 	_popup_art = TextureRect.new()
 	_popup_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_popup_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_popup_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art_container.add_child(_popup_art)
-
-	## Tool circles — vertical stack centred on the card's left edge (unchanged from before).
-	## x = -48 centres each 96 px circle on the left edge (half inside, half outside the art).
-	_popup_tool_row = VBoxContainer.new()
-	_popup_tool_row.add_theme_constant_override("separation", 25)
-	_popup_tool_row.visible = false
-	_popup_tool_row.position = Vector2(-48, 30)
-	art_container.add_child(_popup_tool_row)
-
-	## --- Energy circles below the art, in rows of up to 5 ---
-	var energy_margin := MarginContainer.new()
-	energy_margin.add_theme_constant_override("margin_left", 58)
-	energy_margin.add_theme_constant_override("margin_right", 10)
-	energy_margin.add_theme_constant_override("margin_top", 8)
-	energy_margin.add_theme_constant_override("margin_bottom", 10)
-	outer.add_child(energy_margin)
-
-	_popup_energy_rows = VBoxContainer.new()
-	_popup_energy_rows.add_theme_constant_override("separation", 8)
-	_popup_energy_rows.visible = false
-	energy_margin.add_child(_popup_energy_rows)
+	_popup_art_container.add_child(_popup_art)
 
 	$HUD.add_child(_card_popup)
 
@@ -439,32 +414,46 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 	_card_popup.visible = true
 
 
+## Art container dimensions — must match _popup_art_container.custom_minimum_size.
+const _POPUP_ART_W := 380.0
+const _POPUP_ART_H := 533.0
+const _POPUP_ENERGY_SIZE := 64   # energy circle diameter in pixels
+const _POPUP_TOOL_SIZE   := 96   # tool circle diameter in pixels
+
 func _populate_card_popup(inst: CardInstance) -> void:
 	_popup_art.texture = inst.data.art
 
-	## Rebuild tool circles (left side — unchanged behaviour).
-	for child in _popup_tool_row.get_children():
-		child.queue_free()
-	for tool in inst.attached_tools:
-		_popup_tool_row.add_child(_make_popup_circle_button(tool, AttachmentDisplay.TOOL_ICON_COLOR, 96))
-	_popup_tool_row.visible = not inst.attached_tools.is_empty()
+	## Remove previous attachment buttons.
+	for child in _popup_art_container.get_children():
+		if child.name.begins_with("PopupAttach_"):
+			child.queue_free()
 
-	## Rebuild energy circles in rows of 5 below the art, in canonical order.
-	for child in _popup_energy_rows.get_children():
-		child.queue_free()
+	## Tool circles — individually positioned on the left edge using the same
+	## normalised fractions as the 3D board so vertical placement matches.
+	var tool_r := _POPUP_TOOL_SIZE / 2.0
+	for i in range(inst.attached_tools.size()):
+		var frac_y := AttachmentDisplay.TOOL_NORM_START_Y + i * AttachmentDisplay.TOOL_NORM_STEP_Y
+		var cy := _POPUP_ART_H * frac_y
+		var btn := _make_popup_circle_button(inst.attached_tools[i], AttachmentDisplay.TOOL_ICON_COLOR, _POPUP_TOOL_SIZE)
+		btn.name = "PopupAttach_T%d" % i
+		## Centre on left edge: x_centre = 0, so top-left x = -tool_r = -48.
+		btn.position = Vector2(-tool_r, cy - tool_r)
+		_popup_art_container.add_child(btn)
+
+	## Energy circles — rows of 5, anchored to the bottom edge so the first row
+	## overlaps 50 % into the card just like the board icons do.
+	var energy_r := _POPUP_ENERGY_SIZE / 2.0
 	var sorted_energy := AttachmentDisplay.sort_energy(inst.attached_energy)
-	if not sorted_energy.is_empty():
-		var row: HBoxContainer = null
-		for i in range(sorted_energy.size()):
-			if i % 5 == 0:
-				row = HBoxContainer.new()
-				row.add_theme_constant_override("separation", 8)
-				row.alignment = BoxContainer.ALIGNMENT_CENTER
-				_popup_energy_rows.add_child(row)
-			row.add_child(
-				_make_popup_circle_button(sorted_energy[i], AttachmentDisplay.energy_color(sorted_energy[i]), 64)
-			)
-	_popup_energy_rows.visible = not sorted_energy.is_empty()
+	for i in range(sorted_energy.size()):
+		var col := i % 5
+		var row := i / 5
+		var frac_x := AttachmentDisplay.ENERGY_NORM_START_X + col * AttachmentDisplay.ENERGY_NORM_STEP_X
+		var cx := _POPUP_ART_W * frac_x
+		var cy := _POPUP_ART_H + row * (_POPUP_ENERGY_SIZE + 8.0)
+		var btn := _make_popup_circle_button(sorted_energy[i], AttachmentDisplay.energy_color(sorted_energy[i]), _POPUP_ENERGY_SIZE)
+		btn.name = "PopupAttach_E%d" % i
+		btn.position = Vector2(cx - energy_r, cy - energy_r)
+		_popup_art_container.add_child(btn)
 
 
 ## Creates a coloured circle Button for an attached card.

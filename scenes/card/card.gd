@@ -38,7 +38,7 @@ const ICON_START_Z := -0.25
 const ICON_SPACING := 0.20
 
 ## Energy icon layout (bottom edge of card, smaller than tool icons).
-const ENERGY_ICON_RADIUS := 0.026   # ~1/3 of ICON_RADIUS
+const ENERGY_ICON_RADIUS := 0.039   # ~half of ICON_RADIUS
 const ENERGY_ICON_HEIGHT := 0.004
 const ENERGY_ICON_MAX := 5          # max circles shown before overflow "+" indicator
 
@@ -230,29 +230,26 @@ func update_attachment_icons() -> void:
 	if card_instance == null:
 		return
 
-	# Energy circles along the bottom edge in canonical order.
+	# Energy circles along the bottom edge in canonical order, left-justified.
 	var sorted_energy := AttachmentDisplay.sort_energy(card_instance.attached_energy)
 	var energy_count := sorted_energy.size()
-	var overflow := energy_count > ENERGY_ICON_MAX
-	var visible_count := ENERGY_ICON_MAX if overflow else energy_count
-	var slot_count := visible_count + (1 if overflow else 0)
+	var visible_count := min(energy_count, ENERGY_ICON_MAX)
 
 	for i in range(visible_count):
-		_spawn_energy_icon(sorted_energy[i], _energy_x(i, slot_count), i)
-	if overflow:
-		_spawn_energy_overflow(_energy_x(visible_count, slot_count))
+		_spawn_energy_icon(sorted_energy[i], _energy_pos_x(i), i)
+	if energy_count > ENERGY_ICON_MAX:
+		_spawn_energy_overflow(_energy_pos_x(ENERGY_ICON_MAX))
 
 	# Tool circles on the left edge (unchanged layout).
 	for i in range(card_instance.attached_tools.size()):
 		_spawn_tool_icon(card_instance.attached_tools[i], i)
 
 
-## Returns the x coordinate for energy slot [slot] out of [total] slots,
-## distributed evenly across the card width.
-func _energy_x(slot: int, total: int) -> float:
-	if total <= 0:
-		return 0.0
-	return -CARD_WIDTH * 0.5 + CARD_WIDTH * (slot + 0.5) / total
+## Returns the 3D x coordinate for energy icon at [slot], left-justified from
+## the weakness-symbol area using the shared normalised fractions.
+func _energy_pos_x(slot: int) -> float:
+	var frac := AttachmentDisplay.ENERGY_NORM_START_X + slot * AttachmentDisplay.ENERGY_NORM_STEP_X
+	return -CARD_WIDTH * 0.5 + CARD_WIDTH * frac
 
 
 func _spawn_energy_icon(inst: CardInstance, x: float, index: int) -> void:

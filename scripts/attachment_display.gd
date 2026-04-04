@@ -32,6 +32,34 @@ const BASIC_ENERGY_NAMES: Array[String] = [
 	"Fighting Energy",
 ]
 
+## ---------------------------------------------------------------------------
+## Normalised card-face layout fractions (0.0 = top/left edge, 1.0 = bottom/right edge).
+## Both the 3D board card (card.gd) and the 2D popup (main.gd) derive their
+## pixel / unit positions from these values so the icons align consistently.
+## ---------------------------------------------------------------------------
+
+## Energy: vertical centre sits on the bottom edge of the card (50 % overlap).
+const ENERGY_NORM_Y := 1.0
+
+## X fraction for the first energy icon centre.
+## Chosen to align below the weakness symbol in the card's stats row.
+const ENERGY_NORM_START_X := 0.18
+
+## X fraction step between consecutive energy icon centres.
+## Sized so 5 circles plus a board overflow '+' all fit within the card width.
+const ENERGY_NORM_STEP_X := 0.15
+
+## Tool: horizontal centre on the left edge of the card (50 % overlap).
+const TOOL_NORM_X := 0.0
+
+## Y fraction of the first tool icon centre. Derived from board constants:
+##   (CARD_HEIGHT / 2 + ICON_START_Z) / CARD_HEIGHT = (0.44 - 0.25) / 0.88 ≈ 0.216
+const TOOL_NORM_START_Y := 0.216
+
+## Y fraction step between consecutive tool icon centres.
+##   ICON_SPACING / CARD_HEIGHT = 0.20 / 0.88 ≈ 0.227
+const TOOL_NORM_STEP_Y := 0.227
+
 
 ## Returns the colour for an energy CardInstance.
 static func energy_color(inst: CardInstance) -> Color:
