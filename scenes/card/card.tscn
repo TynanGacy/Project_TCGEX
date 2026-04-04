@@ -15,7 +15,7 @@ size = Vector3(0.63, 0.02, 0.88)
 [sub_resource type="PlaneMesh" id="PlaneMesh_face"]
 uv2_padding = 0.0
 size = Vector2(0.63, 0.88)
-center_offset = Vector3(0, 0.1, 0)
+center_offset = Vector3(0, 0.006, 0)
 
 [node name="Card" type="Node3D" unique_id=2009363533]
 script = ExtResource("1_card")

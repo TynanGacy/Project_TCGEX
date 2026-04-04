@@ -56,6 +56,7 @@ func advance_phase() -> void:
 
 func end_turn() -> void:
 	turn_number += 1
+	# Assumes exactly 2 players (0 and 1). Extend for multiplayer.
 	current_player_id = 1 - current_player_id
 	begin_turn(current_player_id)
 

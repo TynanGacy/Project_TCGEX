@@ -17,8 +17,6 @@ func add_card(card: Card) -> void:
 	cards.append(card)
 	add_child(card)
 	card.card_dropped.connect(_on_card_dropped)
-	card.drag_started.connect(_on_card_drag_started)
-	card.drag_ended.connect(_on_card_drag_ended)
 	_layout_cards()
 
 
@@ -26,8 +24,6 @@ func add_card_animated(card: Card, from_global: Vector3) -> void:
 	cards.append(card)
 	add_child(card)
 	card.card_dropped.connect(_on_card_dropped)
-	card.drag_started.connect(_on_card_drag_started)
-	card.drag_ended.connect(_on_card_drag_ended)
 	## Flag as dragging so _layout_cards sets home positions without
 	## immediately calling return_to_home on this card.
 	card.is_dragging = true
@@ -41,8 +37,6 @@ func add_card_animated(card: Card, from_global: Vector3) -> void:
 func remove_card(card: Card) -> void:
 	cards.erase(card)
 	card.card_dropped.disconnect(_on_card_dropped)
-	card.drag_started.disconnect(_on_card_drag_started)
-	card.drag_ended.disconnect(_on_card_drag_ended)
 	remove_child(card)
 	_layout_cards()
 
@@ -83,11 +77,3 @@ func _layout_cards() -> void:
 
 func _on_card_dropped(card: Card) -> void:
 	card_played.emit(card)
-
-
-func _on_card_drag_started(_card: Card) -> void:
-	pass
-
-
-func _on_card_drag_ended(_card: Card) -> void:
-	pass

@@ -2,8 +2,6 @@ class_name Board
 extends Node3D
 ## The 3D game board — a table surface with drop zones.
 
-signal card_placed(card: Card, zone: DropZone)
-
 var all_zones: Array[DropZone] = []
 
 const BENCH_SPACING := 0.7
@@ -112,20 +110,8 @@ func get_zone_at_position(world_pos: Vector3) -> DropZone:
 	return null
 
 
-func highlight_valid_zones(card: Card) -> void:
-	for zone in all_zones:
-		zone.set_highlighted(zone.can_accept_card(card))
-
-
 func clear_highlights() -> void:
 	for zone in all_zones:
 		zone.set_highlighted(false)
 
 
-func try_place_card(card: Card, world_pos: Vector3) -> bool:
-	var zone := get_zone_at_position(world_pos)
-	if zone and zone.can_accept_card(card):
-		zone.receive_card(card)
-		card_placed.emit(card, zone)
-		return true
-	return false
