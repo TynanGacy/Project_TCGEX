@@ -260,6 +260,9 @@ func _apply_card_visual(
 			_remove_prior_stage_visual(target_drop_zone, inst.prior_stage)
 		if target_drop_zone != null:
 			target_drop_zone.receive_card(card)
+			# Refresh attachment icons — needed when evolving a Pokemon that has energy/tools.
+			if inst.prior_stage != null:
+				card.update_attachment_icons()
 
 	elif "discard" in logic_location:
 		var discard := board.get_zone_by_name("Discard")
@@ -603,6 +606,18 @@ func _switch_perspective() -> void:
 	camera.transform = _p0_cam_transform if controlling_player == 0 else _p1_cam_transform
 	_configure_hand_for_player(player_hand, controlling_player == 0)
 	_configure_hand_for_player(opp_hand, controlling_player == 1)
+	_flip_board_card_rotations()
+
+
+## Rotates all board cards (excluding decks) by 180° around Y so they face the
+## camera after a perspective switch.
+func _flip_board_card_rotations() -> void:
+	for zone in board.all_zones:
+		if zone.zone_name == "Deck" or zone.zone_name == "Opp Deck":
+			continue
+		for card in zone.held_cards:
+			card.set_home(card.home_position, card.home_rotation + Vector3(0, PI, 0), card.hand_index)
+			card.return_to_home()
 
 
 ## Sets face-down state and drag wiring for all cards in a hand.
