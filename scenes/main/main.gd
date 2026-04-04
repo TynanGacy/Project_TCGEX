@@ -609,15 +609,14 @@ func _switch_perspective() -> void:
 	_flip_board_card_rotations()
 
 
-## Rotates all board cards (excluding decks) by 180° around Y so they face the
-## camera after a perspective switch.
+## Toggles the perspective_y_rotation on every board zone (excluding decks) so
+## that all currently held cards — and any cards placed in future — face the camera.
 func _flip_board_card_rotations() -> void:
 	for zone in board.all_zones:
 		if zone.zone_name == "Deck" or zone.zone_name == "Opp Deck":
 			continue
-		for card in zone.held_cards:
-			card.set_home(card.home_position, card.home_rotation + Vector3(0, PI, 0), card.hand_index)
-			card.return_to_home()
+		zone.perspective_y_rotation = fmod(zone.perspective_y_rotation + PI, TAU)
+		zone.relayout()
 
 
 ## Sets face-down state and drag wiring for all cards in a hand.
