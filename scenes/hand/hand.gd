@@ -4,11 +4,11 @@ extends Node3D
 
 signal card_played(card: Card)
 
-const CARD_SPACING := 0.5  ## Default overlap spacing (< CARD_WIDTH so cards stack)
+const CARD_SPACING := 0.7
 const MAX_FAN_ANGLE := 5.0  ## Degrees of rotation at edges
 const CURVE_HEIGHT := 0.05  ## Vertical curve in the fan
-const MAX_HAND_WIDTH := 4.0  ## World-unit cap before spacing compresses further
-const MIN_CARD_SPACING := 0.15  ## Never overlap cards more than this
+const MAX_HAND_WIDTH := 6.5  ## World-unit cap before spacing compresses
+const MIN_CARD_SPACING := 0.2  ## Never overlap cards more than this
 
 var cards: Array[Card] = []
 
@@ -71,15 +71,13 @@ func _layout_cards() -> void:
 		## Normalised position: -1 (left) to 1 (right)
 		var t := 0.0 if count == 1 else (float(i) / (count - 1)) * 2.0 - 1.0
 
-		## Rightmost card gets the highest Z (closest to camera), so it renders
-		## on top when cards overlap — matching a physical hand held by a player.
-		## Scale z_depth per card based on count so separation stays visible.
-		var z_step := 0.01 if count <= 6 else 0.005
-		var z_depth := i * z_step
+		## Each card sits slightly higher in Z (closer to camera at +Z) than the
+		## one to its left, so rightmost always renders on top during overlap.
+		var z_depth := i * 0.01
 
 		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, z_depth)
 		card.set_home(home, Vector3(0.0, -t * deg_to_rad(MAX_FAN_ANGLE), 0.0), i)
-		## Reorder in the scene tree so later children (rightmost) draw on top.
+		## Scene-tree order: later children draw on top (rightmost = last).
 		move_child(card, i)
 		if not card.is_dragging:
 			card.return_to_home()
