@@ -13,6 +13,11 @@ extends Node3D
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 
+## Perspective — 0 = player 0 (near side), 1 = player 1 (far side)
+var controlling_player: int = 0
+var _p0_cam_transform: Transform3D
+var _p1_cam_transform: Transform3D
+
 ## Drag state
 var dragged_card: Card = null
 var hovered_card: Card = null
@@ -24,6 +29,8 @@ var _popup_art: TextureRect = null
 var _popup_name_label: Label = null
 var _popup_type_label: Label = null
 var _popup_details_label: Label = null
+var _popup_attachments_section: VBoxContainer = null
+var _popup_attachments_row: HBoxContainer = null
 
 ## Turn engine
 @onready var turn_controller: TurnController = TurnControllerSingleton
@@ -38,6 +45,19 @@ const DRAG_PLANE := Plane(Vector3.UP, 0.0)
 func _ready() -> void:
 	player_hand.card_played.connect(_on_card_played)
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
+
+	## Store camera transforms for both perspectives.
+	_p0_cam_transform = camera.transform
+	_p1_cam_transform = Transform3D(
+		Basis(Vector3.UP, PI) * camera.basis,
+		camera.position.rotated(Vector3.UP, PI)
+	)
+
+	## Add perspective-switch button to the HUD top bar.
+	var switch_btn := Button.new()
+	switch_btn.text = "Switch Perspective"
+	switch_btn.pressed.connect(_switch_perspective)
+	$HUD/TopBar.add_child(switch_btn)
 
 	## Set up game state
 	game_state = GameState.new(2, 2, 4)
@@ -61,8 +81,8 @@ func _deal_starting_hand(count: int) -> void:
 	print("Dealing %d cards. Hand position: %s" % [count, str(player_hand.global_position)])
 
 	# Build a randomised test deck for each player.
-	game_state.setup_player_deck(0, TestDeckFactory.build_deck(20))
-	game_state.setup_player_deck(1, TestDeckFactory.build_deck(20))
+	game_state.setup_player_deck(0, TestDeckFactory.build_deck(60))
+	game_state.setup_player_deck(1, TestDeckFactory.build_deck(60))
 	game_state.draw_starting_hand(0, count)
 	game_state.draw_starting_hand(1, count)
 
@@ -130,6 +150,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _try_pick_card(screen_pos: Vector2) -> void:
 	var card := _raycast_card(screen_pos)
 	if card:
+		if card.face_down:
+			return
 		_source_zone = board.get_zone_containing(card)
 		if _source_zone:
 			_source_zone.remove_card(card)
@@ -167,14 +189,14 @@ func _try_drop_card() -> void:
 	action.apply(game_state)
 	_apply_card_visual(card, from_zone, inst, target_drop_zone)
 	_log_line("[P%d][%s] %s" % [
-		0, TurnPhase.phase_to_string(game_state.phase), action.description()
+		controlling_player, TurnPhase.phase_to_string(game_state.phase), action.description()
 	])
 
 
 ## Builds the appropriate GameAction for dropping inst onto drop_zone.
 ## Returns null when no valid play exists for this card+zone combination.
 func _build_play_action(inst: CardInstance, drop_zone: DropZone) -> GameAction:
-	const PID := 0
+	var PID := controlling_player
 
 	if inst.data is PokemonCardData:
 		var pdata := inst.data as PokemonCardData
@@ -182,6 +204,8 @@ func _build_play_action(inst: CardInstance, drop_zone: DropZone) -> GameAction:
 		if slot == "":
 			return null
 		if pdata.stage == PokemonCardData.Stage.BASIC:
+			if drop_zone != null and not drop_zone.held_cards.is_empty():
+				return null
 			return ActionPlayBasicPokemon.new(PID, inst, slot)
 		else:
 			var target := _instance_in_drop_zone(drop_zone)
@@ -222,7 +246,10 @@ func _apply_card_visual(
 ) -> void:
 	# Detach from hand if it was dragged from there.
 	if from_zone == null:
-		player_hand.remove_card(card)
+		if player_hand.cards.has(card):
+			player_hand.remove_card(card)
+		elif opp_hand.cards.has(card):
+			opp_hand.remove_card(card)
 		board.add_child(card)
 
 	var logic_location := game_state.board.find_card_location(inst)
@@ -233,6 +260,9 @@ func _apply_card_visual(
 			_remove_prior_stage_visual(target_drop_zone, inst.prior_stage)
 		if target_drop_zone != null:
 			target_drop_zone.receive_card(card)
+			# Refresh attachment icons — needed when evolving a Pokemon that has energy/tools.
+			if inst.prior_stage != null:
+				card.update_attachment_icons()
 
 	elif "discard" in logic_location:
 		var discard := board.get_zone_by_name("Discard")
@@ -261,14 +291,21 @@ func _remove_prior_stage_visual(zone: DropZone, prior_inst: CardInstance) -> voi
 			return
 
 
-## Returns "active" or "bench" for player-owned play zones, "" for everything else.
+## Returns "active" or "bench" for the controlling player's zones, "" for everything else.
 func _zone_name_to_pokemon_slot(drop_zone: DropZone) -> String:
 	if drop_zone == null:
 		return ""
-	if drop_zone.zone_name == "Active" or drop_zone.zone_name.begins_with("Active "):
-		return "active"
-	if drop_zone.zone_name.begins_with("Bench"):
-		return "bench"
+	var zn := drop_zone.zone_name
+	if controlling_player == 0:
+		if zn == "Active" or zn.begins_with("Active "):
+			return "active"
+		if zn.begins_with("Bench"):
+			return "bench"
+	else:
+		if zn == "Opp Active" or zn.begins_with("Opp Active "):
+			return "active"
+		if zn.begins_with("Opp Bench"):
+			return "bench"
 	return ""
 
 
@@ -381,6 +418,24 @@ func _build_card_popup() -> void:
 	_popup_details_label.custom_minimum_size = Vector2(246, 0)
 	vbox.add_child(_popup_details_label)
 
+	## Attachment icon section — hidden until a card with attachments is shown.
+	_popup_attachments_section = VBoxContainer.new()
+	_popup_attachments_section.visible = false
+	_popup_attachments_section.add_theme_constant_override("separation", 4)
+	vbox.add_child(_popup_attachments_section)
+
+	_popup_attachments_section.add_child(HSeparator.new())
+
+	var attach_header := Label.new()
+	attach_header.text = "Attached:"
+	attach_header.add_theme_font_size_override("font_size", 12)
+	attach_header.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
+	_popup_attachments_section.add_child(attach_header)
+
+	_popup_attachments_row = HBoxContainer.new()
+	_popup_attachments_row.add_theme_constant_override("separation", 4)
+	_popup_attachments_section.add_child(_popup_attachments_row)
+
 	$HUD.add_child(_card_popup)
 
 
@@ -448,22 +503,58 @@ func _populate_card_popup(inst: CardInstance) -> void:
 	if inst.data.rules_text != "":
 		details += "\n\n%s" % inst.data.rules_text
 
-	## Show attached energy/tools when inspecting a board Pokemon.
-	if not inst.attached_energy.is_empty():
-		var names := ""
-		for e in inst.attached_energy:
-			if e.data != null:
-				names += (", " if names != "" else "") + e.data.display_name
-		details += "\nAttached energy: %s" % names
-	if not inst.attached_tools.is_empty():
-		var names := ""
-		for t in inst.attached_tools:
-			if t.data != null:
-				names += (", " if names != "" else "") + t.data.display_name
-		details += "\nTool: %s" % names
-
 	_popup_type_label.text = type_str
 	_popup_details_label.text = details.strip_edges()
+
+	## Rebuild attachment icon circles.
+	for child in _popup_attachments_row.get_children():
+		child.queue_free()
+	var has_attachments := false
+	for energy in inst.attached_energy:
+		if energy.data is EnergyCardData:
+			var color := Card.ENERGY_TYPE_COLORS[(energy.data as EnergyCardData).energy_type]
+			_add_attachment_icon(energy, color)
+			has_attachments = true
+	for tool in inst.attached_tools:
+		_add_attachment_icon(tool, Card.TOOL_ICON_COLOR)
+		has_attachments = true
+	_popup_attachments_section.visible = has_attachments
+
+
+## Adds a coloured circle button for an attached card to _popup_attachments_row.
+## Right-clicking the circle navigates the popup to show that card's details.
+func _add_attachment_icon(inst: CardInstance, color: Color) -> void:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(22, 22)
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.text = ""
+	if inst.data != null:
+		btn.tooltip_text = inst.data.display_name
+
+	var normal_style := StyleBoxFlat.new()
+	normal_style.bg_color = color
+	normal_style.corner_radius_top_left    = 11
+	normal_style.corner_radius_top_right   = 11
+	normal_style.corner_radius_bottom_left = 11
+	normal_style.corner_radius_bottom_right = 11
+
+	var hover_style := normal_style.duplicate() as StyleBoxFlat
+	hover_style.bg_color = color.lightened(0.25)
+
+	btn.add_theme_stylebox_override("normal",  normal_style)
+	btn.add_theme_stylebox_override("hover",   hover_style)
+	btn.add_theme_stylebox_override("pressed", normal_style)
+
+	btn.gui_input.connect(_on_attachment_icon_input.bind(inst))
+	_popup_attachments_row.add_child(btn)
+
+
+func _on_attachment_icon_input(event: InputEvent, inst: CardInstance) -> void:
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_RIGHT:
+			_populate_card_popup(inst)
+			get_viewport().set_input_as_handled()
 
 
 func _on_popup_gui_input(event: InputEvent) -> void:
@@ -496,15 +587,32 @@ func _highlight_valid_zones_for(card: Card) -> void:
 		# Item / Supporter / Stadium need no specific drop target.
 
 
-## Highlights empty Active and non-full Bench zones.
-func _highlight_pokemon_play_zones() -> void:
+## Returns visual zone names for the controlling player's active slots.
+func _player_active_zone_names() -> Array[String]:
+	var names: Array[String] = []
+	var prefix := "" if controlling_player == 0 else "Opp "
 	for i in range(game_state.board.num_active_slots):
-		var aname := "Active" if i == 0 else "Active %d" % (i + 1)
-		var active := board.get_zone_by_name(aname)
+		names.append(prefix + ("Active" if i == 0 else "Active %d" % (i + 1)))
+	return names
+
+
+## Returns visual zone names for the controlling player's bench slots.
+func _player_bench_zone_names() -> Array[String]:
+	var names: Array[String] = []
+	var prefix := "" if controlling_player == 0 else "Opp "
+	for i in range(1, game_state.board.max_bench_size + 1):
+		names.append(prefix + "Bench %d" % i)
+	return names
+
+
+## Highlights empty Active and non-full Bench zones for the controlling player.
+func _highlight_pokemon_play_zones() -> void:
+	for zone_name in _player_active_zone_names():
+		var active := board.get_zone_by_name(zone_name)
 		if active != null and active.held_cards.is_empty():
 			active.set_highlighted(true)
-	for i in range(1, game_state.board.max_bench_size + 1):
-		var bench := board.get_zone_by_name("Bench %d" % i)
+	for zone_name in _player_bench_zone_names():
+		var bench := board.get_zone_by_name(zone_name)
 		if bench != null and bench.held_cards.size() < bench.max_cards:
 			bench.set_highlighted(true)
 
@@ -514,11 +622,7 @@ func _highlight_evolution_zones_for(inst: CardInstance) -> void:
 	if not (inst.data is PokemonCardData):
 		return
 	var pdata := inst.data as PokemonCardData
-	var candidate_names: Array[String] = []
-	for i in range(game_state.board.num_active_slots):
-		candidate_names.append("Active" if i == 0 else "Active %d" % (i + 1))
-	for i in range(1, game_state.board.max_bench_size + 1):
-		candidate_names.append("Bench %d" % i)
+	var candidate_names := _player_active_zone_names() + _player_bench_zone_names()
 	for zone_name in candidate_names:
 		var zone := board.get_zone_by_name(zone_name)
 		if zone == null or zone.held_cards.is_empty():
@@ -533,11 +637,7 @@ func _highlight_evolution_zones_for(inst: CardInstance) -> void:
 
 ## Highlights Active / Bench zones that currently hold a Pokemon.
 func _highlight_zones_with_pokemon() -> void:
-	var candidate_names: Array[String] = []
-	for i in range(game_state.board.num_active_slots):
-		candidate_names.append("Active" if i == 0 else "Active %d" % (i + 1))
-	for i in range(1, game_state.board.max_bench_size + 1):
-		candidate_names.append("Bench %d" % i)
+	var candidate_names := _player_active_zone_names() + _player_bench_zone_names()
 	for zone_name in candidate_names:
 		var zone := board.get_zone_by_name(zone_name)
 		if zone == null or zone.held_cards.is_empty():
@@ -545,6 +645,41 @@ func _highlight_zones_with_pokemon() -> void:
 		var target_inst := zone.held_cards[0].card_instance
 		if target_inst != null and target_inst.data is PokemonCardData:
 			zone.set_highlighted(true)
+
+
+## Toggles control between player 0 (near side) and player 1 (far side).
+func _switch_perspective() -> void:
+	controlling_player = 1 - controlling_player
+	camera.transform = _p0_cam_transform if controlling_player == 0 else _p1_cam_transform
+	_configure_hand_for_player(player_hand, controlling_player == 0)
+	_configure_hand_for_player(opp_hand, controlling_player == 1)
+	_flip_board_card_rotations()
+
+
+## Toggles the perspective_y_rotation on every board zone (excluding decks) so
+## that all currently held cards — and any cards placed in future — face the camera.
+func _flip_board_card_rotations() -> void:
+	for zone in board.all_zones:
+		if zone.zone_name == "Deck" or zone.zone_name == "Opp Deck":
+			continue
+		zone.perspective_y_rotation = fmod(zone.perspective_y_rotation + PI, TAU)
+		zone.relayout()
+
+
+## Sets face-down state and drag wiring for all cards in a hand.
+func _configure_hand_for_player(hand: Hand, is_controlling: bool) -> void:
+	for card in hand.cards:
+		card.face_down = not is_controlling
+		if is_controlling:
+			if not card.drag_started.is_connected(_on_card_drag_started):
+				card.drag_started.connect(_on_card_drag_started)
+			if not card.drag_ended.is_connected(_on_card_drag_ended):
+				card.drag_ended.connect(_on_card_drag_ended)
+		else:
+			if card.drag_started.is_connected(_on_card_drag_started):
+				card.drag_started.disconnect(_on_card_drag_started)
+			if card.drag_ended.is_connected(_on_card_drag_ended):
+				card.drag_ended.disconnect(_on_card_drag_ended)
 
 
 ## Turn engine handlers
@@ -588,12 +723,16 @@ func _sync_deck_draw_visual(inst: CardInstance, pid: int) -> void:
 	deck_zone.remove_card(drawn_card)
 	board.remove_child(drawn_card)
 	if pid == 0:
-		drawn_card.face_down = false
-		drawn_card.drag_started.connect(_on_card_drag_started)
-		drawn_card.drag_ended.connect(_on_card_drag_ended)
+		drawn_card.face_down = controlling_player != 0
+		if controlling_player == 0:
+			drawn_card.drag_started.connect(_on_card_drag_started)
+			drawn_card.drag_ended.connect(_on_card_drag_ended)
 		player_hand.add_card_animated(drawn_card, from_global)
 	else:
-		## Opponent card stays face-down; no drag wiring needed.
+		drawn_card.face_down = controlling_player != 1
+		if controlling_player == 1:
+			drawn_card.drag_started.connect(_on_card_drag_started)
+			drawn_card.drag_ended.connect(_on_card_drag_ended)
 		opp_hand.add_card_animated(drawn_card, from_global)
 
 

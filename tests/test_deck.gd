@@ -48,7 +48,7 @@ func test_setup_deck_does_not_cross_contaminate_players() -> void:
 # --- Starting hand ---
 
 func test_draw_starting_hand_moves_cards_to_hand() -> void:
-	state.setup_player_deck(0, _make_deck(20))
+	state.setup_player_deck(0, _make_deck(60))
 	state.draw_starting_hand(0, 7)
 	assert_eq(state.board.count_cards_in_zone("p0_hand"), 7)
 	assert_eq(state.board.count_cards_in_zone("p0_deck"), 13)

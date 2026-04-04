@@ -5,7 +5,7 @@ class_name TestDeckFactory
 ## card type / sub-type.  display_name is written so the Label3D on each
 ## card face makes the type immediately readable in-game.
 
-static func build_deck(size: int = 20) -> Array[CardData]:
+static func build_deck(size: int = 60) -> Array[CardData]:
 	var pool := _build_pool()
 	if pool.is_empty():
 		push_error("build_deck: pool is empty, cannot build deck")
@@ -67,6 +67,8 @@ static func _card_from_json(data: Dictionary) -> CardData:
 
 	if card != null:
 		card.art = _load_art(data["card_id"])
+		if card is PokemonCardData:
+			(card as PokemonCardData).name_slug = data.get("name_slug", data.get("card_id", ""))
 		return card
 
 	push_warning("_card_from_json: unhandled card_type '%s' for %s" % [data.get("card_type"), data.get("card_id")])

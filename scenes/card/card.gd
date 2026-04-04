@@ -178,7 +178,7 @@ func start_drag() -> void:
 	is_hovered = false
 	var tween := _new_tween()
 	tween.tween_property(self, "position:y", home_position.y + DRAG_LIFT, TWEEN_SPEED)
-	tween.tween_property(self, "rotation", Vector3.ZERO, TWEEN_SPEED)
+	tween.tween_property(self, "rotation", Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)
 	drag_started.emit(self)
 
 
@@ -197,7 +197,7 @@ func move_to_drag_position(world_pos: Vector3) -> void:
 func _on_hover_start() -> void:
 	var tween := _new_tween()
 	tween.tween_property(self, "position:y", home_position.y + HOVER_LIFT, TWEEN_SPEED)
-	tween.tween_property(self, "rotation", Vector3.ZERO, TWEEN_SPEED)
+	tween.tween_property(self, "rotation", Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)
 
 
 func _on_hover_end() -> void:

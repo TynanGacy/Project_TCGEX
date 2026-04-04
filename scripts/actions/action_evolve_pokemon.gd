@@ -75,8 +75,10 @@ func validate(state: GameState) -> ActionResult:
 func apply(state: GameState) -> void:
 	var target_zone_id := state.board.find_card_location(target)
 
-	# Damage counters carry over to the evolution.
+	# Carry over damage and all attachments from the prior stage.
 	card.damage = target.damage
+	card.attached_energy = target.attached_energy.duplicate()
+	card.attached_tools = target.attached_tools.duplicate()
 
 	# Keep a reference to the card underneath.
 	card.prior_stage = target

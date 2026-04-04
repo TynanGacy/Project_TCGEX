@@ -9,6 +9,9 @@ const MAX_FAN_ANGLE := 5.0  ## Degrees of rotation at edges
 const CURVE_HEIGHT := 0.05  ## Vertical curve in the fan
 const MAX_HAND_WIDTH := 6.5  ## World-unit cap before spacing compresses
 const MIN_CARD_SPACING := 0.2  ## Never overlap cards more than this
+## Each card tilts so its right side is slightly lower than its left.
+## When cards overlap this makes each card appear above the one to its left.
+const HAND_TILT_DEG := -4.0
 
 var cards: Array[Card] = []
 
@@ -65,12 +68,13 @@ func _layout_cards() -> void:
 		## Normalised position: -1 (left) to 1 (right)
 		var t := 0.0 if count == 1 else (float(i) / (count - 1)) * 2.0 - 1.0
 
-		## Leftmost card gets the highest Z (closest to camera), ensuring it
-		## always renders on top when cards overlap.
-		var z_depth := (count - 1 - i) * 0.002
-
-		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, z_depth)
-		card.set_home(home, Vector3(0.0, -t * deg_to_rad(MAX_FAN_ANGLE), 0.0), i)
+		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, 0.0)
+		## All cards share the same tilt: left side up, right side down.
+		## Where cards overlap, each card's left portion rises above its left
+		## neighbour's right portion — like a spread physical hand.
+		card.set_home(home, Vector3(0.0, -t * deg_to_rad(MAX_FAN_ANGLE), deg_to_rad(HAND_TILT_DEG)), i)
+		## Scene-tree order: later children draw on top (rightmost = last).
+		move_child(card, i)
 		if not card.is_dragging:
 			card.return_to_home()
 

@@ -9,6 +9,10 @@ signal card_received(card: Card)
 @export var highlight_color: Color = Color(0.3, 0.7, 0.3, 0.7)
 @export var max_cards: int = 1
 
+## Extra Y rotation (radians) applied to every card placed here.
+## Set to PI when the viewer's perspective is flipped 180°.
+var perspective_y_rotation: float = 0.0
+
 const ZONE_WIDTH := 0.7
 const ZONE_HEIGHT := 0.95
 
@@ -66,8 +70,15 @@ func contains_point(point: Vector3) -> bool:
 
 
 func _layout_held_cards() -> void:
+	var card_rotation := rotation + Vector3(0, perspective_y_rotation, 0)
 	for i in held_cards.size():
 		var card := held_cards[i]
 		var target := global_position + Vector3(0, 0.02 + i * 0.005, 0)
-		card.set_home(target, rotation, 0)
-		card.return_to_home()
+		card.set_home(target, card_rotation, 0)
+		if not card.is_dragging:
+			card.return_to_home()
+
+
+## Re-applies the current perspective_y_rotation to all held cards.
+func relayout() -> void:
+	_layout_held_cards()
