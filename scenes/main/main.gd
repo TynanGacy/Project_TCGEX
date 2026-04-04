@@ -26,11 +26,7 @@ var _source_zone: DropZone = null
 ## Card inspector popup
 var _card_popup: PanelContainer = null
 var _popup_art: TextureRect = null
-var _popup_name_label: Label = null
-var _popup_type_label: Label = null
-var _popup_details_label: Label = null
-var _popup_attachments_section: VBoxContainer = null
-var _popup_attachments_row: HBoxContainer = null
+var _popup_attachments_row: VBoxContainer = null
 
 ## Turn engine
 @onready var turn_controller: TurnController = TurnControllerSingleton
@@ -380,61 +376,35 @@ func _on_card_drag_ended(_card: Card) -> void:
 func _build_card_popup() -> void:
 	_card_popup = PanelContainer.new()
 	_card_popup.visible = false
-	_card_popup.custom_minimum_size = Vector2(270, 0)
+	_card_popup.custom_minimum_size = Vector2(400, 0)
 	_card_popup.position = Vector2(10, 50)
 	_card_popup.gui_input.connect(_on_popup_gui_input)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
 	margin.add_theme_constant_override("margin_top", 10)
 	margin.add_theme_constant_override("margin_bottom", 10)
 	_card_popup.add_child(margin)
 
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 5)
-	margin.add_child(vbox)
+	## Fixed-size Control lets art and circles overlap freely.
+	var art_container := Control.new()
+	art_container.custom_minimum_size = Vector2(380, 533)
+	art_container.clip_contents = false
+	margin.add_child(art_container)
 
 	_popup_art = TextureRect.new()
-	_popup_art.custom_minimum_size = Vector2(246, 344)
+	_popup_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_popup_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_popup_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	vbox.add_child(_popup_art)
+	art_container.add_child(_popup_art)
 
-	vbox.add_child(HSeparator.new())
-
-	_popup_name_label = Label.new()
-	_popup_name_label.add_theme_font_size_override("font_size", 16)
-	vbox.add_child(_popup_name_label)
-
-	_popup_type_label = Label.new()
-	_popup_type_label.add_theme_color_override("font_color", Color(0.35, 0.35, 0.6))
-	vbox.add_child(_popup_type_label)
-
-	vbox.add_child(HSeparator.new())
-
-	_popup_details_label = Label.new()
-	_popup_details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_popup_details_label.custom_minimum_size = Vector2(246, 0)
-	vbox.add_child(_popup_details_label)
-
-	## Attachment icon section — hidden until a card with attachments is shown.
-	_popup_attachments_section = VBoxContainer.new()
-	_popup_attachments_section.visible = false
-	_popup_attachments_section.add_theme_constant_override("separation", 4)
-	vbox.add_child(_popup_attachments_section)
-
-	_popup_attachments_section.add_child(HSeparator.new())
-
-	var attach_header := Label.new()
-	attach_header.text = "Attached:"
-	attach_header.add_theme_font_size_override("font_size", 12)
-	attach_header.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
-	_popup_attachments_section.add_child(attach_header)
-
-	_popup_attachments_row = HBoxContainer.new()
-	_popup_attachments_row.add_theme_constant_override("separation", 4)
-	_popup_attachments_section.add_child(_popup_attachments_row)
+	## Attachment circles — vertical stack overlapping the right side of the card.
+	_popup_attachments_row = VBoxContainer.new()
+	_popup_attachments_row.add_theme_constant_override("separation", -8)
+	_popup_attachments_row.visible = false
+	_popup_attachments_row.position = Vector2(338, 30)
+	art_container.add_child(_popup_attachments_row)
 
 	$HUD.add_child(_card_popup)
 
@@ -450,62 +420,6 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 func _populate_card_popup(inst: CardInstance) -> void:
 	_popup_art.texture = inst.data.art
 
-	_popup_name_label.text = inst.data.display_name
-
-	var type_str := ""
-	var details := ""
-
-	if inst.data is PokemonCardData:
-		var pdata := inst.data as PokemonCardData
-		var stage_label := ""
-		match pdata.stage:
-			PokemonCardData.Stage.BASIC:   stage_label = "Basic"
-			PokemonCardData.Stage.STAGE1:  stage_label = "Stage 1"
-			PokemonCardData.Stage.STAGE2:  stage_label = "Stage 2"
-		type_str = "Pokemon — %s" % stage_label
-
-		details = "HP: %d   Type: %s" % [
-			pdata.hp_max,
-			PokemonCardData.energy_type_to_string(pdata.pokemon_type)
-		]
-		if pdata.evolves_from != "":
-			details += "\nEvolves from: %s" % pdata.evolves_from
-		if pdata.weakness != PokemonCardData.EnergyType.NONE:
-			details += "\nWeakness: %s ×2" % PokemonCardData.energy_type_to_string(pdata.weakness)
-		if pdata.resistance != PokemonCardData.EnergyType.NONE:
-			details += "\nResistance: %s -30" % PokemonCardData.energy_type_to_string(pdata.resistance)
-		details += "\nRetreat: %d" % pdata.retreat_cost
-		if inst.damage > 0:
-			details += "\nDamage taken: %d  (%d HP left)" % [inst.damage, inst.hp_remaining()]
-		for atk in pdata.attacks:
-			details += "\n\n[%s]  %d dmg" % [atk.name, atk.base_damage]
-			if atk.text != "":
-				details += "\n%s" % atk.text
-
-	elif inst.data is EnergyCardData:
-		var edata := inst.data as EnergyCardData
-		type_str = "Energy"
-		details = "Type: %s\nProvides: %d" % [
-			PokemonCardData.energy_type_to_string(edata.energy_type),
-			edata.provides
-		]
-
-	elif inst.data is TrainerCardData:
-		var tdata := inst.data as TrainerCardData
-		var kind_label := ""
-		match tdata.trainer_kind:
-			TrainerCardData.TrainerKind.ITEM:      kind_label = "Item"
-			TrainerCardData.TrainerKind.SUPPORTER: kind_label = "Supporter"
-			TrainerCardData.TrainerKind.STADIUM:   kind_label = "Stadium"
-			TrainerCardData.TrainerKind.TOOL:      kind_label = "Tool"
-		type_str = "Trainer — %s" % kind_label
-
-	if inst.data.rules_text != "":
-		details += "\n\n%s" % inst.data.rules_text
-
-	_popup_type_label.text = type_str
-	_popup_details_label.text = details.strip_edges()
-
 	## Rebuild attachment icon circles.
 	for child in _popup_attachments_row.get_children():
 		child.queue_free()
@@ -518,14 +432,14 @@ func _populate_card_popup(inst: CardInstance) -> void:
 	for tool in inst.attached_tools:
 		_add_attachment_icon(tool, Card.TOOL_ICON_COLOR)
 		has_attachments = true
-	_popup_attachments_section.visible = has_attachments
+	_popup_attachments_row.visible = has_attachments
 
 
 ## Adds a coloured circle button for an attached card to _popup_attachments_row.
 ## Right-clicking the circle navigates the popup to show that card's details.
 func _add_attachment_icon(inst: CardInstance, color: Color) -> void:
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(22, 22)
+	btn.custom_minimum_size = Vector2(44, 44)
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.text = ""
 	if inst.data != null:
@@ -533,10 +447,10 @@ func _add_attachment_icon(inst: CardInstance, color: Color) -> void:
 
 	var normal_style := StyleBoxFlat.new()
 	normal_style.bg_color = color
-	normal_style.corner_radius_top_left    = 11
-	normal_style.corner_radius_top_right   = 11
-	normal_style.corner_radius_bottom_left = 11
-	normal_style.corner_radius_bottom_right = 11
+	normal_style.corner_radius_top_left    = 22
+	normal_style.corner_radius_top_right   = 22
+	normal_style.corner_radius_bottom_left = 22
+	normal_style.corner_radius_bottom_right = 22
 
 	var hover_style := normal_style.duplicate() as StyleBoxFlat
 	hover_style.bg_color = color.lightened(0.25)
