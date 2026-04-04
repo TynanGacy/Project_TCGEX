@@ -423,10 +423,10 @@ const _POPUP_TOOL_SIZE   := 96   # tool circle diameter in pixels
 func _populate_card_popup(inst: CardInstance) -> void:
 	_popup_art.texture = inst.data.art
 
-	## Remove previous attachment buttons.
+	## Remove previous attachment buttons (keep only the art TextureRect).
 	for child in _popup_art_container.get_children():
-		if child.name.begins_with("PopupAttach_"):
-			child.queue_free()
+		if child != _popup_art:
+			child.free()
 
 	## Tool circles — individually positioned on the left edge using the same
 	## normalised fractions as the 3D board so vertical placement matches.
@@ -435,7 +435,6 @@ func _populate_card_popup(inst: CardInstance) -> void:
 		var frac_y := AttachmentDisplay.TOOL_NORM_START_Y + i * AttachmentDisplay.TOOL_NORM_STEP_Y
 		var cy := _POPUP_ART_H * frac_y
 		var btn := _make_popup_circle_button(inst.attached_tools[i], AttachmentDisplay.TOOL_ICON_COLOR, _POPUP_TOOL_SIZE)
-		btn.name = "PopupAttach_T%d" % i
 		## Centre on left edge: x_centre = 0, so top-left x = -tool_r = -48.
 		btn.position = Vector2(-tool_r, cy - tool_r)
 		_popup_art_container.add_child(btn)
@@ -451,7 +450,6 @@ func _populate_card_popup(inst: CardInstance) -> void:
 		var cx := _POPUP_ART_W * frac_x
 		var cy := _POPUP_ART_H + row * (_POPUP_ENERGY_SIZE + 8.0)
 		var btn := _make_popup_circle_button(sorted_energy[i], AttachmentDisplay.energy_color(sorted_energy[i]), _POPUP_ENERGY_SIZE)
-		btn.name = "PopupAttach_E%d" % i
 		btn.position = Vector2(cx - energy_r, cy - energy_r)
 		_popup_art_container.add_child(btn)
 
