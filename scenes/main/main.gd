@@ -426,7 +426,7 @@ func _populate_card_popup(inst: CardInstance) -> void:
 	## Remove previous attachment buttons (keep only the art TextureRect).
 	for child in _popup_art_container.get_children():
 		if child != _popup_art:
-			child.free()
+			child.queue_free()
 
 	## Tool circles — individually positioned on the left edge using the same
 	## normalised fractions as the 3D board so vertical placement matches.
