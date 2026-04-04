@@ -30,28 +30,17 @@ const DRAW_SPEED := 0.5
 ## Colour shown on the face mesh when the card is face-down (back design).
 const BACK_COLOR := Color(0.08, 0.12, 0.40)
 
-## Attachment icon layout
+## Tool icon layout (left edge of card).
 const ICON_RADIUS := 0.08
 const ICON_HEIGHT := 0.004
 const ICON_Y := 0.012
 const ICON_START_Z := -0.25
 const ICON_SPACING := 0.20
 
-## Energy type colours — order must match PokemonCardData.EnergyType enum.
-const ENERGY_TYPE_COLORS: Array[Color] = [
-	Color(0.70, 0.70, 0.70),  # NONE
-	Color(0.95, 0.40, 0.10),  # FIRE
-	Color(0.20, 0.50, 0.95),  # WATER
-	Color(0.20, 0.75, 0.20),  # GRASS
-	Color(0.95, 0.85, 0.10),  # LIGHTNING
-	Color(0.70, 0.20, 0.90),  # PSYCHIC
-	Color(0.75, 0.35, 0.10),  # FIGHTING
-	Color(0.15, 0.08, 0.28),  # DARKNESS
-	Color(0.55, 0.60, 0.65),  # METAL
-	Color(0.10, 0.55, 0.50),  # DRAGON
-	Color(0.85, 0.82, 0.75),  # COLORLESS
-]
-const TOOL_ICON_COLOR := Color(0.50, 0.20, 0.70)
+## Energy icon layout (bottom edge of card, smaller than tool icons).
+const ENERGY_ICON_RADIUS := 0.026   # ~1/3 of ICON_RADIUS
+const ENERGY_ICON_HEIGHT := 0.004
+const ENERGY_ICON_MAX := 5          # max circles shown before overflow "+" indicator
 
 ## State
 var is_dragging := false
@@ -240,18 +229,79 @@ func update_attachment_icons() -> void:
 			child.queue_free()
 	if card_instance == null:
 		return
-	var index := 0
-	for energy in card_instance.attached_energy:
-		_spawn_attachment_icon(energy, index)
-		index += 1
-	for tool in card_instance.attached_tools:
-		_spawn_attachment_icon(tool, index)
-		index += 1
+
+	# Energy circles along the bottom edge in canonical order.
+	var sorted_energy := AttachmentDisplay.sort_energy(card_instance.attached_energy)
+	var energy_count := sorted_energy.size()
+	var overflow := energy_count > ENERGY_ICON_MAX
+	var visible_count := ENERGY_ICON_MAX if overflow else energy_count
+	var slot_count := visible_count + (1 if overflow else 0)
+
+	for i in range(visible_count):
+		_spawn_energy_icon(sorted_energy[i], _energy_x(i, slot_count), i)
+	if overflow:
+		_spawn_energy_overflow(_energy_x(visible_count, slot_count))
+
+	# Tool circles on the left edge (unchanged layout).
+	for i in range(card_instance.attached_tools.size()):
+		_spawn_tool_icon(card_instance.attached_tools[i], i)
 
 
-func _spawn_attachment_icon(inst: CardInstance, index: int) -> void:
+## Returns the x coordinate for energy slot [slot] out of [total] slots,
+## distributed evenly across the card width.
+func _energy_x(slot: int, total: int) -> float:
+	if total <= 0:
+		return 0.0
+	return -CARD_WIDTH * 0.5 + CARD_WIDTH * (slot + 0.5) / total
+
+
+func _spawn_energy_icon(inst: CardInstance, x: float, index: int) -> void:
 	var icon := Node3D.new()
-	icon.name = "AttachIcon_%d" % index
+	icon.name = "AttachIcon_E%d" % index
+
+	var disc := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = ENERGY_ICON_RADIUS
+	cyl.bottom_radius = ENERGY_ICON_RADIUS
+	cyl.height = ENERGY_ICON_HEIGHT
+	disc.mesh = cyl
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = AttachmentDisplay.energy_color(inst)
+	disc.set_surface_override_material(0, mat)
+	icon.add_child(disc)
+
+	var lbl := Label3D.new()
+	lbl.text = AttachmentDisplay.energy_label(inst)
+	lbl.pixel_size = 0.0006
+	lbl.font_size = 22
+	lbl.modulate = Color.WHITE
+	lbl.position = Vector3(0.0, ENERGY_ICON_HEIGHT * 0.5 + 0.001, 0.0)
+	icon.add_child(lbl)
+
+	# Centre the disc on the bottom edge — 50% overlap.
+	icon.position = Vector3(x, ICON_Y, CARD_HEIGHT * 0.5)
+	add_child(icon)
+
+
+## Spawns a "+" text indicator after the fifth energy circle when 6+ are attached.
+func _spawn_energy_overflow(x: float) -> void:
+	var icon := Node3D.new()
+	icon.name = "AttachIcon_EOverflow"
+
+	var lbl := Label3D.new()
+	lbl.text = "+"
+	lbl.pixel_size = 0.0008
+	lbl.font_size = 28
+	lbl.modulate = Color.WHITE
+	icon.add_child(lbl)
+
+	icon.position = Vector3(x, ICON_Y, CARD_HEIGHT * 0.5)
+	add_child(icon)
+
+
+func _spawn_tool_icon(inst: CardInstance, index: int) -> void:
+	var icon := Node3D.new()
+	icon.name = "AttachIcon_T%d" % index
 
 	var disc := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
@@ -260,12 +310,12 @@ func _spawn_attachment_icon(inst: CardInstance, index: int) -> void:
 	cyl.height = ICON_HEIGHT
 	disc.mesh = cyl
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = _icon_color(inst)
+	mat.albedo_color = AttachmentDisplay.TOOL_ICON_COLOR
 	disc.set_surface_override_material(0, mat)
 	icon.add_child(disc)
 
 	var lbl := Label3D.new()
-	lbl.text = _icon_label(inst)
+	lbl.text = "T"
 	lbl.pixel_size = 0.0018
 	lbl.font_size = 22
 	lbl.modulate = Color.WHITE
@@ -278,23 +328,3 @@ func _spawn_attachment_icon(inst: CardInstance, index: int) -> void:
 		ICON_START_Z + index * ICON_SPACING
 	)
 	add_child(icon)
-
-
-func _icon_color(inst: CardInstance) -> Color:
-	if inst.data is EnergyCardData:
-		var idx := int((inst.data as EnergyCardData).energy_type)
-		if idx >= 0 and idx < ENERGY_TYPE_COLORS.size():
-			return ENERGY_TYPE_COLORS[idx]
-	elif inst.data is TrainerCardData:
-		return TOOL_ICON_COLOR
-	return Color(0.5, 0.5, 0.5)
-
-
-func _icon_label(inst: CardInstance) -> String:
-	if inst.data is EnergyCardData:
-		return PokemonCardData.energy_type_to_string(
-			(inst.data as EnergyCardData).energy_type
-		).substr(0, 1)
-	elif inst.data is TrainerCardData:
-		return "T"
-	return "?"
