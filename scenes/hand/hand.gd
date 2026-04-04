@@ -71,11 +71,11 @@ func _layout_cards() -> void:
 		## Normalised position: -1 (left) to 1 (right)
 		var t := 0.0 if count == 1 else (float(i) / (count - 1)) * 2.0 - 1.0
 
-		## Each card sits slightly higher in Z (closer to camera at +Z) than the
-		## one to its left, so rightmost always renders on top during overlap.
-		var z_depth := i * 0.01
-
-		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, z_depth)
+		## Each card sits slightly higher (Y) than the one to its left so the
+		## rightmost card always renders on top when the camera looks down.
+		## Using Y instead of Z avoids depth crossover from the fan rotation.
+		var y_stack := i * 0.005
+		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT + y_stack, 0.0)
 		card.set_home(home, Vector3(0.0, -t * deg_to_rad(MAX_FAN_ANGLE), 0.0), i)
 		## Scene-tree order: later children draw on top (rightmost = last).
 		move_child(card, i)
