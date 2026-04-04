@@ -73,10 +73,13 @@ func _layout_cards() -> void:
 
 		## Rightmost card gets the highest Z (closest to camera), so it renders
 		## on top when cards overlap — matching a physical hand held by a player.
-		var z_depth := i * 0.002
+		## z_depth pushes rightmost cards toward the camera (positive Z = toward viewer).
+		var z_depth := i * 0.005
 
 		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, z_depth)
 		card.set_home(home, Vector3(0.0, -t * deg_to_rad(MAX_FAN_ANGLE), 0.0), i)
+		## Reorder in the scene tree so later children (rightmost) draw on top.
+		move_child(card, i)
 		if not card.is_dragging:
 			card.return_to_home()
 
