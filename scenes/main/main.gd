@@ -1397,6 +1397,7 @@ func _build_card_popup() -> void:
 	## the popup shows the card with matching curved edges and corner fill.
 	var popup_mat := ShaderMaterial.new()
 	popup_mat.shader = _POPUP_ART_SHADER
+	popup_mat.set_shader_parameter("mirror_radius", 0.032)
 	_popup_art.material = popup_mat
 	_popup_art_container.add_child(_popup_art)
 

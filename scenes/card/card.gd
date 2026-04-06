@@ -79,6 +79,7 @@ func _ready() -> void:
 	_face_shader_material = ShaderMaterial.new()
 	_face_shader_material.shader = FACE_ROUNDED_SHADER
 	_face_shader_material.set_shader_parameter("corner_radius", 0.023)
+	_face_shader_material.set_shader_parameter("mirror_radius", 0.032)
 	_face_shader_material.set_shader_parameter("card_size", Vector2(CARD_WIDTH, CARD_HEIGHT))
 	## Duplicate the body material so each card owns its instance (for alpha toggling).
 	var src := mesh_instance.get_surface_override_material(0) as StandardMaterial3D
