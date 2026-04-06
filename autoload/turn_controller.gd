@@ -1,14 +1,32 @@
 class_name TurnController
 extends Node
 ## Singleton gateway for all game actions.
-## Call request_action() to attempt any action; it validates turn ownership,
-## delegates to the action's own validate(), then applies it and emits signals.
+##
+## All game mutations flow through request_action().  It validates turn
+## ownership, delegates to the action's own validate(), applies it, and emits
+## the appropriate signals.
+##
+## After an ActionAttack resolves, _resolve_post_attack() is called to handle
+## knockouts, prize-taking, and win-condition checking — keeping that logic
+## centralised here rather than spread across the visual layer.
 
+## Core action signals.
 signal turn_started(turn_number: int, current_player_id: int)
 signal phase_changed(phase: int)
 signal action_committed(action: GameAction)
 signal action_rejected(action: GameAction, reason: String)
 signal log_message(text: String)
+
+## Combat outcome signals — main.gd connects to these for visual feedback.
+signal pokemon_knocked_out(victim: CardInstance, scoring_player_id: int)
+signal prize_taken(player_id: int, card: CardInstance)
+
+## Emitted when an active slot becomes empty and needs a bench Pokemon.
+## [player_id] is the player who must promote, not necessarily the current player.
+signal active_slot_emptied(player_id: int)
+
+## Emitted when the game ends.
+signal game_over(winner_player_id: int)
 
 var state: GameState
 
@@ -23,15 +41,28 @@ func set_state(gs: GameState) -> void:
 	state = gs
 
 
+## ============================================================
+## Public API
+## ============================================================
+
 func request_action(action: GameAction) -> void:
 	if state == null:
 		_emit_reject(action, "No GameState assigned.")
 		return
 
-	var gate := _gate_action(action)
-	if not gate.ok:
-		_emit_reject(action, gate.reason)
-		return
+	## Forced promotions bypass the turn-ownership gate so the opponent's board
+	## can be fixed immediately after a knockout.
+	var skip_gate := action is ActionPromoteFromBench \
+		and (action as ActionPromoteFromBench).forced
+
+	## System-generated prize actions are also exempt from the gate check.
+	skip_gate = skip_gate or action is ActionTakePrize
+
+	if not skip_gate:
+		var gate := _gate_action(action)
+		if not gate.ok:
+			_emit_reject(action, gate.reason)
+			return
 
 	var res := action.validate(state)
 	if not res.ok:
@@ -41,12 +72,19 @@ func request_action(action: GameAction) -> void:
 	action.apply(state)
 	action_committed.emit(action)
 
+	## Phase-transition signals.
 	if action is ActionAdvancePhase:
 		phase_changed.emit(state.phase)
 
 	if action is ActionEndTurn:
+		## Apply end-of-turn special conditions for the player who just ended.
+		state.apply_end_of_turn_conditions(1 - state.current_player_id)
 		turn_started.emit(state.turn_number, state.current_player_id)
 		phase_changed.emit(state.phase)
+
+	## Post-attack: knockouts, prizes, promotion checks, win condition.
+	if action is ActionAttack:
+		_resolve_post_attack(action as ActionAttack)
 
 	log_message.emit("[P%d][%s] %s" % [
 		action.actor_id,
@@ -63,20 +101,83 @@ func end_turn(actor_id: int) -> void:
 	request_action(ActionEndTurn.new(actor_id))
 
 
+## ============================================================
+## Post-attack resolution
+## ============================================================
+
+func _resolve_post_attack(action: ActionAttack) -> void:
+	## 1. Detect and discard any knocked-out opponent Pokemon.
+	var opp_id := 1 - action.actor_id
+	var knocked_out := state.resolve_knockouts(opp_id)
+
+	for ko_info in knocked_out:
+		var victim := ko_info["victim"] as CardInstance
+		pokemon_knocked_out.emit(victim, action.actor_id)
+
+		## 2. Auto-take one prize card for each knockout.
+		var prizes_zone := state.board.get_zone("p%d_prizes" % action.actor_id)
+		if not prizes_zone.is_empty():
+			var prize_card := prizes_zone.back() as CardInstance
+			var take := ActionTakePrize.new(action.actor_id)
+			take.apply(state)  ## validate() not needed — system-only path.
+			prize_taken.emit(action.actor_id, prize_card)
+
+	## 3. Check whether any opponent active slot is now empty.
+	var needs_promotion := false
+	for slot_idx in range(state.board.num_active_slots):
+		if state.board.get_active_card(opp_id, slot_idx) == null \
+				and not state.board.get_bench_cards(opp_id).is_empty():
+			needs_promotion = true
+			break
+
+	if needs_promotion:
+		## Emit the signal — handlers may resolve the promotion synchronously
+		## (CPU auto-promotes) or asynchronously (human dialog).
+		active_slot_emptied.emit(opp_id)
+
+		## Re-check: if a synchronous handler (e.g. CPU) already filled the slot,
+		## we can proceed without waiting.
+		needs_promotion = false
+		for slot_idx in range(state.board.num_active_slots):
+			if state.board.get_active_card(opp_id, slot_idx) == null \
+					and not state.board.get_bench_cards(opp_id).is_empty():
+				needs_promotion = true
+				break
+
+	## 4. Check win conditions.
+	var winner := state.check_win_condition()
+	if winner >= 0:
+		game_over.emit(winner)
+		return
+
+	## 5. Auto-advance to END phase.  Skip if a human promotion dialog is still
+	##    open — main.gd will call next_phase() after the player chooses.
+	if not needs_promotion and state.phase == TurnPhase.Phase.ATTACK:
+		next_phase(action.actor_id)
+
+
+## ============================================================
+## Turn start
+## ============================================================
+
 func _start_turn(player_id: int) -> void:
 	state.begin_turn(player_id)
 	turn_started.emit(state.turn_number, state.current_player_id)
 	phase_changed.emit(state.phase)
-	log_message.emit("Turn %d start: Player %d" % [state.turn_number, state.current_player_id])
+	log_message.emit("Turn %d — Player %d's turn" % [state.turn_number, state.current_player_id])
+
+
+## ============================================================
+## Gate and reject helpers
+## ============================================================
+
+func _gate_action(action: GameAction) -> ActionResult:
+	## Only the current player may submit actions.
+	if action.actor_id != state.current_player_id:
+		return ActionResult.fail("Not your turn.")
+	return ActionResult.success()
 
 
 func _emit_reject(action: GameAction, reason: String) -> void:
 	action_rejected.emit(action, reason)
-	log_message.emit("[REJECT] %s (%s)" % [action.description(), reason])
-
-
-## First gate: only the current player may submit actions.
-func _gate_action(action: GameAction) -> ActionResult:
-	if action.actor_id != state.current_player_id:
-		return ActionResult.fail("Not your turn.")
-	return ActionResult.success()
+	log_message.emit("[REJECT] %s — %s" % [action.description(), reason])
