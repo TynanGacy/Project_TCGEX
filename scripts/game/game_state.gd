@@ -1,5 +1,11 @@
 class_name GameState
 extends RefCounted
+## Central game-state object.
+##
+## Owns the BoardState, the Player records, the current phase, and all
+## per-turn flags.  Also provides higher-level helpers for prize setup,
+## knockout resolution, and win-condition checking — keeping that logic out of
+## the visual layer.
 
 var current_player_id: int = 0
 var turn_number: int = 1
@@ -11,6 +17,10 @@ var players: Array[Player] = []
 
 var has_attacked_this_turn: bool = false
 
+## Set true once prizes have been dealt and the game is underway.
+## Win-condition checks are suppressed until then.
+var game_started: bool = false
+
 
 func _init(num_players: int = 2, active_slots: int = 1, max_bench: int = 5) -> void:
 	board = BoardState.new(num_players, active_slots, max_bench)
@@ -19,6 +29,10 @@ func _init(num_players: int = 2, active_slots: int = 1, max_bench: int = 5) -> v
 		var player := Player.new(i)
 		players.append(player)
 
+
+# ---------------------------------------------------------------------------
+# Player accessors
+# ---------------------------------------------------------------------------
 
 func get_current_player() -> Player:
 	if current_player_id >= 0 and current_player_id < players.size():
@@ -32,6 +46,10 @@ func get_player(player_id: int) -> Player:
 	return null
 
 
+# ---------------------------------------------------------------------------
+# Turn management
+# ---------------------------------------------------------------------------
+
 func begin_turn(player_id: int) -> void:
 	current_player_id = player_id
 	phase = TurnPhase.Phase.START
@@ -44,22 +62,21 @@ func begin_turn(player_id: int) -> void:
 
 func advance_phase() -> void:
 	match phase:
-		TurnPhase.Phase.START:
-			phase = TurnPhase.Phase.MAIN
-		TurnPhase.Phase.MAIN:
-			phase = TurnPhase.Phase.ATTACK
-		TurnPhase.Phase.ATTACK:
-			phase = TurnPhase.Phase.END
-		TurnPhase.Phase.END:
-			pass
+		TurnPhase.Phase.START:  phase = TurnPhase.Phase.MAIN
+		TurnPhase.Phase.MAIN:   phase = TurnPhase.Phase.ATTACK
+		TurnPhase.Phase.ATTACK: phase = TurnPhase.Phase.END
+		TurnPhase.Phase.END:    pass
 
 
 func end_turn() -> void:
 	turn_number += 1
-	# Assumes exactly 2 players (0 and 1). Extend for multiplayer.
-	current_player_id = 1 - current_player_id
+	current_player_id = 1 - current_player_id  # Two-player only.
 	begin_turn(current_player_id)
 
+
+# ---------------------------------------------------------------------------
+# Deck and prize setup
+# ---------------------------------------------------------------------------
 
 func setup_player_deck(player_id: int, card_data_array: Array[CardData]) -> void:
 	var player := get_player(player_id)
@@ -74,9 +91,54 @@ func draw_starting_hand(player_id: int, count: int = 7) -> void:
 	var player := get_player(player_id)
 	if player == null:
 		return
-	for i in count:
+	for _i in count:
 		player.draw_card(board)
 
+
+## Deals [count] cards from the top of [player_id]'s deck into their prize
+## zone.  Must be called AFTER setup_player_deck() and BEFORE
+## draw_starting_hand() so prizes come from the freshly shuffled deck.
+func setup_prizes(player_id: int, count: int) -> void:
+	var deck_zone    := "p%d_deck"   % player_id
+	var prizes_zone  := "p%d_prizes" % player_id
+
+	for _i in count:
+		var deck := board.get_zone(deck_zone)
+		if deck.is_empty():
+			break
+		## Draw from the "top" (back of the array — same convention as Player.draw_card).
+		var card := deck.back() as CardInstance
+		board.move_card(card, prizes_zone)
+
+	var player := get_player(player_id)
+	if player:
+		player.prizes_remaining = board.get_zone(prizes_zone).size()
+
+
+# ---------------------------------------------------------------------------
+# In-play Pokemon queries
+# ---------------------------------------------------------------------------
+
+func get_active_cards(player_id: int) -> Array[CardInstance]:
+	## All currently occupied active slots for [player_id].
+	var result: Array[CardInstance] = []
+	for slot_idx in range(board.num_active_slots):
+		var card := board.get_active_card(player_id, slot_idx)
+		if card != null:
+			result.append(card)
+	return result
+
+
+func get_all_in_play(player_id: int) -> Array[CardInstance]:
+	## Active + bench Pokemon combined.
+	var result := get_active_cards(player_id)
+	result.append_array(board.get_bench_cards(player_id))
+	return result
+
+
+# ---------------------------------------------------------------------------
+# Active-slot swap helpers (kept from original)
+# ---------------------------------------------------------------------------
 
 func can_swap_active_with_bench(player_id: int, active_slot: int, bench_index: int) -> bool:
 	return board.can_swap_active_with_bench(player_id, active_slot, bench_index)
@@ -84,8 +146,7 @@ func can_swap_active_with_bench(player_id: int, active_slot: int, bench_index: i
 
 func swap_active_with_bench(player_id: int, active_slot: int, bench_index: int) -> void:
 	var active_card := board.get_active_card(player_id, active_slot)
-	var bench_card := board.get_bench_card_at(player_id, bench_index)
-
+	var bench_card  := board.get_bench_card_at(player_id, bench_index)
 	if active_card != null and bench_card != null:
 		board.swap_cards(active_card, bench_card)
 
@@ -93,17 +154,127 @@ func swap_active_with_bench(player_id: int, active_slot: int, bench_index: int) 
 func can_promote_from_bench(player_id: int, bench_index: int) -> bool:
 	if board.get_first_empty_active_slot(player_id) == -1:
 		return false
-
-	var bench_card := board.get_bench_card_at(player_id, bench_index)
-	return bench_card != null
+	return board.get_bench_card_at(player_id, bench_index) != null
 
 
 func promote_from_bench(player_id: int, bench_index: int) -> void:
 	var slot_idx := board.get_first_empty_active_slot(player_id)
 	if slot_idx == -1:
 		return
-
 	var bench_card := board.get_bench_card_at(player_id, bench_index)
 	if bench_card != null:
-		var target_zone := "p%d_active_%d" % [player_id, slot_idx]
-		board.move_card(bench_card, target_zone)
+		board.move_card(bench_card, "p%d_active_%d" % [player_id, slot_idx])
+
+
+# ---------------------------------------------------------------------------
+# Knockout resolution
+# ---------------------------------------------------------------------------
+
+## Checks every active slot belonging to [opp_id] for knocked-out Pokemon.
+## For each one found:
+##   • Moves the KO'd card (and all its attachments + prior stages) to discard.
+##   • Returns an Array of Dictionaries: [{victim, slot_idx}]
+##
+## The caller (TurnController) then handles prize-taking and signals.
+func resolve_knockouts(opp_id: int) -> Array[Dictionary]:
+	var knocked_out: Array[Dictionary] = []
+
+	for slot_idx in range(board.num_active_slots):
+		var card := board.get_active_card(opp_id, slot_idx)
+		if card == null:
+			continue
+		if not card.is_knocked_out():
+			continue
+
+		knocked_out.append({"victim": card, "slot_idx": slot_idx})
+		_send_to_discard(card, opp_id)
+
+	return knocked_out
+
+
+## Recursively discards a Pokemon and everything attached to it.
+func _send_to_discard(card: CardInstance, player_id: int) -> void:
+	var discard := "p%d_discard" % player_id
+
+	## Discard energy attachments.
+	for energy in card.attached_energy.duplicate():
+		board.move_card(energy, discard)
+	card.attached_energy.clear()
+
+	## Discard tool attachments.
+	for tool in card.attached_tools.duplicate():
+		board.move_card(tool, discard)
+	card.attached_tools.clear()
+
+	## Discard the card that was underneath (prior stage in evolution stack).
+	if card.prior_stage != null:
+		_send_to_discard(card.prior_stage, player_id)
+		card.prior_stage = null
+
+	board.move_card(card, discard)
+
+
+# ---------------------------------------------------------------------------
+# Win-condition check
+# ---------------------------------------------------------------------------
+
+## Returns the winning player_id, or -1 if the game is still ongoing.
+##
+## Win conditions (checked in priority order):
+##   1. A player has taken all their prize cards.
+##   2. The opponent has no Pokemon remaining in play and none in hand to play.
+func check_win_condition() -> int:
+	if not game_started:
+		return -1
+
+	## Condition 1: Prize cards exhausted.
+	for pid in range(players.size()):
+		var player := get_player(pid)
+		if player != null and player.prizes_remaining == 0:
+			return pid
+
+	## Condition 2: Opponent has no Pokemon left anywhere.
+	for pid in range(players.size()):
+		var opp := 1 - pid
+		if board.count_active_pokemon(opp) == 0 \
+				and board.get_bench_cards(opp).is_empty() \
+				and _has_no_basic_in_hand(opp):
+			return pid
+
+	return -1
+
+
+func _has_no_basic_in_hand(player_id: int) -> bool:
+	for card in board.get_hand_cards(player_id):
+		if card.data is PokemonCardData \
+				and (card.data as PokemonCardData).stage == PokemonCardData.Stage.BASIC:
+			return false
+	return true
+
+
+# ---------------------------------------------------------------------------
+# Special-condition end-of-turn effects
+# ---------------------------------------------------------------------------
+
+## Applies end-of-turn damage for Burn and Poison, and resolves Sleep/Paralysis.
+## Call this at the END of [player_id]'s turn (before the turn flips).
+func apply_end_of_turn_conditions(player_id: int) -> void:
+	for pokemon in get_all_in_play(player_id):
+		if pokemon.has_condition(CardInstance.SpecialCondition.POISONED):
+			pokemon.apply_damage(10)  ## 1 damage counter per turn.
+
+		if pokemon.has_condition(CardInstance.SpecialCondition.BURNED):
+			## Coin flip: heads = remove burn, tails = 20 damage.
+			if randi() % 2 == 0:  # heads
+				pokemon.remove_condition(CardInstance.SpecialCondition.BURNED)
+			else:
+				pokemon.apply_damage(20)
+
+		## Paralysis wears off after one turn.
+		if pokemon.has_condition(CardInstance.SpecialCondition.PARALYZED):
+			pokemon.remove_condition(CardInstance.SpecialCondition.PARALYZED)
+
+		## Coin flip to wake up from Sleep.
+		if pokemon.has_condition(CardInstance.SpecialCondition.ASLEEP):
+			if randi() % 2 == 1:  # heads
+				pokemon.remove_condition(CardInstance.SpecialCondition.ASLEEP)
