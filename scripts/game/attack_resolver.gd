@@ -30,7 +30,7 @@ static func can_afford(pokemon: CardInstance, attack: AttackData) -> bool:
 	## --- Count leftover energy for the colorless requirement ---------------
 	var remaining := 0
 	for etype: int in counts:
-		var surplus := counts[etype]
+		var surplus: int = counts[etype]
 		match etype:
 			PokemonCardData.EnergyType.FIRE:      surplus = max(0, surplus - attack.cost_fire)
 			PokemonCardData.EnergyType.WATER:     surplus = max(0, surplus - attack.cost_water)
