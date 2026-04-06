@@ -14,14 +14,20 @@ uniform float corner_radius : hint_range(0.0, 0.1) = 0.023;
 // Physical card size in world units (must match Card.CARD_WIDTH / CARD_HEIGHT).
 uniform vec2 card_size = vec2(0.63, 0.88);
 
-// Reflect UV into the interior when the sample point is inside a corner region.
+// Reflect UV into the interior only when the sample point is in a corner region
+// (near both a horizontal AND vertical edge simultaneously).  Mirroring along
+// straight edges would overwrite the card's natural border with reflected art.
 // ru/rv are the corner extents expressed as UV fractions.
 vec2 mirror_corners(vec2 uv, float ru, float rv) {
 	vec2 m = uv;
-	if (m.x < ru)            m.x = 2.0 * ru - m.x;
-	else if (m.x > 1.0 - ru) m.x = 2.0 * (1.0 - ru) - m.x;
-	if (m.y < rv)            m.y = 2.0 * rv - m.y;
-	else if (m.y > 1.0 - rv) m.y = 2.0 * (1.0 - rv) - m.y;
+	bool near_x = (m.x < ru) || (m.x > 1.0 - ru);
+	bool near_y = (m.y < rv) || (m.y > 1.0 - rv);
+	if (near_x && near_y) {
+		if (m.x < ru)            m.x = 2.0 * ru - m.x;
+		else if (m.x > 1.0 - ru) m.x = 2.0 * (1.0 - ru) - m.x;
+		if (m.y < rv)            m.y = 2.0 * rv - m.y;
+		else if (m.y > 1.0 - rv) m.y = 2.0 * (1.0 - rv) - m.y;
+	}
 	return m;
 }
 
