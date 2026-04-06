@@ -58,7 +58,9 @@ var _setup_dialog:   Control = null
 var _attack_panel:   Control = null
 var _target_picker:  Control = null
 var _bench_picker:   Control = null
-var _card_popup:     PanelContainer = null
+var _card_popup:          PanelContainer = null
+var _popup_art_container: Control        = null
+var _popup_art:           TextureRect    = null
 var _prize_label:    Label = null
 var _status_label:   Label = null
 
@@ -1381,18 +1383,16 @@ func _build_card_popup() -> void:
 	margin.add_theme_constant_override("margin_bottom", 10)
 	_card_popup.add_child(margin)
 
-	var art_container := Control.new()
-	art_container.custom_minimum_size = Vector2(380, 533)
-	art_container.clip_contents = false
-	art_container.name = "ArtContainer"
-	margin.add_child(art_container)
+	_popup_art_container = Control.new()
+	_popup_art_container.custom_minimum_size = Vector2(380, 533)
+	_popup_art_container.clip_contents = false
+	margin.add_child(_popup_art_container)
 
-	var popup_art := TextureRect.new()
-	popup_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_art.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	popup_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	popup_art.name = "PopupArt"
-	art_container.add_child(popup_art)
+	_popup_art = TextureRect.new()
+	_popup_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_popup_art.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+	_popup_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_popup_art_container.add_child(_popup_art)
 
 	$HUD.add_child(_card_popup)
 
@@ -1411,12 +1411,11 @@ const _POPUP_ENERGY_SIZE := 64
 const _POPUP_TOOL_SIZE   := 96
 
 func _populate_card_popup(inst: CardInstance) -> void:
-	var art_container := _card_popup.get_node("MarginContainer/ArtContainer")
-	var popup_art     := art_container.get_node("PopupArt") as TextureRect
-	popup_art.texture = inst.data.art
+	_popup_art.texture = inst.data.art
 
-	for child in art_container.get_children():
-		if child != popup_art:
+	## Remove previous attachment buttons; keep only the art TextureRect.
+	for child in _popup_art_container.get_children():
+		if child != _popup_art:
 			child.queue_free()
 
 	var tool_r := _POPUP_TOOL_SIZE / 2.0
@@ -1426,7 +1425,7 @@ func _populate_card_popup(inst: CardInstance) -> void:
 		var btn := _make_popup_circle_button(
 			inst.attached_tools[i], AttachmentDisplay.TOOL_ICON_COLOR, _POPUP_TOOL_SIZE)
 		btn.position = Vector2(-tool_r, cy - tool_r)
-		art_container.add_child(btn)
+		_popup_art_container.add_child(btn)
 
 	var energy_r     := _POPUP_ENERGY_SIZE / 2.0
 	var sorted_energy := AttachmentDisplay.sort_energy(inst.attached_energy)
@@ -1439,7 +1438,7 @@ func _populate_card_popup(inst: CardInstance) -> void:
 		var btn := _make_popup_circle_button(
 			sorted_energy[i], AttachmentDisplay.energy_color(sorted_energy[i]), _POPUP_ENERGY_SIZE)
 		btn.position = Vector2(cx - energy_r, cy - energy_r)
-		art_container.add_child(btn)
+		_popup_art_container.add_child(btn)
 
 
 func _make_popup_circle_button(inst: CardInstance, color: Color, size: int) -> Button:
