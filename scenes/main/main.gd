@@ -322,6 +322,8 @@ func _start_game() -> void:
 
 	_spawn_deck_visual(0)
 	_spawn_deck_visual(1)
+	_spawn_prize_visuals(0)
+	_spawn_prize_visuals(1)
 
 	## ── CPU player (Player Mode only — never created in Developer Mode) ───
 	if not is_developer_mode:
@@ -357,6 +359,40 @@ func _spawn_deck_visual(pid: int) -> void:
 		card.face_down = true
 		board.add_child(card)
 		deck_zone.receive_card(card)
+
+
+## Spawns one face-down card node for each prize in the logical prize zone,
+## distributing them across the "Prize N" / "Opp Prize N" visual zones.
+func _spawn_prize_visuals(pid: int) -> void:
+	var prefix := "Prize " if pid == 0 else "Opp Prize "
+	var prize_cards := game_state.board.get_zone("p%d_prizes" % pid)
+	for i in range(prize_cards.size()):
+		var zone_name := prefix + str(i + 1)
+		var prize_zone := board.get_zone_by_name(zone_name)
+		if prize_zone == null:
+			continue
+		var card: Card = card_scene.instantiate()
+		card.set_instance(prize_cards[i] as CardInstance)
+		card.face_down = true
+		board.add_child(card)
+		prize_zone.receive_card(card)
+
+
+## Removes the visual card node from the highest-numbered occupied prize zone
+## for [pid] and returns its world position (for the hand-draw animation origin).
+func _pop_prize_visual(pid: int) -> Vector3:
+	var prefix := "Prize " if pid == 0 else "Opp Prize "
+	for i in range(6, 0, -1):
+		var prize_zone := board.get_zone_by_name(prefix + str(i))
+		if prize_zone == null or prize_zone.held_cards.is_empty():
+			continue
+		var pos := prize_zone.global_position + Vector3(0, 0.1, 0)
+		var card_node := prize_zone.held_cards[0] as Card
+		prize_zone.remove_card(card_node)
+		card_node.queue_free()
+		return pos
+	return Vector3.ZERO
+
 
 
 # ===========================================================================
@@ -595,12 +631,9 @@ func _on_pokemon_knocked_out(victim: CardInstance, scoring_player_id: int) -> vo
 
 func _on_prize_taken(player_id: int, card: CardInstance) -> void:
 	## The prize card was moved to hand by ActionTakePrize.apply().
-	## Spawn a Card node in the appropriate hand.
-	var from_pos := Vector3.ZERO
-	var prize_zone_name := "Prize 1" if player_id == 0 else "Opp Prize 1"
-	var pzone := board.get_zone_by_name(prize_zone_name)
-	if pzone:
-		from_pos = pzone.global_position + Vector3(0, 0.1, 0)
+	## Remove the visual prize card from its zone and use that position as the
+	## fly-in origin for the new hand card.
+	var from_pos := _pop_prize_visual(player_id)
 
 	var card_node: Card = card_scene.instantiate()
 	card_node.set_instance(card)

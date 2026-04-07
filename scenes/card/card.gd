@@ -43,7 +43,7 @@ const ENERGY_ICON_HEIGHT := 0.004
 const ENERGY_ICON_MAX := 5          # max circles shown before overflow "+" indicator
 
 ## Overlay icon layout (right edge of card, for damage counter and status badges).
-const DAMAGE_CTR_RADIUS := 0.080
+const DAMAGE_CTR_RADIUS := 0.130
 const STATUS_BADGE_RADIUS := 0.055
 const OVERLAY_HEIGHT := 0.004
 const OVERLAY_Y := 0.014
@@ -358,9 +358,9 @@ func update_damage_counter() -> void:
 	node.add_child(disc)
 
 	var lbl := Label3D.new()
-	lbl.text = "%d/%d" % [hp_rem, hp_max]
+	lbl.text = "%d/%d HP" % [hp_rem, hp_max]
 	lbl.pixel_size = 0.00055
-	lbl.font_size = 20
+	lbl.font_size = 42
 	lbl.modulate = Color.WHITE
 	lbl.position = Vector3(0.0, OVERLAY_HEIGHT * 0.5 + 0.001, 0.0)
 	node.add_child(lbl)
