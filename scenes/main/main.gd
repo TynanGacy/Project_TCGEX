@@ -20,6 +20,7 @@ extends Node3D
 @onready var game_log:        RichTextLabel = $HUD/LogPanel/GameLog
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
+const _POPUP_ART_SHADER := preload("res://scenes/card/card_face_rounded_2d.gdshader")
 
 ## ── Turn engine (singleton autoload) ────────────────────────────────────────
 @onready var turn_controller: TurnController = TurnControllerSingleton
@@ -1391,7 +1392,12 @@ func _build_card_popup() -> void:
 	_popup_art = TextureRect.new()
 	_popup_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_popup_art.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	_popup_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_popup_art.stretch_mode = TextureRect.STRETCH_SCALE
+	## Apply the same rounded-corner shader used by the 3D card face mesh so
+	## the popup shows the card with matching curved edges and corner fill.
+	var popup_mat := ShaderMaterial.new()
+	popup_mat.shader = _POPUP_ART_SHADER
+	_popup_art.material = popup_mat
 	_popup_art_container.add_child(_popup_art)
 
 	$HUD.add_child(_card_popup)
@@ -1505,4 +1511,3 @@ func _update_status_label() -> void:
 func _log_line(text: String) -> void:
 	if game_log:
 		game_log.append_text(text + "\n")
-
