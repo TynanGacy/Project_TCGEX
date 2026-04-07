@@ -119,6 +119,16 @@ static func _build_pool() -> Array[CardData]:
 	return pool
 
 
+## Returns a Dictionary mapping card_id → CardData for every card in the pool.
+## Used by DeckLoader to resolve card IDs from deck config files.
+static func _build_card_pool_by_id() -> Dictionary:
+	var pool := _build_pool()
+	var by_id: Dictionary = {}
+	for card in pool:
+		by_id[card.card_id] = card
+	return by_id
+
+
 # ---------------------------------------------------------------------------
 # Private builders
 # ---------------------------------------------------------------------------

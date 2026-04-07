@@ -95,6 +95,36 @@ func draw_starting_hand(player_id: int, count: int = 7) -> void:
 		player.draw_card(board)
 
 
+## Draws a starting hand with the mulligan rule: if the hand contains no Basic
+## Pokemon, shuffle all cards back into the deck and redraw.  Repeats until a
+## hand with at least one Basic Pokemon is found.
+##
+## Returns the number of reshuffles (mulligans) that occurred.  The caller may
+## log or store this value for debugging purposes.
+func draw_starting_hand_with_mulligan(player_id: int, count: int = 7) -> int:
+	var player := get_player(player_id)
+	if player == null:
+		return 0
+
+	var reshuffles := 0
+	while true:
+		for _i in count:
+			player.draw_card(board)
+
+		if not _has_no_basic_in_hand(player_id):
+			break  ## Hand has at least one Basic Pokemon — keep it.
+
+		## No Basic in hand: return cards to deck and reshuffle.
+		var hand_zone := "p%d_hand" % player_id
+		var hand_cards := board.get_zone(hand_zone).duplicate()
+		for card in hand_cards:
+			board.move_card(card, "p%d_deck" % player_id)
+		player.shuffle_deck_zone(board)
+		reshuffles += 1
+
+	return reshuffles
+
+
 ## Deals [count] cards from the top of [player_id]'s deck into their prize
 ## zone.  Must be called AFTER setup_player_deck() and BEFORE
 ## draw_starting_hand() so prizes come from the freshly shuffled deck.
