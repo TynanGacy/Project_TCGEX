@@ -54,6 +54,12 @@ var _advance_after_promotion: bool = false
 ## ── Game-over flag ───────────────────────────────────────────────────────────
 var _game_over: bool = false
 
+## ── Pre-game placement phase ─────────────────────────────────────────────────
+## True while players are choosing their starting Active Pokemon.
+var _in_placement_phase: bool = false
+var _placement_done: Array[bool] = [false, false]
+var _placement_picker: Control = null
+
 ## ── UI panels (built in code) ────────────────────────────────────────────────
 var _setup_dialog:   Control = null
 var _attack_panel:   Control = null
@@ -281,17 +287,20 @@ func _start_game() -> void:
 	_status_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
 	$HUD/TopBar.add_child(_status_label)
 
-	## ── Deal decks, prizes, and starting hands ────────────────────────────
-	game_state.setup_player_deck(0, TestDeckFactory.build_deck(60))
-	game_state.setup_player_deck(1, TestDeckFactory.build_deck(60))
+	## ── Deal decks and starting hands (prizes placed after mulligan draw) ──
+	## Decks are loaded from data/decks/*.json; fall back to random if missing.
+	game_state.setup_player_deck(0, DeckLoader.load_deck(0))
+	game_state.setup_player_deck(1, DeckLoader.load_deck(1))
 
+	## Draw starting hands with mulligan rule (reshuffle if no Basic found).
+	var reshuffles_p0 := game_state.draw_starting_hand_with_mulligan(0, 7)
+	var reshuffles_p1 := game_state.draw_starting_hand_with_mulligan(1, 7)
+
+	## Prizes are placed after the opening hand is established.
 	game_state.setup_prizes(0, _prize_count)
 	game_state.setup_prizes(1, _prize_count)
 
-	game_state.draw_starting_hand(0, 7)
-	game_state.draw_starting_hand(1, 7)
-
-	game_state.game_started = true
+	## game_started stays false until placement phase completes.
 
 	## ── Spawn visual cards ────────────────────────────────────────────────
 	var p0_from := board.get_zone_by_name("Deck").global_position + Vector3(0, 0.1, 0) \
@@ -314,18 +323,23 @@ func _start_game() -> void:
 	_spawn_deck_visual(0)
 	_spawn_deck_visual(1)
 
-	## ── CPU player ────────────────────────────────────────────────────────
+	## ── CPU player (Player Mode only — never created in Developer Mode) ───
 	if not is_developer_mode:
 		cpu_player = CpuPlayer.new()
 		add_child(cpu_player)
 		cpu_player.setup(game_state, turn_controller)
 
-	## ── Force first START phase signal (TurnController._ready fired first) ─
-	_on_phase_changed(game_state.phase)
-	_log_line("Game started — %s | Prizes: %d | Active slots: %d | Bench: %d" % [
+	## ── Log setup info then enter placement phase ─────────────────────────
+	_log_line("Game setup — %s | Prizes: %d | Active slots: %d | Bench: %d" % [
 		"Developer Mode" if is_developer_mode else "Player Mode",
 		_prize_count, _active_slots, _bench_slots
 	])
+	if reshuffles_p0 > 0:
+		_log_line("P0 had no Basic in opening hand — reshuffled %d time(s)." % reshuffles_p0)
+	if reshuffles_p1 > 0:
+		_log_line("P1 had no Basic in opening hand — reshuffled %d time(s)." % reshuffles_p1)
+
+	_start_placement_phase()
 
 
 # ===========================================================================
@@ -343,6 +357,161 @@ func _spawn_deck_visual(pid: int) -> void:
 		card.face_down = true
 		board.add_child(card)
 		deck_zone.receive_card(card)
+
+
+# ===========================================================================
+# PRE-GAME PLACEMENT PHASE
+# Each player chooses one Basic Pokemon from their opening hand to place
+# face-down as their starting Active.  Both are revealed simultaneously once
+# all players have placed.
+#
+# Dev Mode:  P0 picks first (perspective at P0), then perspective switches to
+#            P1 for their pick, then switches back to P0 for game start.
+# Player Mode: P0 picks via dialog; P1 (CPU) auto-selects its first Basic.
+# ===========================================================================
+
+func _start_placement_phase() -> void:
+	_in_placement_phase = true
+	_placement_done     = [false, false]
+	_log_line("Pre-game: each player must place a Basic Pokemon face-down as their starting Active.")
+	_prompt_player_placement(0)
+
+
+func _prompt_player_placement(player_id: int) -> void:
+	## In Developer Mode switch the camera to whichever player is placing.
+	if is_developer_mode:
+		_switch_perspective_to(player_id)
+
+	## Gather Basic Pokemon from this player's hand.
+	var basics: Array[CardInstance] = []
+	for card in game_state.board.get_hand_cards(player_id):
+		if card.data is PokemonCardData \
+				and (card.data as PokemonCardData).stage == PokemonCardData.Stage.BASIC:
+			basics.append(card)
+
+	if basics.is_empty():
+		## Should never happen after mulligan draw, but guard defensively.
+		push_error("_prompt_player_placement: P%d has no Basic Pokemon to place!" % player_id)
+		_on_player_placed(player_id, null)
+		return
+
+	## In Player Mode the CPU auto-places without a dialog.
+	if not is_developer_mode and player_id == 1:
+		_on_player_placed(player_id, basics[0])
+		return
+
+	_show_placement_picker(player_id, basics)
+
+
+func _show_placement_picker(player_id: int, basics: Array[CardInstance]) -> void:
+	if _placement_picker:
+		_placement_picker.queue_free()
+
+	_placement_picker = PanelContainer.new()
+	_placement_picker.custom_minimum_size = Vector2(320, 0)
+	_placement_picker.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color               = Color(0.10, 0.12, 0.18, 0.97)
+	style.corner_radius_top_left    = 8
+	style.corner_radius_top_right   = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	_placement_picker.add_theme_stylebox_override("panel", style)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	_placement_picker.add_child(vbox)
+
+	var lbl := Label.new()
+	lbl.text = "P%d — Place your starting Active Pokemon\n(placed face-down until both players are ready)" % player_id
+	lbl.autowrap_mode          = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment   = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.6))
+	vbox.add_child(lbl)
+
+	vbox.add_child(HSeparator.new())
+
+	for basic in basics:
+		var pdata := basic.data as PokemonCardData
+		var btn   := Button.new()
+		btn.text  = "%s  [%d HP]" % [pdata.display_name, basic.hp_max()]
+		var captured_card := basic
+		var captured_pid  := player_id
+		btn.pressed.connect(func() -> void:
+			if _placement_picker:
+				_placement_picker.queue_free()
+				_placement_picker = null
+			_on_player_placed(captured_pid, captured_card)
+		)
+		vbox.add_child(btn)
+
+	$HUD.add_child(_placement_picker)
+
+
+func _on_player_placed(player_id: int, card: CardInstance) -> void:
+	if card != null:
+		_place_starting_basic(player_id, card)
+		_log_line("P%d placed %s face-down as their starting Active." % [
+			player_id, card.data.display_name if card.data else "?"
+		])
+
+	_placement_done[player_id] = true
+
+	if not (_placement_done[0] and _placement_done[1]):
+		## Prompt the player who hasn't placed yet.
+		var next_pid := 1 - player_id
+		_prompt_player_placement(next_pid)
+	else:
+		_complete_placement_phase()
+
+
+func _place_starting_basic(player_id: int, card: CardInstance) -> void:
+	## Move the card logically to active slot 0.
+	game_state.board.move_card(card, "p%d_active_0" % player_id)
+	card.turn_entered_play = game_state.turn_number
+
+	## Sync the visual: remove from hand, add to board face-down.
+	var card_node := _find_card_node(card)
+	if card_node == null:
+		return
+
+	var hand := player_hand if player_id == 0 else opp_hand
+	if hand.cards.has(card_node):
+		hand.remove_card(card_node)
+
+	board.add_child(card_node)
+	card_node.face_down = true
+
+	var zone_name  := "Active" if player_id == 0 else "Opp Active"
+	var active_zone := board.get_zone_by_name(zone_name)
+	if active_zone:
+		active_zone.receive_card(card_node)
+
+
+func _complete_placement_phase() -> void:
+	_in_placement_phase      = false
+	game_state.game_started  = true
+
+	## Flip all starting Active Pokemon face-up simultaneously.
+	for pid in range(2):
+		for slot_idx in range(game_state.board.num_active_slots):
+			var inst := game_state.board.get_active_card(pid, slot_idx)
+			if inst == null:
+				continue
+			var card_node := _find_card_node(inst)
+			if card_node:
+				card_node.face_down = false
+
+	## In Developer Mode always start from P0's perspective (P0 goes first).
+	if is_developer_mode:
+		_switch_perspective_to(0)
+
+	_log_line("Both players have placed their starting Active. Game begins!")
+
+	## Initialise the HUD for the first turn.
+	_update_prize_label()
+	_on_phase_changed(game_state.phase)
 
 
 ## Find the Card node in the scene tree that wraps [inst].
@@ -457,8 +626,8 @@ func _on_active_slot_emptied(player_id: int) -> void:
 		## No bench Pokemon — game_over signal should follow from TurnController.
 		return
 
-	if not is_developer_mode and player_id == 1:
-		## CPU handles its own promotion.
+	## CPU handles promotion in Player Mode only; never in Developer Mode.
+	if not is_developer_mode and player_id == 1 and cpu_player != null:
 		cpu_player.handle_promotion_needed()
 		## After CPU promotes, auto-advance if an attack was what triggered this.
 		_try_advance_after_promotion()
@@ -1313,7 +1482,7 @@ func _configure_hand_for_player(hand: Hand, is_controlling: bool) -> void:
 # ===========================================================================
 
 func _on_end_turn_pressed() -> void:
-	if _game_over or game_state == null:
+	if _game_over or game_state == null or _in_placement_phase:
 		return
 	## Only the player whose turn it is (and whose perspective we control)
 	## should advance phases.
