@@ -1512,4 +1512,3 @@ func _update_status_label() -> void:
 func _log_line(text: String) -> void:
 	if game_log:
 		game_log.append_text(text + "\n")
-
