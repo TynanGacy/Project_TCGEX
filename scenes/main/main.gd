@@ -255,6 +255,7 @@ func _start_game() -> void:
 	game_state = GameState.new(2, _active_slots, _bench_slots)
 	turn_controller.set_state(game_state)
 	board.configure_slots(_active_slots, _bench_slots)
+	board.configure_prizes(_prize_count)
 
 	## ── Connect signals ───────────────────────────────────────────────────
 	turn_controller.phase_changed.connect(_on_phase_changed)
