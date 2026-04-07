@@ -156,8 +156,9 @@ func _parse_attack(d: Dictionary) -> AttackData:
 	atk.cost_lightning   = int(d.get("cost_lightning", 0))
 	atk.cost_psychic     = int(d.get("cost_psychic", 0))
 	atk.cost_fighting    = int(d.get("cost_fighting", 0))
-	atk.cost_darkness    = int(d.get("cost_darkness", 0))
-	atk.cost_metal       = int(d.get("cost_metal", 0))
+	atk.cost_darkness         = int(d.get("cost_darkness", 0))
+	atk.cost_metal            = int(d.get("cost_metal", 0))
+	atk.hits_each_defending   = bool(d.get("hits_each_defending", false))
 	return atk
 
 

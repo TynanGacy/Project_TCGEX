@@ -14,7 +14,7 @@
   "attacks": [
     {
       "name": "Water Arrow",
-      "base_damage": 0,
+      "base_damage": 20,
       "text": "Choose 1 of your opponent's Pokémon. This attack does 20 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_water": 1
     },

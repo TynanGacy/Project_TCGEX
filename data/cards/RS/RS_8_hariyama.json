@@ -14,8 +14,9 @@
   "attacks": [
     {
       "name": "Super Slap Push",
-      "base_damage": 0,
+      "base_damage": 20,
       "text": "Does 20 damage to each Defending Pokémon.",
+      "hits_each_defending": true,
       "cost_fighting": 1
     },
     {
