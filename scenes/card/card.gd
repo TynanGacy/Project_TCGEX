@@ -358,11 +358,19 @@ func update_damage_counter() -> void:
 	node.add_child(disc)
 
 	var lbl := Label3D.new()
-	lbl.text = "%d/%d HP" % [hp_rem, hp_max]
-	lbl.pixel_size = 0.0018
+	## Two-line format keeps the fraction short enough to fit within the disc.
+	lbl.text = "%d/%d\nHP" % [hp_rem, hp_max]
+	lbl.pixel_size = 0.0025
 	lbl.font_size = 64
 	lbl.modulate = Color.WHITE
-	lbl.position = Vector3(0.0, OVERLAY_HEIGHT * 0.5 + 0.001, 0.0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## Billboard so the text always faces the camera regardless of card rotation.
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	## Disable depth test so the disc never occludes the label.
+	lbl.no_depth_test = true
+	## Squish horizontally so "120/120" fits within the disc diameter.
+	lbl.scale = Vector3(0.55, 1.0, 1.0)
+	lbl.position = Vector3(0.0, OVERLAY_HEIGHT + 0.002, 0.0)
 	node.add_child(lbl)
 
 	node.position = Vector3(
