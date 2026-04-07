@@ -68,7 +68,16 @@ static func _card_from_json(data: Dictionary) -> CardData:
 	if card != null:
 		card.art = _load_art(data["card_id"])
 		if card is PokemonCardData:
-			(card as PokemonCardData).name_slug = data.get("name_slug", data.get("card_id", ""))
+			var pcard := card as PokemonCardData
+			pcard.name_slug    = data.get("name_slug", data.get("card_id", ""))
+			pcard.evolves_from = data.get("evolves_from", "")
+			pcard.retreat_cost = int(data.get("retreat_cost", 1))
+			pcard.weakness     = _parse_energy_type(data.get("weakness",    "NONE"))
+			pcard.resistance   = _parse_energy_type(data.get("resistance",  "NONE"))
+			if data.has("attacks") and data["attacks"] is Array:
+				for atk_dict in data["attacks"] as Array:
+					if atk_dict is Dictionary:
+						pcard.attacks.append(_parse_attack(atk_dict as Dictionary))
 		return card
 
 	push_warning("_card_from_json: unhandled card_type '%s' for %s" % [data.get("card_type"), data.get("card_id")])
@@ -201,3 +210,36 @@ static func _tool(id: String, name: String) -> TrainerCardData:
 	d.display_name = name
 	d.trainer_kind = TrainerCardData.TrainerKind.TOOL
 	return d
+
+
+static func _parse_attack(d: Dictionary) -> AttackData:
+	var atk := AttackData.new()
+	atk.name               = d.get("name", "")
+	atk.base_damage        = int(d.get("base_damage", 0))
+	atk.text               = d.get("text", "")
+	atk.cost_colorless     = int(d.get("cost_colorless", 0))
+	atk.cost_fire          = int(d.get("cost_fire", 0))
+	atk.cost_water         = int(d.get("cost_water", 0))
+	atk.cost_grass         = int(d.get("cost_grass", 0))
+	atk.cost_lightning     = int(d.get("cost_lightning", 0))
+	atk.cost_psychic       = int(d.get("cost_psychic", 0))
+	atk.cost_fighting      = int(d.get("cost_fighting", 0))
+	atk.cost_darkness      = int(d.get("cost_darkness", 0))
+	atk.cost_metal         = int(d.get("cost_metal", 0))
+	atk.hits_each_defending = bool(d.get("hits_each_defending", false))
+	return atk
+
+
+static func _parse_energy_type(s: String) -> PokemonCardData.EnergyType:
+	match s:
+		"FIRE":      return PokemonCardData.EnergyType.FIRE
+		"WATER":     return PokemonCardData.EnergyType.WATER
+		"GRASS":     return PokemonCardData.EnergyType.GRASS
+		"LIGHTNING": return PokemonCardData.EnergyType.LIGHTNING
+		"PSYCHIC":   return PokemonCardData.EnergyType.PSYCHIC
+		"FIGHTING":  return PokemonCardData.EnergyType.FIGHTING
+		"DARKNESS":  return PokemonCardData.EnergyType.DARKNESS
+		"METAL":     return PokemonCardData.EnergyType.METAL
+		"DRAGON":    return PokemonCardData.EnergyType.DRAGON
+		"COLORLESS": return PokemonCardData.EnergyType.COLORLESS
+		_:           return PokemonCardData.EnergyType.NONE
