@@ -9,10 +9,11 @@ extends Node3D
 ## Developer Mode: No CPU.  At turn-end the perspective automatically flips
 ##                 so the developer can play both sides.
 
-@onready var camera:      Camera3D = $Camera3D
-@onready var board:       Board    = $Board
-@onready var player_hand: Hand     = $Board/PlayerHand
-@onready var opp_hand:    Hand     = $Board/OppHand
+@onready var camera:             Camera3D = $Camera3D
+@onready var board:              Board    = $Board
+@onready var player_hand:        Hand     = $Board/PlayerHand
+@onready var opp_hand:           Hand     = $Board/OppHand
+@onready var camera_controller:  Node     = $CameraController
 
 ## HUD elements created in the scene.
 @onready var phase_label:     Label         = $HUD/TopBar/PhaseLabel
@@ -90,6 +91,7 @@ func _ready() -> void:
 		Basis(Vector3.UP, PI) * camera.basis,
 		camera.position.rotated(Vector3.UP, PI)
 	)
+	camera_controller.base_transform_changed.connect(_on_camera_adjusted)
 
 	## Build all UI panels (hidden until needed).
 	_build_attack_panel()
@@ -1502,6 +1504,19 @@ func _switch_perspective_to(pid: int) -> void:
 	_configure_hand_for_player(opp_hand,    pid == 1)
 	_flip_board_card_rotations()
 	_refresh_attack_panel()
+
+
+## Keeps the cached P0/P1 transforms in sync when the debug camera controller
+## moves the camera. Recomputes the mirrored P1 transform from the new P0 base.
+func _on_camera_adjusted(new_transform: Transform3D) -> void:
+	if controlling_player == 0:
+		_p0_cam_transform = new_transform
+		_p1_cam_transform = Transform3D(
+			Basis(Vector3.UP, PI) * new_transform.basis,
+			new_transform.origin.rotated(Vector3.UP, PI)
+		)
+	else:
+		_p1_cam_transform = new_transform
 
 
 func _flip_board_card_rotations() -> void:
