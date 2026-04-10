@@ -8,6 +8,15 @@ const BENCH_SPACING := 0.7
 const ACTIVE_Z := 0.7
 const BENCH_Z := 1.75
 
+## Prize zone layout constants.
+## The prize area is centred at |PRIZE_AREA_X| on each side of the board.
+## Odd prize counts get one card centred in the top row; even counts get two
+## cards per row.  Zones beyond the selected count are hidden.
+const PRIZE_AREA_X    := 2.725   # abs x of prize-area centre
+const PRIZE_COL_HALF  := 0.375   # half-column spacing (card_w/2 + gap)
+const PRIZE_ROW_Z0    := 0.5     # z of first prize row (player-0 side)
+const PRIZE_ROW_DZ    := 1.05    # row spacing
+
 
 func _ready() -> void:
 	_collect_zones()
@@ -63,6 +72,42 @@ func configure_slots(num_active: int, num_bench: int) -> void:
 		zone.visible = si < num_bench
 		if si < num_bench:
 			zone.position = Vector3(_bench_x(si, num_bench, true), 0.0, -BENCH_Z)
+
+	_collect_zones()
+
+
+## Position and show/hide prize zones to match [num_prizes] (2-6).
+## Layout: rows of two, with an odd prize centred alone in the top row.
+## Player-0 prizes sit to the left; player-1 prizes mirror them to the right.
+func configure_prizes(num_prizes: int) -> void:
+	var odd := (num_prizes % 2 == 1)
+	for i in range(6):
+		var p0 := _find_zone_in_tree("Prize %d"     % (i + 1))
+		var p1 := _find_zone_in_tree("Opp Prize %d" % (i + 1))
+
+		var used := (i < num_prizes)
+		if p0: p0.visible = used
+		if p1: p1.visible = used
+		if not used:
+			continue
+
+		## Compute column offset and row index for this prize slot.
+		var x_off: float
+		var row: int
+		if odd and i == 0:
+			x_off = 0.0
+			row   = 0
+		else:
+			var j: int = i - (1 if odd else 0)
+			row  = j / 2 + (1 if odd else 0)
+			x_off = -PRIZE_COL_HALF if (j % 2 == 0) else PRIZE_COL_HALF
+
+		var z_abs: float = PRIZE_ROW_Z0 + row * PRIZE_ROW_DZ
+
+		## Player 0: left side (negative x), positive z.
+		if p0: p0.position = Vector3(-PRIZE_AREA_X + x_off,  0.0,  z_abs)
+		## Player 1: right side (positive x), negative z (mirrored).
+		if p1: p1.position = Vector3( PRIZE_AREA_X - x_off,  0.0, -z_abs)
 
 	_collect_zones()
 

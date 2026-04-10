@@ -91,13 +91,15 @@ func _run_turn() -> void:
 ## ============================================================
 
 func handle_promotion_needed() -> void:
-	## Automatically promotes the first available bench Pokemon.
+	## Automatically promotes a random bench Pokemon (forced — bypasses turn gate).
 	var bench := _state.board.get_bench_cards(_player_id)
 	if bench.is_empty():
 		return  ## No bench Pokemon — game-over is handled elsewhere.
 
-	## ActionPromoteFromBench allows any phase (forced promotion rule).
-	_tc.request_action(ActionPromoteFromBench.new(_player_id, _player_id, 0))
+	var bench_index := randi() % bench.size()
+	_tc.request_action(
+		ActionPromoteFromBench.new(_player_id, _player_id, bench_index, true)
+	)
 
 
 ## ============================================================

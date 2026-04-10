@@ -255,6 +255,7 @@ func _start_game() -> void:
 	game_state = GameState.new(2, _active_slots, _bench_slots)
 	turn_controller.set_state(game_state)
 	board.configure_slots(_active_slots, _bench_slots)
+	board.configure_prizes(_prize_count)
 
 	## ── Connect signals ───────────────────────────────────────────────────
 	turn_controller.phase_changed.connect(_on_phase_changed)
@@ -322,6 +323,8 @@ func _start_game() -> void:
 
 	_spawn_deck_visual(0)
 	_spawn_deck_visual(1)
+	_spawn_prize_visuals(0)
+	_spawn_prize_visuals(1)
 
 	## ── CPU player (Player Mode only — never created in Developer Mode) ───
 	if not is_developer_mode:
@@ -357,6 +360,40 @@ func _spawn_deck_visual(pid: int) -> void:
 		card.face_down = true
 		board.add_child(card)
 		deck_zone.receive_card(card)
+
+
+## Spawns one face-down card node for each prize in the logical prize zone,
+## distributing them across the "Prize N" / "Opp Prize N" visual zones.
+func _spawn_prize_visuals(pid: int) -> void:
+	var prefix := "Prize " if pid == 0 else "Opp Prize "
+	var prize_cards := game_state.board.get_zone("p%d_prizes" % pid)
+	for i in range(prize_cards.size()):
+		var zone_name := prefix + str(i + 1)
+		var prize_zone := board.get_zone_by_name(zone_name)
+		if prize_zone == null:
+			continue
+		var card: Card = card_scene.instantiate()
+		card.set_instance(prize_cards[i] as CardInstance)
+		card.face_down = true
+		board.add_child(card)
+		prize_zone.receive_card(card)
+
+
+## Removes the visual card node from the highest-numbered occupied prize zone
+## for [pid] and returns its world position (for the hand-draw animation origin).
+func _pop_prize_visual(pid: int) -> Vector3:
+	var prefix := "Prize " if pid == 0 else "Opp Prize "
+	for i in range(6, 0, -1):
+		var prize_zone := board.get_zone_by_name(prefix + str(i))
+		if prize_zone == null or prize_zone.held_cards.is_empty():
+			continue
+		var pos := prize_zone.global_position + Vector3(0, 0.1, 0)
+		var card_node := prize_zone.held_cards[0] as Card
+		prize_zone.remove_card(card_node)
+		card_node.queue_free()
+		return pos
+	return Vector3.ZERO
+
 
 
 # ===========================================================================
@@ -512,6 +549,7 @@ func _complete_placement_phase() -> void:
 	## Initialise the HUD for the first turn.
 	_update_prize_label()
 	_on_phase_changed(game_state.phase)
+	_refresh_board_card_visuals()
 
 
 ## Find the Card node in the scene tree that wraps [inst].
@@ -565,6 +603,7 @@ func _on_action_committed(action: GameAction) -> void:
 	_sync_visual_for_action(action)
 	_refresh_attack_panel()
 	_update_status_label()
+	_refresh_board_card_visuals()
 
 
 func _on_action_rejected(action: GameAction, reason: String) -> void:
@@ -593,12 +632,9 @@ func _on_pokemon_knocked_out(victim: CardInstance, scoring_player_id: int) -> vo
 
 func _on_prize_taken(player_id: int, card: CardInstance) -> void:
 	## The prize card was moved to hand by ActionTakePrize.apply().
-	## Spawn a Card node in the appropriate hand.
-	var from_pos := Vector3.ZERO
-	var prize_zone_name := "Prize 1" if player_id == 0 else "Opp Prize 1"
-	var pzone := board.get_zone_by_name(prize_zone_name)
-	if pzone:
-		from_pos = pzone.global_position + Vector3(0, 0.1, 0)
+	## Remove the visual prize card from its zone and use that position as the
+	## fly-in origin for the new hand card.
+	var from_pos := _pop_prize_visual(player_id)
 
 	var card_node: Card = card_scene.instantiate()
 	card_node.set_instance(card)
@@ -729,6 +765,7 @@ func _sync_evolve(action: ActionEvolvePokemon) -> void:
 		else:
 			opp_hand.remove_card(evo_node)
 		board.add_child(evo_node)
+	evo_node.face_down = false
 	if target_zone:
 		target_zone.receive_card(evo_node)
 		evo_node.update_attachment_icons()
@@ -771,6 +808,18 @@ func _sync_promotion(action: ActionPromoteFromBench) -> void:
 		if active_zone:
 			active_zone.receive_card(card_node)
 		break
+
+
+## Refreshes damage counters and status overlays on every face-up card currently
+## in a board zone.  Call after any action that may change HP or conditions.
+func _refresh_board_card_visuals() -> void:
+	if board == null:
+		return
+	for zone in board.all_zones:
+		for card in zone.held_cards:
+			var c := card as Card
+			c.update_damage_counter()
+			c.update_status_overlays()
 
 
 # ===========================================================================
@@ -1144,6 +1193,7 @@ func _try_drop_card() -> void:
 		controlling_player, TurnPhase.phase_to_string(game_state.phase), action.description()
 	])
 	_refresh_attack_panel()
+	_refresh_board_card_visuals()
 
 
 func _build_play_action(inst: CardInstance, drop_zone: DropZone) -> GameAction:
@@ -1593,6 +1643,62 @@ func _populate_card_popup(inst: CardInstance) -> void:
 		if child != _popup_art:
 			child.queue_free()
 
+	## HP bar overlay for Pokemon cards.
+	if inst.is_pokemon():
+		var hp_max := inst.hp_max()
+		var hp_rem := inst.hp_remaining()
+		var ratio := float(hp_rem) / float(hp_max) if hp_max > 0 else 0.0
+
+		var bar_y := _POPUP_ART_H - 38.0
+		var bar_h := 38.0
+
+		var bar_bg := ColorRect.new()
+		bar_bg.color = Color(0.0, 0.0, 0.0, 0.62)
+		bar_bg.position = Vector2(0.0, bar_y)
+		bar_bg.size = Vector2(_POPUP_ART_W, bar_h)
+		_popup_art_container.add_child(bar_bg)
+
+		var fill_color: Color
+		if ratio > 0.5:
+			fill_color = Color(0.12, 0.70, 0.12, 0.78)
+		elif ratio > 0.25:
+			fill_color = Color(0.90, 0.74, 0.0, 0.78)
+		else:
+			fill_color = Color(0.88, 0.12, 0.12, 0.78)
+
+		var bar_fill := ColorRect.new()
+		bar_fill.color = fill_color
+		bar_fill.position = Vector2(0.0, bar_y)
+		bar_fill.size = Vector2(_POPUP_ART_W * ratio, bar_h)
+		_popup_art_container.add_child(bar_fill)
+
+		var hp_lbl := Label.new()
+		hp_lbl.text = "%d / %d HP" % [hp_rem, hp_max]
+		hp_lbl.add_theme_font_size_override("font_size", 17)
+		hp_lbl.add_theme_color_override("font_color", Color.WHITE)
+		hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hp_lbl.position = Vector2(0.0, bar_y + 8.0)
+		hp_lbl.size = Vector2(_POPUP_ART_W, 24.0)
+		_popup_art_container.add_child(hp_lbl)
+
+		## Status condition chips just above the HP bar.
+		const COND_COLORS: Dictionary = {
+			CardInstance.SpecialCondition.POISONED:  {"label": "POISONED",  "color": Color(0.62, 0.08, 0.82)},
+			CardInstance.SpecialCondition.BURNED:    {"label": "BURNED",    "color": Color(0.95, 0.38, 0.04)},
+			CardInstance.SpecialCondition.PARALYZED: {"label": "PARALYZED", "color": Color(0.90, 0.85, 0.08)},
+			CardInstance.SpecialCondition.ASLEEP:    {"label": "ASLEEP",    "color": Color(0.28, 0.28, 0.68)},
+			CardInstance.SpecialCondition.CONFUSED:  {"label": "CONFUSED",  "color": Color(0.78, 0.38, 0.68)},
+		}
+		var chip_x := 4.0
+		for cond in COND_COLORS.keys():
+			if not inst.has_condition(cond as CardInstance.SpecialCondition):
+				continue
+			var info: Dictionary = COND_COLORS[cond]
+			var chip := _make_popup_status_chip(info["label"] as String, info["color"] as Color)
+			chip.position = Vector2(chip_x, bar_y - 30.0)
+			_popup_art_container.add_child(chip)
+			chip_x += chip.custom_minimum_size.x + 4.0
+
 	var tool_r := _POPUP_TOOL_SIZE / 2.0
 	for i in range(inst.attached_tools.size()):
 		var frac_y := AttachmentDisplay.TOOL_NORM_START_Y + i * AttachmentDisplay.TOOL_NORM_STEP_Y
@@ -1637,6 +1743,26 @@ func _make_popup_circle_button(inst: CardInstance, color: Color, size: int) -> B
 	btn.add_theme_stylebox_override("pressed", normal_style)
 	btn.gui_input.connect(_on_attachment_icon_input.bind(inst))
 	return btn
+
+
+func _make_popup_status_chip(label_text: String, color: Color) -> Label:
+	var chip := Label.new()
+	chip.text = label_text
+	chip.add_theme_font_size_override("font_size", 13)
+	chip.add_theme_color_override("font_color", Color.WHITE)
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.corner_radius_top_left     = 4
+	style.corner_radius_top_right    = 4
+	style.corner_radius_bottom_left  = 4
+	style.corner_radius_bottom_right = 4
+	style.content_margin_left   = 6.0
+	style.content_margin_right  = 6.0
+	style.content_margin_top    = 3.0
+	style.content_margin_bottom = 3.0
+	chip.add_theme_stylebox_override("normal", style)
+	chip.custom_minimum_size = Vector2(chip.get_minimum_size().x + 12.0, 24.0)
+	return chip
 
 
 func _on_attachment_icon_input(event: InputEvent, inst: CardInstance) -> void:

@@ -42,11 +42,21 @@ const ENERGY_ICON_RADIUS := 0.039   # ~half of ICON_RADIUS
 const ENERGY_ICON_HEIGHT := 0.004
 const ENERGY_ICON_MAX := 5          # max circles shown before overflow "+" indicator
 
+## Overlay icon layout (right edge of card, for damage counter and status badges).
+const DAMAGE_CTR_RADIUS := 0.200
+const STATUS_BADGE_RADIUS := 0.055
+const OVERLAY_HEIGHT := 0.004
+const OVERLAY_Y := 0.014
+
 const FACE_ROUNDED_SHADER := preload("res://scenes/card/card_face_rounded.gdshader")
 
 ## State
 var is_dragging := false
 var is_hovered := false
+
+## Overlay nodes managed by update_damage_counter() / update_status_overlays().
+var _damage_ctr_node: Node3D = null
+var _status_badge_nodes: Array[Node3D] = []
 var face_down: bool = false:
 	set(value):
 		face_down = value
@@ -309,6 +319,131 @@ func _spawn_energy_overflow(x: float) -> void:
 
 	icon.position = Vector3(x, ICON_Y, CARD_HEIGHT * 0.5)
 	add_child(icon)
+
+
+## Updates the HP counter disc shown at the top-right corner of this card.
+## Call whenever the card's damage changes or it becomes face-up/down.
+func update_damage_counter() -> void:
+	if _damage_ctr_node != null and is_instance_valid(_damage_ctr_node):
+		_damage_ctr_node.queue_free()
+	_damage_ctr_node = null
+
+	if card_instance == null or not card_instance.is_pokemon() or face_down:
+		return
+
+	var hp_max: int = card_instance.hp_max()
+	if hp_max <= 0:
+		return
+	var hp_rem: int = card_instance.hp_remaining()
+	var ratio: float = float(hp_rem) / float(hp_max)
+
+	var node := Node3D.new()
+	node.name = "DamageCounter"
+
+	var disc := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = DAMAGE_CTR_RADIUS
+	cyl.bottom_radius = DAMAGE_CTR_RADIUS
+	cyl.height = OVERLAY_HEIGHT
+	disc.mesh = cyl
+	var mat := StandardMaterial3D.new()
+	if ratio > 0.5:
+		mat.albedo_color = Color(0.08, 0.65, 0.08, 0.88)
+	elif ratio > 0.25:
+		mat.albedo_color = Color(0.90, 0.72, 0.00, 0.88)
+	else:
+		mat.albedo_color = Color(0.88, 0.10, 0.10, 0.88)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	disc.set_surface_override_material(0, mat)
+	node.add_child(disc)
+
+	var lbl := Label3D.new()
+	## Two-line format keeps the fraction short enough to fit within the disc.
+	lbl.text = "%d/%d\nHP" % [hp_rem, hp_max]
+	lbl.pixel_size = 0.0025
+	lbl.font_size = 64
+	lbl.modulate = Color.WHITE
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## Billboard so the text always faces the camera regardless of card rotation.
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	## Disable depth test so the disc never occludes the label.
+	lbl.no_depth_test = true
+	## Squish horizontally so "120/120" fits within the disc diameter.
+	lbl.scale = Vector3(0.55, 1.0, 1.0)
+	lbl.position = Vector3(0.0, OVERLAY_HEIGHT + 0.002, 0.0)
+	node.add_child(lbl)
+
+	node.position = Vector3(
+		CARD_WIDTH * 0.5 - DAMAGE_CTR_RADIUS,
+		OVERLAY_Y,
+		-(CARD_HEIGHT * 0.5 - DAMAGE_CTR_RADIUS)
+	)
+	add_child(node)
+	_damage_ctr_node = node
+
+
+## Updates the status condition badges (PSN, BRN, etc.) on the right edge.
+## Call whenever special_conditions change or the card becomes face-up/down.
+func update_status_overlays() -> void:
+	for node in _status_badge_nodes:
+		if is_instance_valid(node):
+			node.queue_free()
+	_status_badge_nodes.clear()
+
+	if card_instance == null or face_down:
+		return
+
+	var badges: Array[Dictionary] = []
+	if card_instance.has_condition(CardInstance.SpecialCondition.POISONED):
+		badges.append({"label": "PSN", "color": Color(0.62, 0.08, 0.82, 0.92)})
+	if card_instance.has_condition(CardInstance.SpecialCondition.BURNED):
+		badges.append({"label": "BRN", "color": Color(0.95, 0.38, 0.04, 0.92)})
+	if card_instance.has_condition(CardInstance.SpecialCondition.PARALYZED):
+		badges.append({"label": "PAR", "color": Color(0.90, 0.85, 0.08, 0.92)})
+	if card_instance.has_condition(CardInstance.SpecialCondition.ASLEEP):
+		badges.append({"label": "SLP", "color": Color(0.28, 0.28, 0.68, 0.92)})
+	if card_instance.has_condition(CardInstance.SpecialCondition.CONFUSED):
+		badges.append({"label": "CNF", "color": Color(0.78, 0.38, 0.68, 0.92)})
+
+	## Stack badges down the right edge, starting just below the damage counter.
+	var badge_start_z := -(CARD_HEIGHT * 0.5 - DAMAGE_CTR_RADIUS * 2.0 - STATUS_BADGE_RADIUS)
+	for i in range(badges.size()):
+		var badge: Dictionary = badges[i]
+		var node := _spawn_status_badge(
+			badge["label"] as String,
+			badge["color"] as Color,
+			badge_start_z + i * (STATUS_BADGE_RADIUS * 2.2 + 0.008)
+		)
+		add_child(node)
+		_status_badge_nodes.append(node)
+
+
+func _spawn_status_badge(lbl_text: String, color: Color, z_pos: float) -> Node3D:
+	var node := Node3D.new()
+	node.name = "StatusBadge_%s" % lbl_text
+
+	var disc := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = STATUS_BADGE_RADIUS
+	cyl.bottom_radius = STATUS_BADGE_RADIUS
+	cyl.height = OVERLAY_HEIGHT
+	disc.mesh = cyl
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	disc.set_surface_override_material(0, mat)
+	node.add_child(disc)
+
+	var lbl := Label3D.new()
+	lbl.text = lbl_text
+	lbl.pixel_size = 0.00060
+	lbl.font_size = 18
+	lbl.modulate = Color.WHITE
+	lbl.position = Vector3(0.0, OVERLAY_HEIGHT * 0.5 + 0.001, 0.0)
+	node.add_child(lbl)
+
+	node.position = Vector3(CARD_WIDTH * 0.5 - STATUS_BADGE_RADIUS, OVERLAY_Y, z_pos)
+	return node
 
 
 func _spawn_tool_icon(inst: CardInstance, index: int) -> void:
