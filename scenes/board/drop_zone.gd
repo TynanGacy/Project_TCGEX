@@ -70,6 +70,9 @@ func can_accept_card(_card: Card) -> bool:
 
 
 func receive_card(card: Card) -> void:
+	## Guard against duplicate inserts (e.g. redundant visual-sync calls).
+	if held_cards.has(card):
+		return
 	held_cards.append(card)
 	if use_board_display:
 		card.set_board_mode(true)
@@ -110,4 +113,3 @@ func _layout_held_cards() -> void:
 ## Re-applies the current perspective_y_rotation to all held cards.
 func relayout() -> void:
 	_layout_held_cards()
-

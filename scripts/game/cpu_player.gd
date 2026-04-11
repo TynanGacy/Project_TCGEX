@@ -28,6 +28,12 @@ func setup(state: GameState, turn_controller: TurnController) -> void:
 	_tc    = turn_controller
 	_tc.turn_started.connect(_on_turn_started)
 
+func _exit_tree() -> void:
+	## Defensive disconnect: avoids keeping stale callables around if a CPU node
+	## is replaced/recreated while the TurnController singleton remains alive.
+	if _tc != null and _tc.turn_started.is_connected(_on_turn_started):
+		_tc.turn_started.disconnect(_on_turn_started)
+
 
 func _on_turn_started(_turn_number: int, current_player_id: int) -> void:
 	if current_player_id != _player_id:
