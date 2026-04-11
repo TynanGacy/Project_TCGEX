@@ -39,8 +39,10 @@ func add_card_animated(card: Card, from_global: Vector3) -> void:
 
 func remove_card(card: Card) -> void:
 	cards.erase(card)
-	card.card_dropped.disconnect(_on_card_dropped)
-	remove_child(card)
+	if card.card_dropped.is_connected(_on_card_dropped):
+		card.card_dropped.disconnect(_on_card_dropped)
+	if card.get_parent() == self:
+		remove_child(card)
 	_layout_cards()
 
 

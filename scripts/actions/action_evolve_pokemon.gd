@@ -76,9 +76,14 @@ func apply(state: GameState) -> void:
 	var target_zone_id := state.board.find_card_location(target)
 
 	# Carry over damage and all attachments from the prior stage.
+	# IMPORTANT: attachments are *moved* to the evolved card, not copied.
+	# If the prior stage keeps references, KO-discard recursion can attempt to
+	# discard the same attachment twice through both cards.
 	card.damage = target.damage
 	card.attached_energy = target.attached_energy.duplicate()
 	card.attached_tools = target.attached_tools.duplicate()
+	target.attached_energy.clear()
+	target.attached_tools.clear()
 
 	# Keep a reference to the card underneath.
 	card.prior_stage = target
