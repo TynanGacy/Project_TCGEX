@@ -13,7 +13,7 @@ extends Node3D
 @onready var board:              Board    = $Board
 @onready var player_hand:        Hand     = $Board/PlayerHand
 @onready var opp_hand:           Hand     = $Board/OppHand
-@onready var camera_controller:  Node     = $CameraController
+@onready var camera_controller:  CameraController = $CameraController
 
 ## HUD elements created in the scene.
 @onready var phase_label:     Label         = $HUD/TopBar/PhaseLabel
