@@ -48,10 +48,14 @@ const STATUS_BADGE_RADIUS := 0.055
 const OVERLAY_HEIGHT := 0.004
 const OVERLAY_Y := 0.014
 
+## Board mode: card shows only the painted art at landscape proportions.
+## Art aspect ratio matches CardFace.BOARD_ART_RATIO (1.52 : 1).
+const BOARD_ART_RATIO := 1.52
+const BOARD_CARD_H    := 0.414   ## CARD_WIDTH / BOARD_ART_RATIO ≈ 0.414
+
 ## Nameplate strip shown above the card in board mode.
-## Positioned just past the card's top edge (negative-Z in local space).
-const NAMEPLATE_H   := 0.13    ## Strip height (world units)
-const NAMEPLATE_Y   := 0.014   ## Y lift above the card surface
+const NAMEPLATE_H := 0.13    ## strip height (world units)
+const NAMEPLATE_Y := 0.014   ## Y lift above the card surface
 
 const FACE_ROUNDED_SHADER := preload("res://scenes/card/card_face_rounded.gdshader")
 
@@ -103,6 +107,10 @@ func _ready() -> void:
 	var src := mesh_instance.get_surface_override_material(0) as StandardMaterial3D
 	_body_material = src.duplicate() as StandardMaterial3D
 	mesh_instance.set_surface_override_material(0, _body_material)
+	## Duplicate meshes so set_board_mode() can resize them without affecting the
+	## shared .tscn resource (which all cards reference).
+	face_mesh.mesh = face_mesh.mesh.duplicate()
+	mesh_instance.mesh = mesh_instance.mesh.duplicate()
 	## Apply any instance that was set before the node was in the tree.
 	if _pending_instance != null:
 		set_instance(_pending_instance)
@@ -125,22 +133,41 @@ func set_instance(inst: CardInstance) -> void:
 	_update_visuals()
 
 
-## Switches the card between board mode (nameplate visible) and hand mode.
+## Switches the card between board mode (landscape art + nameplate) and hand mode.
 ## Call with true when the card enters an active or bench zone; false when it leaves.
 func set_board_mode(on: bool) -> void:
 	_board_mode = on
+	_resize_meshes(on)
 	if on:
 		_build_nameplate()
+		if card_instance != null and card_instance.data != null:
+			_queue_face_refresh()
 	else:
 		_remove_nameplate()
+		if card_instance != null and card_instance.data != null:
+			_queue_face_refresh()
+
+
+## Resizes the face PlaneMesh and body BoxMesh for board mode (landscape art)
+## or restores portrait dimensions when leaving board mode.
+func _resize_meshes(board: bool) -> void:
+	var new_h := BOARD_CARD_H if board else CARD_HEIGHT
+	var plane := face_mesh.mesh as PlaneMesh
+	plane.size = Vector2(CARD_WIDTH, new_h)
+	var box := mesh_instance.mesh as BoxMesh
+	box.size = Vector3(CARD_WIDTH, CARD_THICKNESS, new_h)
+	_face_shader_material.set_shader_parameter("card_size", Vector2(CARD_WIDTH, new_h))
 
 
 ## Queues an async face refresh (fire-and-forget — do not await).
-## Renders data.art into the SubViewport; identical for hand and board mode.
+## Uses board mode (art crop) or hand mode (full image) based on _board_mode.
 func _queue_face_refresh() -> void:
 	if not is_node_ready() or card_instance == null or card_instance.data == null:
 		return
-	card_face.setup(card_instance.data)
+	if _board_mode:
+		card_face.setup_board(card_instance)
+	else:
+		card_face.setup(card_instance.data)
 	## Wait two frames — one for layout, one for the SubViewport to render.
 	## Guard each await: the card node may be freed (e.g. deck teardown).
 	await get_tree().process_frame
@@ -200,9 +227,9 @@ func _build_nameplate() -> void:
 		hp_lbl.position = Vector3(CARD_WIDTH * 0.5 - 0.035, 0.002, 0.0)
 		_nameplate_node.add_child(hp_lbl)
 
-	## Position just past the top edge of the card.
+	## Position just past the top edge of the board-mode (landscape) card.
 	_nameplate_node.position = Vector3(
-		0.0, NAMEPLATE_Y, -(CARD_HEIGHT * 0.5 + NAMEPLATE_H * 0.5)
+		0.0, NAMEPLATE_Y, -(BOARD_CARD_H * 0.5 + NAMEPLATE_H * 0.5)
 	)
 	add_child(_nameplate_node)
 

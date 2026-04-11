@@ -1,14 +1,25 @@
 class_name CardFace
 extends Control
 ## Renders the card's face into a SubViewport.
-## Displays data.art stretched to fill the full face, preserving whatever
-## aspect ratio the source texture has (typically the full card scan).
-## Falls back to a type-colour background + card name if no art is loaded.
 ##
-## Board-mode info (name, HP, type) is shown on a separate 3D nameplate
-## attached to the card node rather than overlaid on this viewport.
+## Hand mode (setup):       full card image stretched to fill 252×352.
+## Board mode (setup_board): just the painted art cropped from the card image,
+##                           rendered at landscape aspect ratio into 252×166.
+##
+## Board-mode info (name, HP, type) is displayed on a separate 3D nameplate
+## attached to the Card node — not overlaid on this viewport.
 
+## Full card image dimensions (hand mode).
 const FACE_SIZE := Vector2(252, 352)
+
+## Board mode: painted-art crop.
+## Calibrated to RS set scans (400 × 550 px).
+## The art window spans roughly x 8–92 %, y 15–55 % of the full card image.
+const BOARD_ART_UV    := Rect2(0.08, 0.15, 0.84, 0.401)
+## Resulting art aspect ratio (width : height ≈ 336 × 221 px → 1.52 : 1).
+const BOARD_ART_RATIO := 1.52
+## Viewport size for board mode (252 wide, height = 252 / 1.52).
+const BOARD_FACE_SIZE := Vector2(252, 166)
 
 const TYPE_COLORS: Array[Color] = [
 	Color(0.70, 0.70, 0.70),  # NONE
@@ -35,28 +46,14 @@ const CARD_BG := Color(0.97, 0.95, 0.90)
 const TRAINER_KIND_NAMES: Array[String] = ["Item", "Supporter", "Stadium", "Tool"]
 
 
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+## Hand mode: display the full card image, portrait, no crops.
 func setup(data: CardData) -> void:
-	_build(data)
-
-
-## Alias kept for call-site clarity; rendering is identical for both modes.
-## Board-mode info display is handled by the Card node's nameplate object.
-func setup_board(inst: CardInstance) -> void:
-	_build(inst.data)
-
-
-func _build(data: CardData) -> void:
-	for child in get_children():
-		child.queue_free()
-	custom_minimum_size = FACE_SIZE
-	size = FACE_SIZE
-	if get_parent() is SubViewport:
-		get_parent().size = Vector2i(FACE_SIZE)
-
+	_clear_to(FACE_SIZE)
 	if data.art != null:
-		## Stretch the full card-scan image to fill the face exactly.
-		## STRETCH_SCALE fills without cropping; works cleanly when the source
-		## texture already matches the card's portrait aspect ratio.
 		var tex := TextureRect.new()
 		tex.texture = data.art
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -65,7 +62,6 @@ func _build(data: CardData) -> void:
 		tex.size = FACE_SIZE
 		add_child(tex)
 	else:
-		## Fallback: solid type colour + centred name.
 		_add_rect(Vector2.ZERO, FACE_SIZE, _fallback_color(data))
 		var lbl := _add_label(data.display_name, 28, Color.WHITE,
 			Vector2(8.0, FACE_SIZE.y / 2.0 - 20.0))
@@ -73,9 +69,48 @@ func _build(data: CardData) -> void:
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
+## Board mode: display only the painted art cropped from the card image.
+## Viewport is resized to BOARD_FACE_SIZE (landscape); the Card node's face
+## mesh is expected to match these proportions.
+func setup_board(inst: CardInstance) -> void:
+	_clear_to(BOARD_FACE_SIZE)
+	var data := inst.data
+	if data.art != null:
+		var atlas := AtlasTexture.new()
+		atlas.atlas = data.art
+		atlas.region = Rect2(
+			data.art.get_width()  * BOARD_ART_UV.position.x,
+			data.art.get_height() * BOARD_ART_UV.position.y,
+			data.art.get_width()  * BOARD_ART_UV.size.x,
+			data.art.get_height() * BOARD_ART_UV.size.y
+		)
+		var tex := TextureRect.new()
+		tex.texture = atlas
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_SCALE
+		tex.position = Vector2.ZERO
+		tex.size = BOARD_FACE_SIZE
+		add_child(tex)
+	else:
+		_add_rect(Vector2.ZERO, BOARD_FACE_SIZE, _fallback_color(data))
+		var lbl := _add_label(data.display_name, 22, Color.WHITE,
+			Vector2(8.0, BOARD_FACE_SIZE.y / 2.0 - 14.0))
+		lbl.size.x = BOARD_FACE_SIZE.x - 16.0
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+
 # ---------------------------------------------------------------------------
-# Helpers
+# Internal helpers
 # ---------------------------------------------------------------------------
+
+func _clear_to(target_size: Vector2) -> void:
+	for child in get_children():
+		child.queue_free()
+	custom_minimum_size = target_size
+	size = target_size
+	if get_parent() is SubViewport:
+		get_parent().size = Vector2i(target_size)
+
 
 func _fallback_color(data: CardData) -> Color:
 	if data is PokemonCardData:

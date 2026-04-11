@@ -13,8 +13,9 @@ signal card_received(card: Card)
 ## Set to PI when the viewer's perspective is flipped 180°.
 var perspective_y_rotation: float = 0.0
 
-const ZONE_WIDTH := 0.66
-const ZONE_HEIGHT := 0.92
+## Zone sized to the board-mode landscape art card (CARD_WIDTH / 1.52 ≈ 0.414).
+const ZONE_WIDTH  := 0.66
+const ZONE_HEIGHT := 0.44
 
 var held_cards: Array[Card] = []
 var is_highlighted := false
