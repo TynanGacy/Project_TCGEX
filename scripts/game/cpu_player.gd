@@ -26,7 +26,8 @@ var _running: bool = false
 func setup(state: GameState, turn_controller: TurnController) -> void:
 	_state = state
 	_tc    = turn_controller
-	_tc.turn_started.connect(_on_turn_started)
+	if not _tc.turn_started.is_connected(_on_turn_started):
+		_tc.turn_started.connect(_on_turn_started)
 
 func _exit_tree() -> void:
 	## Defensive disconnect: avoids keeping stale callables around if a CPU node

@@ -73,6 +73,8 @@ func receive_card(card: Card) -> void:
 	## Guard against duplicate inserts (e.g. redundant visual-sync calls).
 	if held_cards.has(card):
 		return
+	if not can_accept_card(card):
+		return
 	held_cards.append(card)
 	if use_board_display:
 		card.set_board_mode(true)
