@@ -64,3 +64,4 @@ scroll_following = true
 [node name="CardZoomPopup" parent="HUD" unique_id=126310421 instance=ExtResource("4_czp")]
 
 [node name="CameraController" type="Node" parent="." script=ExtResource("5_cc")]
+camera = NodePath("../Camera3D")
