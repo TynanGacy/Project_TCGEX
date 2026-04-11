@@ -39,7 +39,7 @@ func _ready() -> void:
 	get_parent().get_node("HUD").add_child(_label)
 
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
 	var key := event as InputEventKey
