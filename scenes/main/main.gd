@@ -13,7 +13,7 @@ extends Node3D
 @onready var board:              Board    = $Board
 @onready var player_hand:        Hand     = $Board/PlayerHand
 @onready var opp_hand:           Hand     = $Board/OppHand
-@onready var camera_controller:  CameraController = $CameraController
+@onready var camera_controller := $CameraController
 
 ## HUD elements created in the scene.
 @onready var phase_label:     Label         = $HUD/TopBar/PhaseLabel
@@ -91,7 +91,7 @@ func _ready() -> void:
 		Basis(Vector3.UP, PI) * camera.basis,
 		camera.position.rotated(Vector3.UP, PI)
 	)
-	camera_controller.base_transform_changed.connect(_on_camera_adjusted)
+	camera_controller.connect("base_transform_changed", _on_camera_adjusted)
 
 	## Build all UI panels (hidden until needed).
 	_build_attack_panel()

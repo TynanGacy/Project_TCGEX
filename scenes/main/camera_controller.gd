@@ -1,5 +1,4 @@
 extends Node
-class_name CameraController
 ## Debug camera-positioning tool.
 ##
 ## Press backtick (`) to toggle adjust mode. All controls are intercepted
