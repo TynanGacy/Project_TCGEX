@@ -21,31 +21,38 @@ surface_material_override/0 = SubResource("Material_table")
 [node name="PlayerActive" parent="PlayerZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.7)
 zone_name = "Active"
+use_board_display = true
 
 [node name="PlayerActive2" parent="PlayerZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0, 0.7)
 visible = false
 zone_name = "Active 2"
+use_board_display = true
 
 [node name="PlayerBench1" parent="PlayerZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 0, 1.75)
 zone_name = "Bench 1"
+use_board_display = true
 
 [node name="PlayerBench2" parent="PlayerZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7, 0, 1.75)
 zone_name = "Bench 2"
+use_board_display = true
 
 [node name="PlayerBench3" parent="PlayerZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.75)
 zone_name = "Bench 3"
+use_board_display = true
 
 [node name="PlayerBench4" parent="PlayerZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0, 1.75)
 zone_name = "Bench 4"
+use_board_display = true
 
 [node name="PlayerBench5" parent="PlayerZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0, 1.75)
 zone_name = "Bench 5"
+use_board_display = true
 
 [node name="PlayerPrize1" parent="PlayerZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.1, 0, 0.5)
@@ -86,31 +93,38 @@ max_cards = 60
 [node name="OppActive" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.7)
 zone_name = "Opp Active"
+use_board_display = true
 
 [node name="OppActive2" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.35, 0, -0.7)
 visible = false
 zone_name = "Opp Active 2"
+use_board_display = true
 
 [node name="OppBench1" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0, -1.75)
 zone_name = "Opp Bench 1"
+use_board_display = true
 
 [node name="OppBench2" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0, -1.75)
 zone_name = "Opp Bench 2"
+use_board_display = true
 
 [node name="OppBench3" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.75)
 zone_name = "Opp Bench 3"
+use_board_display = true
 
 [node name="OppBench4" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7, 0, -1.75)
 zone_name = "Opp Bench 4"
+use_board_display = true
 
 [node name="OppBench5" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 0, -1.75)
 zone_name = "Opp Bench 5"
+use_board_display = true
 
 [node name="OppPrize1" parent="OpponentZones" instance=ExtResource("2_dropzone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 0, -0.5)

@@ -8,6 +8,9 @@ signal card_received(card: Card)
 @export var zone_color: Color = Color(0.2, 0.4, 0.2, 0.5)
 @export var highlight_color: Color = Color(0.3, 0.7, 0.3, 0.7)
 @export var max_cards: int = 1
+## When true, cards placed here switch to board-display mode (landscape art + nameplate).
+## Enable only for Active and Bench zones; leave false for Deck, Prize, Discard.
+@export var use_board_display: bool = false
 
 ## Extra Y rotation (radians) applied to every card placed here.
 ## Set to PI when the viewer's perspective is flipped 180°.
@@ -48,14 +51,16 @@ func can_accept_card(_card: Card) -> bool:
 
 func receive_card(card: Card) -> void:
 	held_cards.append(card)
-	card.set_board_mode(true)
+	if use_board_display:
+		card.set_board_mode(true)
 	card_received.emit(card)
 	_layout_held_cards()
 
 
 func remove_card(card: Card) -> void:
 	held_cards.erase(card)
-	card.set_board_mode(false)
+	if use_board_display:
+		card.set_board_mode(false)
 	_layout_held_cards()
 
 
