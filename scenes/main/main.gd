@@ -636,14 +636,20 @@ func _on_turn_log(text: String) -> void:
 ## ── Knockout / prize / promotion callbacks ──────────────────────────────────
 
 func _on_pokemon_knocked_out(victim: CardInstance, scoring_player_id: int) -> void:
-	## Remove the KO'd Card node from its visual zone; game_state already moved
-	## the logical card to discard inside resolve_knockouts().
+	## game_state already moved the logical card to discard inside resolve_knockouts().
+	## Visually: remove from its board zone and drop it face-up onto the owner's discard pile.
 	var card_node := _find_card_node(victim)
 	if card_node:
 		var zone := board.get_zone_containing(card_node)
 		if zone:
-			zone.remove_card(card_node)
-		card_node.queue_free()
+			zone.remove_card(card_node)   ## resets board-display mode if needed
+		card_node.face_down = false
+		var discard_name := "Discard" if victim.owner_id == 0 else "Opp Discard"
+		var discard_zone := board.get_zone_by_name(discard_name)
+		if discard_zone != null:
+			discard_zone.receive_card(card_node)
+		else:
+			card_node.queue_free()
 
 	var pname := victim.data.display_name if victim.data else "Pokemon"
 	_log_line(">>> %s was knocked out! P%d scores a KO." % [pname, scoring_player_id])

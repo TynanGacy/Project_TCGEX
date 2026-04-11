@@ -16,9 +16,11 @@ signal card_received(card: Card)
 ## Set to PI when the viewer's perspective is flipped 180°.
 var perspective_y_rotation: float = 0.0
 
-## Zone sized to the board-mode landscape art card (CARD_WIDTH / 1.52 ≈ 0.414).
-const ZONE_WIDTH  := 0.66
-const ZONE_HEIGHT := 0.44
+const ZONE_WIDTH          := 0.66
+const BOARD_ZONE_HEIGHT   := 0.44   ## landscape – board-display active/bench slots
+const PORTRAIT_ZONE_HEIGHT := 0.92  ## portrait  – deck, prize, discard slots
+
+var _effective_height: float = PORTRAIT_ZONE_HEIGHT
 
 var held_cards: Array[Card] = []
 var is_highlighted := false
@@ -26,6 +28,7 @@ var is_highlighted := false
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var area_3d: Area3D = $Area3D
 @onready var label_3d: Label3D = $Label3D
+@onready var collision_shape: CollisionShape3D = $Area3D/CollisionShape3D
 
 var _base_material: StandardMaterial3D
 var _highlight_material: StandardMaterial3D
@@ -33,6 +36,8 @@ var _highlight_material: StandardMaterial3D
 
 func _ready() -> void:
 	label_3d.text = zone_name
+	_effective_height = BOARD_ZONE_HEIGHT if use_board_display else PORTRAIT_ZONE_HEIGHT
+	_resize_zone(_effective_height)
 
 	_base_material = StandardMaterial3D.new()
 	_base_material.albedo_color = zone_color
@@ -43,6 +48,21 @@ func _ready() -> void:
 	_highlight_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
 	mesh_instance.set_surface_override_material(0, _base_material)
+
+
+## Resizes the visual plane, collision box, and label to the given height.
+func _resize_zone(h: float) -> void:
+	var plane := mesh_instance.mesh.duplicate() as PlaneMesh
+	plane.size = Vector2(ZONE_WIDTH, h)
+	mesh_instance.mesh = plane
+
+	var box := collision_shape.shape.duplicate() as BoxShape3D
+	box.size = Vector3(ZONE_WIDTH, 0.02, h)
+	collision_shape.shape = box
+
+	## Place the label towards the far edge so it doesn't overlap a card placed
+	## in the centre of the zone.
+	label_3d.position = Vector3(0.0, label_3d.position.y, -(h * 0.35))
 
 
 func can_accept_card(_card: Card) -> bool:
@@ -74,7 +94,7 @@ func set_highlighted(value: bool) -> void:
 
 func contains_point(point: Vector3) -> bool:
 	var local := to_local(point)
-	return absf(local.x) <= ZONE_WIDTH / 2.0 and absf(local.z) <= ZONE_HEIGHT / 2.0
+	return absf(local.x) <= ZONE_WIDTH / 2.0 and absf(local.z) <= _effective_height / 2.0
 
 
 func _layout_held_cards() -> void:
@@ -90,3 +110,4 @@ func _layout_held_cards() -> void:
 ## Re-applies the current perspective_y_rotation to all held cards.
 func relayout() -> void:
 	_layout_held_cards()
+
