@@ -446,6 +446,16 @@ func _spawn_energy_overflow(x: float) -> void:
 
 ## Updates the HP display after damage changes.
 ## HP is shown in the nameplate (no 3D disc overlay); just refreshes the label text.
+## Strips all in-play visual overlays so the card looks like it has never been
+## played.  Call whenever a card leaves an active or bench zone for any
+## off-board zone (discard, hand, deck).  The card_instance's logical state
+## should already be reset by game_state before this is called.
+func clear_play_state() -> void:
+	update_attachment_icons()
+	update_damage_counter()
+	update_status_overlays()
+
+
 func update_damage_counter() -> void:
 	if _damage_ctr_node != null and is_instance_valid(_damage_ctr_node):
 		_damage_ctr_node.queue_free()

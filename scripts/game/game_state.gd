@@ -223,6 +223,7 @@ func resolve_knockouts(opp_id: int) -> Array[Dictionary]:
 
 
 ## Recursively discards a Pokemon and everything attached to it.
+## Resets all in-play state so the card is logically identical to an unplayed copy.
 func _send_to_discard(card: CardInstance, player_id: int) -> void:
 	var discard := "p%d_discard" % player_id
 
@@ -240,6 +241,10 @@ func _send_to_discard(card: CardInstance, player_id: int) -> void:
 	if card.prior_stage != null:
 		_send_to_discard(card.prior_stage, player_id)
 		card.prior_stage = null
+
+	## Reset in-play state: damage and special conditions don't persist in discard.
+	card.damage = 0
+	card.clear_conditions()
 
 	board.move_card(card, discard)
 

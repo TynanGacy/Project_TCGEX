@@ -644,6 +644,7 @@ func _on_pokemon_knocked_out(victim: CardInstance, scoring_player_id: int) -> vo
 		var zone := board.get_zone_containing(card_node)
 		if zone:
 			zone.remove_card(card_node)   ## resets board-display mode if needed
+		card_node.clear_play_state()      ## remove damage/energy/status overlays
 		card_node.face_down = false
 		var discard_name := "Discard" if victim.owner_id == 0 else "Opp Discard"
 		var discard_zone := board.get_zone_by_name(discard_name)
