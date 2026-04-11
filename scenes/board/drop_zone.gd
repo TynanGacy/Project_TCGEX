@@ -85,6 +85,7 @@ func receive_card(card: Card) -> void:
 		return
 	held_cards.append(card)
 	if use_board_display:
+		card.set_display_width(_effective_width)
 		card.set_board_mode(true)
 	card_received.emit(card)
 	_layout_held_cards()
@@ -93,6 +94,7 @@ func receive_card(card: Card) -> void:
 func remove_card(card: Card) -> void:
 	held_cards.erase(card)
 	if use_board_display:
+		card.clear_play_state()
 		card.set_board_mode(false)
 	_layout_held_cards()
 

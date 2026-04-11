@@ -400,11 +400,11 @@ func _spawn_prize_visuals(pid: int) -> void:
 		prize_zone.receive_card(card)
 
 
-## Removes the visual card node from the highest-numbered occupied prize zone
-## for [pid] and returns its world position (for the hand-draw animation origin).
+## Removes the visual card node from the lowest-numbered occupied prize zone
+## for [pid] (Prize 1 first = top of stack) and returns its world position.
 func _pop_prize_visual(pid: int) -> Vector3:
 	var prefix := "Prize " if pid == 0 else "Opp Prize "
-	for i in range(6, 0, -1):
+	for i in range(1, 7):
 		var prize_zone := board.get_zone_by_name(prefix + str(i))
 		if prize_zone == null or prize_zone.held_cards.is_empty():
 			continue
@@ -1713,6 +1713,12 @@ func _on_board_card_moved(inst: CardInstance, from_zone: String, to_zone: String
 	if from_zone.ends_with("_deck") and to_zone.ends_with("_hand"):
 		var pid := int(from_zone.substr(1).split("_")[0])
 		_sync_deck_draw_visual(inst, pid)
+	## When a card leaves an active or bench zone for any off-board zone,
+	## erase its in-play modifiers (damage, energy, tools, status conditions).
+	var leaving_play := (from_zone.contains("_active") or from_zone.contains("_bench")) \
+		and not (to_zone.contains("_active") or to_zone.contains("_bench"))
+	if leaving_play:
+		inst.clear_in_play_state()
 
 
 func _sync_deck_draw_visual(inst: CardInstance, pid: int) -> void:

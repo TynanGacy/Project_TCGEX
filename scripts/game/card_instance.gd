@@ -84,6 +84,20 @@ func attach_energy(card: CardInstance) -> bool:
 	attached_energy.append(card)
 	return true
 
+## Erases all in-play modifiers so the card is "clean" when it leaves an
+## active or bench zone.  Call this before (or as) the card enters a
+## non-play zone (hand, deck, discard, prizes).
+## Note: attached energy/tool CardInstances are managed independently by
+## game logic — this simply removes the references from this card.
+func clear_in_play_state() -> void:
+	damage = 0
+	special_conditions.clear()
+	attached_energy.clear()
+	attached_tools.clear()
+	prior_stage = null
+	turn_entered_play = -1
+
+
 func attach_tool(card: CardInstance) -> bool:
 	if card == null:
 		return false

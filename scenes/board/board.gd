@@ -17,14 +17,14 @@ const ACTIVE_SPACING := 2.1    ## spacing between dual-active slots
 const ACTIVE_Z       := 1.1
 
 ## Prize zone layout constants (squished to fit beside expanded bench).
-## Two columns of prizes sit to the left/right of centre; the bench slides
-## underneath them in Z because prizes are confined to a smaller Z range.
-const PRIZE_CARD_W   := 0.5    ## portrait width  (reduced)
-const PRIZE_CARD_H   := 0.6    ## portrait height (reduced)
-const PRIZE_AREA_X   := 2.8    ## abs x of prize-area centre
-const PRIZE_COL_HALF := 0.3    ## half-column spacing
-const PRIZE_ROW_Z0   := 0.4    ## z of first prize row (player-0 side)
-const PRIZE_ROW_DZ   := 0.5    ## row spacing
+## Prizes stack into a single face-down pile per column (two columns per side).
+## All prizes in one column share the same XZ; cards are offset in Y to form a pile.
+const PRIZE_CARD_W     := 0.5    ## portrait width  (reduced)
+const PRIZE_CARD_H     := 0.6    ## portrait height (reduced)
+const PRIZE_AREA_X     := 2.9    ## abs x of prize-area centre (equidistant from active)
+const PRIZE_COL_HALF   := 0.3    ## half-column spacing (x offset from PRIZE_AREA_X)
+const PRIZE_STACK_Z    := 1.1    ## z position of prize pile (same as ACTIVE_Z)
+const PRIZE_STACK_Y_STEP := 0.01 ## Y offset per layer (one card thickness)
 
 
 func _ready() -> void:
@@ -90,10 +90,15 @@ func configure_slots(num_active: int, num_bench: int) -> void:
 
 
 ## Position and show/hide prize zones to match [num_prizes] (2-6).
-## Layout: rows of two, with an odd prize centred alone in the top row.
-## Player-0 prizes sit to the left; player-1 prizes mirror them to the right.
+## Layout: two columns per side; each column is a face-down pile with cards
+## offset in Y (Prize 1 at top/highest Y, taken first).
+## Odd prize count puts one extra card in the left column.
+## Player-0 prizes sit to the left (negative X); player-1 mirror to the right.
 func configure_prizes(num_prizes: int) -> void:
-	var odd := (num_prizes % 2 == 1)
+	## left_col = ceil(num_prizes/2), right_col = floor(num_prizes/2)
+	var left_col: int  = (num_prizes + 1) / 2
+	var right_col: int = num_prizes / 2
+
 	for i in range(6):
 		var p0 := _find_zone_in_tree("Prize %d"     % (i + 1))
 		var p1 := _find_zone_in_tree("Opp Prize %d" % (i + 1))
@@ -101,28 +106,25 @@ func configure_prizes(num_prizes: int) -> void:
 		var used := (i < num_prizes)
 		if p0: p0.visible = used
 		if p1: p1.visible = used
-		if p0 and used: p0.set_zone_size(PRIZE_CARD_W, PRIZE_CARD_H)
-		if p1 and used: p1.set_zone_size(PRIZE_CARD_W, PRIZE_CARD_H)
 		if not used:
 			continue
 
-		## Compute column offset and row index for this prize slot.
-		var x_off: float
-		var row: int
-		if odd and i == 0:
-			x_off = 0.0
-			row   = 0
-		else:
-			var j: int = i - (1 if odd else 0)
-			row  = j / 2 + (1 if odd else 0)
-			x_off = -PRIZE_COL_HALF if (j % 2 == 0) else PRIZE_COL_HALF
+		if p0: p0.set_zone_size(PRIZE_CARD_W, PRIZE_CARD_H)
+		if p1: p1.set_zone_size(PRIZE_CARD_W, PRIZE_CARD_H)
 
-		var z_abs: float = PRIZE_ROW_Z0 + row * PRIZE_ROW_DZ
+		## Determine which column this prize belongs to and its layer within that column.
+		## Prizes 0..(left_col-1) go in the left column; the rest in the right.
+		## Layer 0 = Prize 1 = top of stack (highest Y), taken first.
+		var in_left := (i < left_col)
+		var layer := i if in_left else (i - left_col)
+		var x_off := -PRIZE_COL_HALF if in_left else PRIZE_COL_HALF
+		var y_pos := float(left_col - 1 - layer) * PRIZE_STACK_Y_STEP if in_left \
+			else float(right_col - 1 - layer) * PRIZE_STACK_Y_STEP
 
 		## Player 0: left side (negative x), positive z.
-		if p0: p0.position = Vector3(-PRIZE_AREA_X + x_off,  0.0,  z_abs)
+		if p0: p0.position = Vector3(-PRIZE_AREA_X + x_off,  y_pos,  PRIZE_STACK_Z)
 		## Player 1: right side (positive x), negative z (mirrored).
-		if p1: p1.position = Vector3( PRIZE_AREA_X - x_off,  0.0, -z_abs)
+		if p1: p1.position = Vector3( PRIZE_AREA_X - x_off,  y_pos, -PRIZE_STACK_Z)
 
 	_collect_zones()
 
