@@ -4,18 +4,27 @@ extends Node3D
 
 var all_zones: Array[DropZone] = []
 
-const BENCH_SPACING := 0.7
-const ACTIVE_Z := 0.7
-const BENCH_Z := 1.75
+## Bench zone dimensions: 2× the base card size.
+const BENCH_CARD_W   := 1.32   ## landscape width  (0.66 × 2)
+const BENCH_CARD_H   := 0.88   ## landscape height (0.44 × 2)
+const BENCH_SPACING  := 1.35   ## centre-to-centre slot spacing
+const BENCH_Z        := 2.4
 
-## Prize zone layout constants.
-## The prize area is centred at |PRIZE_AREA_X| on each side of the board.
-## Odd prize counts get one card centred in the top row; even counts get two
-## cards per row.  Zones beyond the selected count are hidden.
-const PRIZE_AREA_X    := 2.725   # abs x of prize-area centre
-const PRIZE_COL_HALF  := 0.375   # half-column spacing (card_w/2 + gap)
-const PRIZE_ROW_Z0    := 0.5     # z of first prize row (player-0 side)
-const PRIZE_ROW_DZ    := 1.05    # row spacing
+## Active zone dimensions: 3× the base card size.
+const ACTIVE_CARD_W  := 1.98   ## landscape width  (0.66 × 3)
+const ACTIVE_CARD_H  := 1.32   ## landscape height (0.44 × 3)
+const ACTIVE_SPACING := 2.1    ## spacing between dual-active slots
+const ACTIVE_Z       := 1.1
+
+## Prize zone layout constants (squished to fit beside expanded bench).
+## Two columns of prizes sit to the left/right of centre; the bench slides
+## underneath them in Z because prizes are confined to a smaller Z range.
+const PRIZE_CARD_W   := 0.5    ## portrait width  (reduced)
+const PRIZE_CARD_H   := 0.6    ## portrait height (reduced)
+const PRIZE_AREA_X   := 2.8    ## abs x of prize-area centre
+const PRIZE_COL_HALF := 0.3    ## half-column spacing
+const PRIZE_ROW_Z0   := 0.4    ## z of first prize row (player-0 side)
+const PRIZE_ROW_DZ   := 0.5    ## row spacing
 
 
 func _ready() -> void:
@@ -43,6 +52,7 @@ func configure_slots(num_active: int, num_bench: int) -> void:
 		if zone == null:
 			continue
 		zone.visible = i < num_active
+		zone.set_zone_size(ACTIVE_CARD_W, ACTIVE_CARD_H)
 		if i < num_active:
 			zone.position = Vector3(_active_x(i, num_active, false), 0.0, ACTIVE_Z)
 
@@ -52,6 +62,7 @@ func configure_slots(num_active: int, num_bench: int) -> void:
 			continue
 		var si := i - 1
 		zone.visible = si < num_bench
+		zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
 		if si < num_bench:
 			zone.position = Vector3(_bench_x(si, num_bench, false), 0.0, BENCH_Z)
 
@@ -61,6 +72,7 @@ func configure_slots(num_active: int, num_bench: int) -> void:
 		if zone == null:
 			continue
 		zone.visible = i < num_active
+		zone.set_zone_size(ACTIVE_CARD_W, ACTIVE_CARD_H)
 		if i < num_active:
 			zone.position = Vector3(_active_x(i, num_active, true), 0.0, -ACTIVE_Z)
 
@@ -70,6 +82,7 @@ func configure_slots(num_active: int, num_bench: int) -> void:
 			continue
 		var si := i - 1
 		zone.visible = si < num_bench
+		zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
 		if si < num_bench:
 			zone.position = Vector3(_bench_x(si, num_bench, true), 0.0, -BENCH_Z)
 
@@ -88,6 +101,8 @@ func configure_prizes(num_prizes: int) -> void:
 		var used := (i < num_prizes)
 		if p0: p0.visible = used
 		if p1: p1.visible = used
+		if p0 and used: p0.set_zone_size(PRIZE_CARD_W, PRIZE_CARD_H)
+		if p1 and used: p1.set_zone_size(PRIZE_CARD_W, PRIZE_CARD_H)
 		if not used:
 			continue
 
@@ -124,7 +139,7 @@ func _find_zone_in_tree(zname: String) -> DropZone:
 
 
 func _active_x(slot: int, total: int, mirror: bool) -> float:
-	var x := 0.0 if total == 1 else (-0.35 + slot * 0.7)
+	var x := 0.0 if total == 1 else (-ACTIVE_SPACING * 0.5 + slot * ACTIVE_SPACING)
 	return -x if mirror else x
 
 
