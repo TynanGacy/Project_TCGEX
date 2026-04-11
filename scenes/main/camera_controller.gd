@@ -44,8 +44,7 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	## Cast first so we never access .pressed on the base InputEvent type.
-	if not event is InputEventKey:
+	if not (event is InputEventKey):
 		return
 	var key := event as InputEventKey
 	if not key.pressed or key.echo:
