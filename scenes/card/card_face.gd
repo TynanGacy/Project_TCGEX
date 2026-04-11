@@ -3,8 +3,14 @@ extends Control
 ## Renders a card's face as a 2D layout inside a SubViewport.
 ## Call setup(data) to populate; the parent SubViewport should then trigger
 ## render_target_update_mode = UPDATE_ONCE to capture the frame.
+##
+## Board layout: name + HP header bar, art (or type-color placeholder) body.
+## Full card details are available in the zoom popup.
 
 const FACE_SIZE := Vector2(252, 352)
+
+const ART_TOP    := 56.0   ## y where the art area begins
+const ART_BOTTOM := 308.0  ## y where the art area ends (~square at 252×252)
 
 ## Energy type → background colour (index matches PokemonCardData.EnergyType).
 const TYPE_COLORS: Array[Color] = [
@@ -29,7 +35,6 @@ const TRAINER_KIND_COLORS: Array[Color] = [
 ]
 
 const CARD_BG := Color(0.97, 0.95, 0.90)
-const STAGE_NAMES: Array[String] = ["Basic", "Stage 1", "Stage 2"]
 const TRAINER_KIND_NAMES: Array[String] = ["Item", "Supporter", "Stadium", "Tool"]
 
 
@@ -38,7 +43,6 @@ func setup(data: CardData) -> void:
 		child.queue_free()
 	custom_minimum_size = FACE_SIZE
 	size = FACE_SIZE
-	# Clamp the parent SubViewport to match
 	if get_parent() is SubViewport:
 		get_parent().size = Vector2i(FACE_SIZE)
 	if data is PokemonCardData:
@@ -56,80 +60,37 @@ func setup(data: CardData) -> void:
 # ---------------------------------------------------------------------------
 
 func _build_pokemon_face(data: PokemonCardData) -> void:
-	if data.art:
-		_add_fullbleed_art(data.art)
-		return
-	# --- fallback: original layout ---
-	var type_color := _type_color(data.pokemon_type)
-	_add_rect(Vector2.ZERO, FACE_SIZE, CARD_BG)
-	_add_rect(Vector2.ZERO, Vector2(FACE_SIZE.x, 64), type_color)
-	var stage_lbl := _add_label(STAGE_NAMES[data.stage], 15, Color.WHITE, Vector2(8, 6))
-	stage_lbl.size.x = 100
-	var name_lbl := _add_label(data.display_name, 22, Color.WHITE, Vector2(8, 28))
-	name_lbl.size.x = FACE_SIZE.x - 80
-	var hp_lbl := _add_label("%d HP" % data.hp_max, 20, Color.WHITE, Vector2(FACE_SIZE.x - 72, 28))
-	hp_lbl.size.x = 68
-	hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_add_rect(Vector2(12, 68), Vector2(228, 150), type_color.darkened(0.35))
-	var type_lbl := _add_label(PokemonCardData.energy_type_to_string(data.pokemon_type), 26, Color.WHITE, Vector2(12, 148))
-	type_lbl.size.x = 228
-	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_add_rect(Vector2(8, 226), Vector2(FACE_SIZE.x - 16, 2), type_color.darkened(0.2))
-	var atk_y := 234.0
-	for attack in data.attacks.slice(0, 2):
-		var atk_lbl := _add_label("%s  %d" % [attack.name, attack.base_damage], 16, Color(0.15, 0.15, 0.15), Vector2(12, atk_y))
-		atk_lbl.size.x = FACE_SIZE.x - 24
-		atk_y += 30.0
-	_add_rect(Vector2(0, FACE_SIZE.y - 34), Vector2(FACE_SIZE.x, 34), type_color.darkened(0.15))
-	var retreat_lbl := _add_label("Retreat: %d" % data.retreat_cost, 13, Color.WHITE, Vector2(8, FACE_SIZE.y - 26))
-	retreat_lbl.size.x = FACE_SIZE.x / 2.0
+	var tc := _type_color(data.pokemon_type)
+	## Background.
+	_add_rect(Vector2.ZERO, FACE_SIZE, tc)
+	## Art area.
+	_add_art_or_placeholder(data.art, tc, PokemonCardData.energy_type_to_string(data.pokemon_type))
+	## Header bar overlay on top of art.
+	_add_header_bar(data.display_name, "%d HP" % data.hp_max)
 
+
+# ---------------------------------------------------------------------------
+# Energy
+# ---------------------------------------------------------------------------
 
 func _build_energy_face(data: EnergyCardData) -> void:
-	if data.art:
-		_add_fullbleed_art(data.art)
-		return
-	# --- fallback: original layout ---
 	var tc := _type_color(data.energy_type)
 	_add_rect(Vector2.ZERO, FACE_SIZE, tc)
-	_add_rect(Vector2.ZERO, FACE_SIZE, Color(0.0, 0.0, 0.0, 0.12))
-	var header_lbl := _add_label("ENERGY", 20, Color.WHITE, Vector2(0, 16))
-	header_lbl.size.x = FACE_SIZE.x
-	header_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_add_rect(Vector2(76, 60), Vector2(100, 100), tc.lightened(0.3))
-	var name_lbl := _add_label(data.display_name, 26, Color.WHITE, Vector2(0, 180))
-	name_lbl.size.x = FACE_SIZE.x
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var type_lbl := _add_label(PokemonCardData.energy_type_to_string(data.energy_type), 34, Color.WHITE, Vector2(0, 214))
-	type_lbl.size.x = FACE_SIZE.x
-	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var prov_lbl := _add_label("Provides: %d" % data.provides, 18, Color(1, 1, 1, 0.85), Vector2(0, 290))
-	prov_lbl.size.x = FACE_SIZE.x
-	prov_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_add_art_or_placeholder(data.art, tc.darkened(0.25), PokemonCardData.energy_type_to_string(data.energy_type))
+	_add_header_bar("Energy", PokemonCardData.energy_type_to_string(data.energy_type))
 
+
+# ---------------------------------------------------------------------------
+# Trainer
+# ---------------------------------------------------------------------------
 
 func _build_trainer_face(data: TrainerCardData) -> void:
-	if data.art:
-		_add_fullbleed_art(data.art)
-		return
-	# --- fallback: original layout ---
 	var kind: int = data.trainer_kind
 	var kc := TRAINER_KIND_COLORS[kind]
-	_add_rect(Vector2.ZERO, FACE_SIZE, CARD_BG)
-	_add_rect(Vector2.ZERO, Vector2(FACE_SIZE.x, 84), kc)
-	var sub_lbl := _add_label("Trainer — " + TRAINER_KIND_NAMES[kind], 15, Color.WHITE, Vector2(8, 8))
-	sub_lbl.size.x = FACE_SIZE.x - 16
-	var name_lbl := _add_label(data.display_name, 26, Color.WHITE, Vector2(8, 36))
-	name_lbl.size.x = FACE_SIZE.x - 16
-	_add_rect(Vector2(12, 90), Vector2(228, 148), kc.darkened(0.4))
-	_add_rect(Vector2(8, 246), Vector2(FACE_SIZE.x - 16, 2), kc.darkened(0.2))
-	if data.rules_text != "":
-		var rules_lbl := _add_label(data.rules_text, 14, Color(0.18, 0.18, 0.18), Vector2(12, 252))
-		rules_lbl.size = Vector2(FACE_SIZE.x - 24, 88)
-		rules_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-	var stamp_lbl := _add_label(TRAINER_KIND_NAMES[kind].to_upper(), 12, kc.darkened(0.3), Vector2(0, FACE_SIZE.y - 22))
-	stamp_lbl.size.x = FACE_SIZE.x - 8
-	stamp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_add_rect(Vector2.ZERO, FACE_SIZE, kc)
+	_add_art_or_placeholder(data.art, kc.darkened(0.35), TRAINER_KIND_NAMES[kind])
+	_add_header_bar(data.display_name, TRAINER_KIND_NAMES[kind])
+
 
 # ---------------------------------------------------------------------------
 # Generic fallback
@@ -144,7 +105,48 @@ func _build_generic_face(data: CardData) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Shared layout helpers
+# ---------------------------------------------------------------------------
+
+## Draws a semi-transparent dark bar at the top with a left label and a
+## right label (e.g. name + HP, or name + type).
+func _add_header_bar(left_text: String, right_text: String) -> void:
+	_add_rect(Vector2.ZERO, Vector2(FACE_SIZE.x, ART_TOP), Color(0.0, 0.0, 0.0, 0.50))
+	var name_lbl := _add_label(left_text, 24, Color.WHITE, Vector2(8, 10))
+	name_lbl.size.x = FACE_SIZE.x - 84
+	var right_lbl := _add_label(right_text, 18, Color(1.0, 1.0, 1.0, 0.90), Vector2(FACE_SIZE.x - 80, 14))
+	right_lbl.size.x = 72
+	right_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+
+## Fills the art area (ART_TOP → ART_BOTTOM) with either the card's art
+## texture or a solid-colour placeholder with a faint type label.
+func _add_art_or_placeholder(art: Texture2D, placeholder_color: Color, type_label: String) -> void:
+	var art_size := Vector2(FACE_SIZE.x, ART_BOTTOM - ART_TOP)
+
+	if art != null:
+		var clipper := Control.new()
+		clipper.position = Vector2(0.0, ART_TOP)
+		clipper.size = art_size
+		clipper.clip_contents = true
+		add_child(clipper)
+		var tex_rect := TextureRect.new()
+		tex_rect.texture = art
+		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tex_rect.position = Vector2.ZERO
+		tex_rect.size = art_size
+		clipper.add_child(tex_rect)
+	else:
+		_add_rect(Vector2(8.0, ART_TOP + 4.0), Vector2(FACE_SIZE.x - 16.0, art_size.y - 8.0), placeholder_color)
+		var lbl := _add_label(type_label, 52, Color(1.0, 1.0, 1.0, 0.35),
+			Vector2(0.0, ART_TOP + art_size.y / 2.0 - 36.0))
+		lbl.size.x = FACE_SIZE.x
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+
+# ---------------------------------------------------------------------------
+# Primitive helpers
 # ---------------------------------------------------------------------------
 
 func _type_color(t: PokemonCardData.EnergyType) -> Color:
@@ -163,8 +165,7 @@ func _add_rect(pos: Vector2, sz: Vector2, col: Color) -> ColorRect:
 	return cr
 
 
-func _add_label(text: String, font_size: int, col: Color,
-		pos: Vector2) -> Label:
+func _add_label(text: String, font_size: int, col: Color, pos: Vector2) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", font_size)
@@ -172,18 +173,3 @@ func _add_label(text: String, font_size: int, col: Color,
 	lbl.position = pos
 	add_child(lbl)
 	return lbl
-
-func _add_fullbleed_art(tex: Texture2D) -> void:
-	var clipper := Control.new()
-	clipper.position = Vector2.ZERO
-	clipper.size = FACE_SIZE
-	clipper.clip_contents = true
-	add_child(clipper)
-
-	var tex_rect := TextureRect.new()
-	tex_rect.texture = tex
-	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
-	tex_rect.position = Vector2.ZERO
-	tex_rect.size = FACE_SIZE
-	clipper.add_child(tex_rect)
