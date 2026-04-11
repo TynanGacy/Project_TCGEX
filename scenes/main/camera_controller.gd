@@ -26,6 +26,7 @@ var _label:  Label
 
 
 func _ready() -> void:
+	print("[CameraController] _ready fired, camera=", camera)
 	## Own CanvasLayer so the label never depends on an external HUD node.
 	var canvas := CanvasLayer.new()
 	canvas.layer = 128  ## render on top of everything
@@ -49,6 +50,8 @@ func _input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if not key.pressed or key.echo:
 		return
+
+	print("[CameraController] key pressed: keycode=", key.keycode, " (KEY_QUOTELEFT=", KEY_QUOTELEFT, ")")
 
 	## Toggle on backtick regardless of active state.
 	if key.keycode == KEY_QUOTELEFT:
