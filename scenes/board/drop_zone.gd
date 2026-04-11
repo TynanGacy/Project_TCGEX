@@ -13,8 +13,8 @@ signal card_received(card: Card)
 ## Set to PI when the viewer's perspective is flipped 180°.
 var perspective_y_rotation: float = 0.0
 
-const ZONE_WIDTH := 0.7
-const ZONE_HEIGHT := 0.95
+const ZONE_WIDTH := 0.66
+const ZONE_HEIGHT := 0.92
 
 var held_cards: Array[Card] = []
 var is_highlighted := false
@@ -47,12 +47,14 @@ func can_accept_card(_card: Card) -> bool:
 
 func receive_card(card: Card) -> void:
 	held_cards.append(card)
+	card.set_board_mode(true)
 	card_received.emit(card)
 	_layout_held_cards()
 
 
 func remove_card(card: Card) -> void:
 	held_cards.erase(card)
+	card.set_board_mode(false)
 	_layout_held_cards()
 
 

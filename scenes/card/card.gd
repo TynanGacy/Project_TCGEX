@@ -54,6 +54,9 @@ const FACE_ROUNDED_SHADER := preload("res://scenes/card/card_face_rounded.gdshad
 var is_dragging := false
 var is_hovered := false
 
+## True when the card is placed on an active or bench zone.
+var _board_mode: bool = false
+
 ## Overlay nodes managed by update_damage_counter() / update_status_overlays().
 var _damage_ctr_node: Node3D = null
 var _status_badge_nodes: Array[Node3D] = []
@@ -112,17 +115,37 @@ func set_instance(inst: CardInstance) -> void:
 	card_instance = inst
 	if inst and inst.data:
 		card_name = inst.data.display_name
-		card_face.setup(inst.data)
-		## Wait two frames — one for layout, one for the SubViewport to render.
-		## Guard each await: the card node may be freed (e.g. deck teardown) before
-		## the frame completes, which would cause a call on a freed instance.
-		await get_tree().process_frame
-		if not is_inside_tree():
-			return
-		face_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-		await get_tree().process_frame
-		if not is_inside_tree():
-			return
+		_queue_face_refresh()
+	_update_visuals()
+
+
+## Switches between board mode (compact face with live HP) and hand mode.
+## Call with true when the card enters an active or bench zone; false when it leaves.
+func set_board_mode(on: bool) -> void:
+	_board_mode = on
+	if card_instance != null and card_instance.data != null:
+		_queue_face_refresh()
+
+
+## Queues an async face refresh.  Uses board mode (live HP) when _board_mode is set.
+## Fire-and-forget: do not await the return value.
+func _queue_face_refresh() -> void:
+	if not is_node_ready() or card_instance == null or card_instance.data == null:
+		return
+	if _board_mode:
+		card_face.setup_board(card_instance)
+	else:
+		card_face.setup(card_instance.data)
+	## Wait two frames — one for layout, one for the SubViewport to render.
+	## Guard each await: the card node may be freed (e.g. deck teardown) before
+	## the frame completes.
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	face_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
 	_update_visuals()
 
 
@@ -321,65 +344,14 @@ func _spawn_energy_overflow(x: float) -> void:
 	add_child(icon)
 
 
-## Updates the HP counter disc shown at the top-right corner of this card.
-## Call whenever the card's damage changes or it becomes face-up/down.
+## Refreshes the face HP display when the card takes damage on the board.
+## The old 3D disc overlay has been removed; HP is now shown in the card face header.
 func update_damage_counter() -> void:
 	if _damage_ctr_node != null and is_instance_valid(_damage_ctr_node):
 		_damage_ctr_node.queue_free()
 	_damage_ctr_node = null
-
-	if card_instance == null or not card_instance.is_pokemon() or face_down:
-		return
-
-	var hp_max: int = card_instance.hp_max()
-	if hp_max <= 0:
-		return
-	var hp_rem: int = card_instance.hp_remaining()
-	var ratio: float = float(hp_rem) / float(hp_max)
-
-	var node := Node3D.new()
-	node.name = "DamageCounter"
-
-	var disc := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = DAMAGE_CTR_RADIUS
-	cyl.bottom_radius = DAMAGE_CTR_RADIUS
-	cyl.height = OVERLAY_HEIGHT
-	disc.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	if ratio > 0.5:
-		mat.albedo_color = Color(0.08, 0.65, 0.08, 0.88)
-	elif ratio > 0.25:
-		mat.albedo_color = Color(0.90, 0.72, 0.00, 0.88)
-	else:
-		mat.albedo_color = Color(0.88, 0.10, 0.10, 0.88)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	disc.set_surface_override_material(0, mat)
-	node.add_child(disc)
-
-	var lbl := Label3D.new()
-	## Two-line format keeps the fraction short enough to fit within the disc.
-	lbl.text = "%d/%d\nHP" % [hp_rem, hp_max]
-	lbl.pixel_size = 0.0025
-	lbl.font_size = 64
-	lbl.modulate = Color.WHITE
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	## Billboard so the text always faces the camera regardless of card rotation.
-	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	## Disable depth test so the disc never occludes the label.
-	lbl.no_depth_test = true
-	## Squish horizontally so "120/120" fits within the disc diameter.
-	lbl.scale = Vector3(0.55, 1.0, 1.0)
-	lbl.position = Vector3(0.0, OVERLAY_HEIGHT + 0.002, 0.0)
-	node.add_child(lbl)
-
-	node.position = Vector3(
-		CARD_WIDTH * 0.5 - DAMAGE_CTR_RADIUS,
-		OVERLAY_Y,
-		-(CARD_HEIGHT * 0.5 - DAMAGE_CTR_RADIUS)
-	)
-	add_child(node)
-	_damage_ctr_node = node
+	if _board_mode:
+		_queue_face_refresh()
 
 
 ## Updates the status condition badges (PSN, BRN, etc.) on the right edge.

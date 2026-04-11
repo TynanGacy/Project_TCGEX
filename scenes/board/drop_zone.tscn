@@ -3,14 +3,14 @@
 [ext_resource type="Script" path="res://scenes/board/drop_zone.gd" id="1_dropzone"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_zone"]
-size = Vector2(0.7, 0.95)
+size = Vector2(0.66, 0.92)
 
 [sub_resource type="StandardMaterial3D" id="Material_zone"]
 albedo_color = Color(0.2, 0.4, 0.2, 0.5)
 transparency = 1
 
 [sub_resource type="BoxShape3D" id="BoxShape_zone"]
-size = Vector3(0.7, 0.02, 0.95)
+size = Vector3(0.66, 0.02, 0.92)
 
 [node name="DropZone" type="Node3D"]
 script = ExtResource("1_dropzone")
