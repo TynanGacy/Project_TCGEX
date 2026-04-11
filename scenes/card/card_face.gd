@@ -15,7 +15,7 @@ const FACE_SIZE := Vector2(252, 352)
 ## Board mode: painted-art crop.
 ## Calibrated to RS set scans (400 × 550 px).
 ## The art window spans roughly x 8–92 %, y 15–55 % of the full card image.
-const BOARD_ART_UV    := Rect2(0.08, 0.15, 0.84, 0.401)
+const BOARD_ART_UV    := Rect2(0.08, 0.08, 0.84, 0.401)
 ## Resulting art aspect ratio (width : height ≈ 336 × 221 px → 1.52 : 1).
 const BOARD_ART_RATIO := 1.52
 ## Viewport size for board mode (252 wide, height = 252 / 1.52).
