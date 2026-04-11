@@ -636,7 +636,8 @@ func _on_turn_log(text: String) -> void:
 ## ── Knockout / prize / promotion callbacks ──────────────────────────────────
 
 func _on_pokemon_knocked_out(victim: CardInstance, scoring_player_id: int) -> void:
-	## game_state already moved the logical card to discard inside resolve_knockouts().
+	## game_state already moved the logical card (and all attachments / prior stages)
+	## to discard inside resolve_knockouts().
 	## Visually: remove from its board zone and drop it face-up onto the owner's discard pile.
 	var card_node := _find_card_node(victim)
 	if card_node:
@@ -651,8 +652,41 @@ func _on_pokemon_knocked_out(victim: CardInstance, scoring_player_id: int) -> vo
 		else:
 			card_node.queue_free()
 
+	## Spawn visual nodes for any attached energy, tools, or prior-stage Pokemon
+	## that game_state moved to the logical discard but have no visual Card node
+	## (their nodes were destroyed when they were originally attached/evolved).
+	_sync_discard_visuals(victim.owner_id)
+
 	var pname := victim.data.display_name if victim.data else "Pokemon"
 	_log_line(">>> %s was knocked out! P%d scores a KO." % [pname, scoring_player_id])
+
+
+## Spawns visual Card nodes for any CardInstance in [player_id]'s logical
+## discard zone that currently has no visual representation.  This covers
+## attached energy, attached tools, and prior-stage Pokemon whose Card nodes
+## were destroyed when they were originally attached or evolved.
+func _sync_discard_visuals(player_id: int) -> void:
+	var discard_name := "Discard" if player_id == 0 else "Opp Discard"
+	var discard_zone := board.get_zone_by_name(discard_name)
+	if discard_zone == null:
+		return
+
+	var logic_discard := game_state.board.get_zone("p%d_discard" % player_id)
+	for raw in logic_discard:
+		var inst := raw as CardInstance
+		if inst == null:
+			continue
+		if _find_card_node(inst) != null:
+			continue  ## already has a visual node
+		## No visual node — spawn one for this attachment / prior-stage card.
+		var new_node: Card = card_scene.instantiate()
+		new_node.set_instance(inst)
+		new_node.face_down = false
+		if player_id == 0:
+			new_node.drag_started.connect(_on_card_drag_started)
+			new_node.drag_ended.connect(_on_card_drag_ended)
+		board.add_child(new_node)
+		discard_zone.receive_card(new_node)
 
 
 func _on_prize_taken(player_id: int, card: CardInstance) -> void:
