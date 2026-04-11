@@ -42,11 +42,16 @@ const ENERGY_ICON_RADIUS := 0.039   # ~half of ICON_RADIUS
 const ENERGY_ICON_HEIGHT := 0.004
 const ENERGY_ICON_MAX := 5          # max circles shown before overflow "+" indicator
 
-## Overlay icon layout (right edge of card, for damage counter and status badges).
+## Overlay icon layout (right edge of card, for status badges).
 const DAMAGE_CTR_RADIUS := 0.200
 const STATUS_BADGE_RADIUS := 0.055
 const OVERLAY_HEIGHT := 0.004
 const OVERLAY_Y := 0.014
+
+## Nameplate strip shown above the card in board mode.
+## Positioned just past the card's top edge (negative-Z in local space).
+const NAMEPLATE_H   := 0.13    ## Strip height (world units)
+const NAMEPLATE_Y   := 0.014   ## Y lift above the card surface
 
 const FACE_ROUNDED_SHADER := preload("res://scenes/card/card_face_rounded.gdshader")
 
@@ -56,8 +61,9 @@ var is_hovered := false
 
 ## True when the card is placed on an active or bench zone.
 var _board_mode: bool = false
+var _nameplate_node: Node3D = null
 
-## Overlay nodes managed by update_damage_counter() / update_status_overlays().
+## Overlay nodes managed by update_status_overlays().
 var _damage_ctr_node: Node3D = null
 var _status_badge_nodes: Array[Node3D] = []
 var face_down: bool = false:
@@ -119,26 +125,24 @@ func set_instance(inst: CardInstance) -> void:
 	_update_visuals()
 
 
-## Switches between board mode (compact face with live HP) and hand mode.
+## Switches the card between board mode (nameplate visible) and hand mode.
 ## Call with true when the card enters an active or bench zone; false when it leaves.
 func set_board_mode(on: bool) -> void:
 	_board_mode = on
-	if card_instance != null and card_instance.data != null:
-		_queue_face_refresh()
+	if on:
+		_build_nameplate()
+	else:
+		_remove_nameplate()
 
 
-## Queues an async face refresh.  Uses board mode (live HP) when _board_mode is set.
-## Fire-and-forget: do not await the return value.
+## Queues an async face refresh (fire-and-forget — do not await).
+## Renders data.art into the SubViewport; identical for hand and board mode.
 func _queue_face_refresh() -> void:
 	if not is_node_ready() or card_instance == null or card_instance.data == null:
 		return
-	if _board_mode:
-		card_face.setup_board(card_instance)
-	else:
-		card_face.setup(card_instance.data)
+	card_face.setup(card_instance.data)
 	## Wait two frames — one for layout, one for the SubViewport to render.
-	## Guard each await: the card node may be freed (e.g. deck teardown) before
-	## the frame completes.
+	## Guard each await: the card node may be freed (e.g. deck teardown).
 	await get_tree().process_frame
 	if not is_inside_tree():
 		return
@@ -147,6 +151,75 @@ func _queue_face_refresh() -> void:
 	if not is_inside_tree():
 		return
 	_update_visuals()
+
+
+## Builds and attaches the 3D nameplate strip above the card's top edge.
+## Shows name on the left and HP fraction on the right (Pokemon only).
+func _build_nameplate() -> void:
+	_remove_nameplate()
+	if card_instance == null or card_instance.data == null:
+		return
+
+	_nameplate_node = Node3D.new()
+	_nameplate_node.name = "Nameplate"
+
+	## Dark background plane lying flat on the table.
+	var bg := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(CARD_WIDTH, NAMEPLATE_H)
+	bg.mesh = plane
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.05, 0.05, 0.05, 0.90)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bg.set_surface_override_material(0, mat)
+	_nameplate_node.add_child(bg)
+
+	## Name label — left side.
+	var name_lbl := Label3D.new()
+	name_lbl.name = "NameplateName"
+	name_lbl.text = card_instance.data.display_name
+	name_lbl.pixel_size = 0.00085
+	name_lbl.font_size = 52
+	name_lbl.modulate = Color.WHITE
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	## Rotate -90° around X so the label lies flat and reads from above.
+	name_lbl.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
+	name_lbl.position = Vector3(-CARD_WIDTH * 0.5 + 0.035, 0.002, 0.0)
+	_nameplate_node.add_child(name_lbl)
+
+	## HP label — right side (Pokemon only).
+	if card_instance.is_pokemon():
+		var hp_lbl := Label3D.new()
+		hp_lbl.name = "NameplateHP"
+		hp_lbl.text = "%d/%d HP" % [card_instance.hp_remaining(), card_instance.hp_max()]
+		hp_lbl.pixel_size = 0.00085
+		hp_lbl.font_size = 42
+		hp_lbl.modulate = Color.WHITE
+		hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		hp_lbl.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
+		hp_lbl.position = Vector3(CARD_WIDTH * 0.5 - 0.035, 0.002, 0.0)
+		_nameplate_node.add_child(hp_lbl)
+
+	## Position just past the top edge of the card.
+	_nameplate_node.position = Vector3(
+		0.0, NAMEPLATE_Y, -(CARD_HEIGHT * 0.5 + NAMEPLATE_H * 0.5)
+	)
+	add_child(_nameplate_node)
+
+
+func _remove_nameplate() -> void:
+	if _nameplate_node != null and is_instance_valid(_nameplate_node):
+		_nameplate_node.queue_free()
+	_nameplate_node = null
+
+
+## Updates just the HP text on the nameplate without re-rendering the face.
+func _update_nameplate_hp() -> void:
+	if _nameplate_node == null or card_instance == null:
+		return
+	var hp_lbl := _nameplate_node.get_node_or_null("NameplateHP") as Label3D
+	if hp_lbl != null:
+		hp_lbl.text = "%d/%d HP" % [card_instance.hp_remaining(), card_instance.hp_max()]
 
 
 func _update_visuals() -> void:
@@ -344,14 +417,13 @@ func _spawn_energy_overflow(x: float) -> void:
 	add_child(icon)
 
 
-## Refreshes the face HP display when the card takes damage on the board.
-## The old 3D disc overlay has been removed; HP is now shown in the card face header.
+## Updates the HP display after damage changes.
+## HP is shown in the nameplate (no 3D disc overlay); just refreshes the label text.
 func update_damage_counter() -> void:
 	if _damage_ctr_node != null and is_instance_valid(_damage_ctr_node):
 		_damage_ctr_node.queue_free()
 	_damage_ctr_node = null
-	if _board_mode:
-		_queue_face_refresh()
+	_update_nameplate_hp()
 
 
 ## Updates the status condition badges (PSN, BRN, etc.) on the right edge.
