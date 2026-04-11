@@ -67,6 +67,12 @@ var is_hovered := false
 var _board_mode: bool = false
 var _nameplate_node: Node3D = null
 
+## Width (world units) the zone wants in board mode; set via set_display_width().
+var _display_width: float = CARD_WIDTH
+## Current effective card dimensions (updated by _resize_meshes).
+var _card_w: float = CARD_WIDTH
+var _card_h: float = CARD_HEIGHT
+
 ## Overlay nodes managed by update_status_overlays().
 var _damage_ctr_node: Node3D = null
 var _status_badge_nodes: Array[Node3D] = []
@@ -90,6 +96,7 @@ var _pending_instance: CardInstance = null
 @onready var face_viewport: SubViewport = $FaceViewport
 @onready var card_face: CardFace = $FaceViewport/CardFace
 @onready var face_mesh: MeshInstance3D = $FaceMesh
+@onready var _collision_shape: CollisionShape3D = $StaticBody3D/CollisionShape3D
 
 
 func _ready() -> void:
@@ -107,10 +114,11 @@ func _ready() -> void:
 	var src := mesh_instance.get_surface_override_material(0) as StandardMaterial3D
 	_body_material = src.duplicate() as StandardMaterial3D
 	mesh_instance.set_surface_override_material(0, _body_material)
-	## Duplicate meshes so set_board_mode() can resize them without affecting the
-	## shared .tscn resource (which all cards reference).
+	## Duplicate meshes and collision shape so set_board_mode() can resize them
+	## without affecting the shared .tscn resource (which all cards reference).
 	face_mesh.mesh = face_mesh.mesh.duplicate()
 	mesh_instance.mesh = mesh_instance.mesh.duplicate()
+	_collision_shape.shape = _collision_shape.shape.duplicate()
 	## Apply any instance that was set before the node was in the tree.
 	if _pending_instance != null:
 		set_instance(_pending_instance)
@@ -148,15 +156,30 @@ func set_board_mode(on: bool) -> void:
 			_queue_face_refresh()
 
 
-## Resizes the face PlaneMesh and body BoxMesh for board mode (landscape art)
-## or restores portrait dimensions when leaving board mode.
+## Resizes the face PlaneMesh, body BoxMesh, and collision shape for board mode
+## (landscape art at zone scale) or restores portrait dimensions when leaving.
 func _resize_meshes(board: bool) -> void:
-	var new_h := BOARD_CARD_H if board else CARD_HEIGHT
+	if board:
+		_card_w = _display_width
+		_card_h = _display_width / BOARD_ART_RATIO
+	else:
+		_card_w = CARD_WIDTH
+		_card_h = CARD_HEIGHT
 	var plane := face_mesh.mesh as PlaneMesh
-	plane.size = Vector2(CARD_WIDTH, new_h)
+	plane.size = Vector2(_card_w, _card_h)
 	var box := mesh_instance.mesh as BoxMesh
-	box.size = Vector3(CARD_WIDTH, CARD_THICKNESS, new_h)
-	_face_shader_material.set_shader_parameter("card_size", Vector2(CARD_WIDTH, new_h))
+	box.size = Vector3(_card_w, CARD_THICKNESS, _card_h)
+	_face_shader_material.set_shader_parameter("card_size", Vector2(_card_w, _card_h))
+	if _collision_shape != null:
+		var cshape := _collision_shape.shape as BoxShape3D
+		cshape.size = Vector3(_card_w, 0.02, _card_h)
+
+
+## Sets the display width the zone wants for this card in board mode.
+## Immediately resizes the card if it is already in board mode.
+func set_display_width(w: float) -> void:
+	_display_width = w
+	_resize_meshes(_board_mode)
 
 
 ## Queues an async face refresh (fire-and-forget — do not await).
@@ -190,10 +213,13 @@ func _build_nameplate() -> void:
 	_nameplate_node = Node3D.new()
 	_nameplate_node.name = "Nameplate"
 
+	var sc := _card_w / CARD_WIDTH
+	var np_h := NAMEPLATE_H * sc
+
 	## Dark background plane lying flat on the table.
 	var bg := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(CARD_WIDTH, NAMEPLATE_H)
+	plane.size = Vector2(_card_w, np_h)
 	bg.mesh = plane
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.05, 0.05, 0.05, 0.90)
@@ -205,13 +231,13 @@ func _build_nameplate() -> void:
 	var name_lbl := Label3D.new()
 	name_lbl.name = "NameplateName"
 	name_lbl.text = card_instance.data.display_name
-	name_lbl.pixel_size = 0.00085
+	name_lbl.pixel_size = 0.00085 * sc
 	name_lbl.font_size = 52
 	name_lbl.modulate = Color.WHITE
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	## Rotate -90° around X so the label lies flat and reads from above.
 	name_lbl.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
-	name_lbl.position = Vector3(-CARD_WIDTH * 0.5 + 0.035, 0.002, 0.0)
+	name_lbl.position = Vector3(-_card_w * 0.5 + 0.035 * sc, 0.002, 0.0)
 	_nameplate_node.add_child(name_lbl)
 
 	## HP label — right side (Pokemon only).
@@ -219,17 +245,17 @@ func _build_nameplate() -> void:
 		var hp_lbl := Label3D.new()
 		hp_lbl.name = "NameplateHP"
 		hp_lbl.text = "%d/%d HP" % [card_instance.hp_remaining(), card_instance.hp_max()]
-		hp_lbl.pixel_size = 0.00085
+		hp_lbl.pixel_size = 0.00085 * sc
 		hp_lbl.font_size = 42
 		hp_lbl.modulate = Color.WHITE
 		hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		hp_lbl.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
-		hp_lbl.position = Vector3(CARD_WIDTH * 0.5 - 0.035, 0.002, 0.0)
+		hp_lbl.position = Vector3(_card_w * 0.5 - 0.035 * sc, 0.002, 0.0)
 		_nameplate_node.add_child(hp_lbl)
 
 	## Position just past the top edge of the board-mode (landscape) card.
 	_nameplate_node.position = Vector3(
-		0.0, NAMEPLATE_Y, -(BOARD_CARD_H * 0.5 + NAMEPLATE_H * 0.5)
+		0.0, NAMEPLATE_Y, -(_card_h * 0.5 + np_h * 0.5)
 	)
 	add_child(_nameplate_node)
 
@@ -397,7 +423,7 @@ func update_attachment_icons() -> void:
 ## the weakness-symbol area using the shared normalised fractions.
 func _energy_pos_x(slot: int) -> float:
 	var frac := AttachmentDisplay.ENERGY_NORM_START_X + slot * AttachmentDisplay.ENERGY_NORM_STEP_X
-	return -CARD_WIDTH * 0.5 + CARD_WIDTH * frac
+	return -_card_w * 0.5 + _card_w * frac
 
 
 func _spawn_energy_icon(inst: CardInstance, x: float, index: int) -> void:
@@ -424,7 +450,7 @@ func _spawn_energy_icon(inst: CardInstance, x: float, index: int) -> void:
 	icon.add_child(lbl)
 
 	# Centre the disc on the bottom edge — 50% overlap.
-	icon.position = Vector3(x, ICON_Y, CARD_HEIGHT * 0.5)
+	icon.position = Vector3(x, ICON_Y, _card_h * 0.5)
 	add_child(icon)
 
 
@@ -440,7 +466,7 @@ func _spawn_energy_overflow(x: float) -> void:
 	lbl.modulate = Color.WHITE
 	icon.add_child(lbl)
 
-	icon.position = Vector3(x, ICON_Y, CARD_HEIGHT * 0.5)
+	icon.position = Vector3(x, ICON_Y, _card_h * 0.5)
 	add_child(icon)
 
 
@@ -487,26 +513,30 @@ func update_status_overlays() -> void:
 		badges.append({"label": "CNF", "color": Color(0.78, 0.38, 0.68, 0.92)})
 
 	## Stack badges down the right edge, starting just below the damage counter.
-	var badge_start_z := -(CARD_HEIGHT * 0.5 - DAMAGE_CTR_RADIUS * 2.0 - STATUS_BADGE_RADIUS)
+	## Scale radii and offsets proportionally with card width.
+	var sc := _card_w / CARD_WIDTH
+	var badge_r := STATUS_BADGE_RADIUS * sc
+	var badge_start_z := -(_card_h * 0.5 - DAMAGE_CTR_RADIUS * 2.0 * sc - badge_r)
 	for i in range(badges.size()):
 		var badge: Dictionary = badges[i]
 		var node := _spawn_status_badge(
 			badge["label"] as String,
 			badge["color"] as Color,
-			badge_start_z + i * (STATUS_BADGE_RADIUS * 2.2 + 0.008)
+			badge_start_z + i * (badge_r * 2.2 + 0.008 * sc),
+			badge_r
 		)
 		add_child(node)
 		_status_badge_nodes.append(node)
 
 
-func _spawn_status_badge(lbl_text: String, color: Color, z_pos: float) -> Node3D:
+func _spawn_status_badge(lbl_text: String, color: Color, z_pos: float, radius: float = STATUS_BADGE_RADIUS) -> Node3D:
 	var node := Node3D.new()
 	node.name = "StatusBadge_%s" % lbl_text
 
 	var disc := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = STATUS_BADGE_RADIUS
-	cyl.bottom_radius = STATUS_BADGE_RADIUS
+	cyl.top_radius = radius
+	cyl.bottom_radius = radius
 	cyl.height = OVERLAY_HEIGHT
 	disc.mesh = cyl
 	var mat := StandardMaterial3D.new()
@@ -517,24 +547,26 @@ func _spawn_status_badge(lbl_text: String, color: Color, z_pos: float) -> Node3D
 
 	var lbl := Label3D.new()
 	lbl.text = lbl_text
-	lbl.pixel_size = 0.00060
+	lbl.pixel_size = 0.00060 * (_card_w / CARD_WIDTH)
 	lbl.font_size = 18
 	lbl.modulate = Color.WHITE
 	lbl.position = Vector3(0.0, OVERLAY_HEIGHT * 0.5 + 0.001, 0.0)
 	node.add_child(lbl)
 
-	node.position = Vector3(CARD_WIDTH * 0.5 - STATUS_BADGE_RADIUS, OVERLAY_Y, z_pos)
+	node.position = Vector3(_card_w * 0.5 - radius, OVERLAY_Y, z_pos)
 	return node
 
 
 func _spawn_tool_icon(inst: CardInstance, index: int) -> void:
+	var sc := _card_w / CARD_WIDTH
+	var sc_h := _card_h / CARD_HEIGHT
 	var icon := Node3D.new()
 	icon.name = "AttachIcon_T%d" % index
 
 	var disc := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = ICON_RADIUS
-	cyl.bottom_radius = ICON_RADIUS
+	cyl.top_radius = ICON_RADIUS * sc
+	cyl.bottom_radius = ICON_RADIUS * sc
 	cyl.height = ICON_HEIGHT
 	disc.mesh = cyl
 	var mat := StandardMaterial3D.new()
@@ -544,15 +576,15 @@ func _spawn_tool_icon(inst: CardInstance, index: int) -> void:
 
 	var lbl := Label3D.new()
 	lbl.text = "T"
-	lbl.pixel_size = 0.0018
+	lbl.pixel_size = 0.0018 * sc
 	lbl.font_size = 22
 	lbl.modulate = Color.WHITE
 	lbl.position = Vector3(0.0, ICON_HEIGHT * 0.5 + 0.001, 0.0)
 	icon.add_child(lbl)
 
 	icon.position = Vector3(
-		-(CARD_WIDTH * 0.5),
+		-(_card_w * 0.5),
 		ICON_Y,
-		ICON_START_Z + index * ICON_SPACING
+		ICON_START_Z * sc_h + index * ICON_SPACING * sc_h
 	)
 	add_child(icon)

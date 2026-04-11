@@ -1,0 +1,13 @@
+{
+  "_comment": "One of four possible starting deck seeds, 4/4",
+  "starter_tags": ["0,","RS","P"], 
+  "cards": [
+    { "card_id": "RS_7_gardevoir",    "count": 1 },
+    { "card_id": "RS_35_kirlia",    "count": 2 },
+    { "card_id": "RS_67_ralts",    "count": 3 },
+    { "card_id": "RS_90_energy_search", "count": 1 },
+    { "card_id": "RS_91_potion", "count": 1 },
+    { "card_id": "RS_92_switch", "count": 1 },
+    { "card_id": "RS_107_psychic_energy",     "count": 5 }
+  ]
+}

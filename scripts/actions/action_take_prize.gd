@@ -28,8 +28,8 @@ func apply(state: GameState) -> void:
 	if prizes.is_empty():
 		return
 
-	## Move the top prize card (back of the array) to the player's hand.
-	var card := prizes.back() as CardInstance
+	## Move the top prize card (front of the array = Prize 1 = visual top of stack).
+	var card := prizes.front() as CardInstance
 	state.board.move_card(card, "p%d_hand" % actor_id)
 
 	## Keep the player's prize tracker in sync with the actual zone count.

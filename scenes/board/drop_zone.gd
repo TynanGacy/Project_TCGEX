@@ -21,6 +21,7 @@ const BOARD_ZONE_HEIGHT   := 0.44   ## landscape – board-display active/bench 
 const PORTRAIT_ZONE_HEIGHT := 0.92  ## portrait  – deck, prize, discard slots
 
 var _effective_height: float = PORTRAIT_ZONE_HEIGHT
+var _effective_width: float = ZONE_WIDTH
 
 var held_cards: Array[Card] = []
 var is_highlighted := false
@@ -37,7 +38,7 @@ var _highlight_material: StandardMaterial3D
 func _ready() -> void:
 	label_3d.text = zone_name
 	_effective_height = BOARD_ZONE_HEIGHT if use_board_display else PORTRAIT_ZONE_HEIGHT
-	_resize_zone(_effective_height)
+	_resize_zone(ZONE_WIDTH, _effective_height)
 
 	_base_material = StandardMaterial3D.new()
 	_base_material.albedo_color = zone_color
@@ -50,19 +51,26 @@ func _ready() -> void:
 	mesh_instance.set_surface_override_material(0, _base_material)
 
 
-## Resizes the visual plane, collision box, and label to the given height.
-func _resize_zone(h: float) -> void:
+## Resizes the visual plane, collision box, and label to the given dimensions.
+func _resize_zone(w: float, h: float) -> void:
 	var plane := mesh_instance.mesh.duplicate() as PlaneMesh
-	plane.size = Vector2(ZONE_WIDTH, h)
+	plane.size = Vector2(w, h)
 	mesh_instance.mesh = plane
 
 	var box := collision_shape.shape.duplicate() as BoxShape3D
-	box.size = Vector3(ZONE_WIDTH, 0.02, h)
+	box.size = Vector3(w, 0.02, h)
 	collision_shape.shape = box
 
 	## Place the label towards the far edge so it doesn't overlap a card placed
 	## in the centre of the zone.
 	label_3d.position = Vector3(0.0, label_3d.position.y, -(h * 0.35))
+
+
+## Public API for board.gd to resize a zone after _ready has run.
+func set_zone_size(w: float, h: float) -> void:
+	_effective_width = w
+	_effective_height = h
+	_resize_zone(w, h)
 
 
 func can_accept_card(_card: Card) -> bool:
@@ -77,6 +85,7 @@ func receive_card(card: Card) -> void:
 		return
 	held_cards.append(card)
 	if use_board_display:
+		card.set_display_width(_effective_width)
 		card.set_board_mode(true)
 	card_received.emit(card)
 	_layout_held_cards()
@@ -85,6 +94,7 @@ func receive_card(card: Card) -> void:
 func remove_card(card: Card) -> void:
 	held_cards.erase(card)
 	if use_board_display:
+		card.clear_play_state()
 		card.set_board_mode(false)
 	_layout_held_cards()
 
@@ -99,7 +109,7 @@ func set_highlighted(value: bool) -> void:
 
 func contains_point(point: Vector3) -> bool:
 	var local := to_local(point)
-	return absf(local.x) <= ZONE_WIDTH / 2.0 and absf(local.z) <= _effective_height / 2.0
+	return absf(local.x) <= _effective_width / 2.0 and absf(local.z) <= _effective_height / 2.0
 
 
 func _layout_held_cards() -> void:
