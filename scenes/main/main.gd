@@ -69,6 +69,7 @@ var _placement_picker: Control = null
 
 ## ── UI panels (built in code) ────────────────────────────────────────────────
 var _setup_dialog:   Control = null
+var _setup_selected_mode: String = ""
 var _attack_panel:   Control = null
 var _target_picker:  Control = null
 var _bench_picker:   Control = null
@@ -222,17 +223,17 @@ func _show_setup_dialog() -> void:
 	vbox.add_child(start_btn)
 
 	## Track selected mode so start_btn knows when to enable.
-	var chosen_mode := ""
+	_setup_selected_mode = ""
 
 	dev_btn.pressed.connect(func() -> void:
-		chosen_mode = "developer"
+		_setup_selected_mode = "developer"
 		dev_btn.modulate    = Color(0.4, 0.9, 0.4)
 		player_btn.modulate = Color.WHITE
 		mode_desc.text = "Developer Mode: No CPU. Perspective switches automatically each turn so you play both sides."
 		start_btn.disabled = false
 	)
 	player_btn.pressed.connect(func() -> void:
-		chosen_mode = "player"
+		_setup_selected_mode = "player"
 		player_btn.modulate = Color(0.4, 0.4, 0.9)
 		dev_btn.modulate    = Color.WHITE
 		mode_desc.text = "Player Mode: An autonomous CPU plays the opposing deck."
@@ -242,7 +243,7 @@ func _show_setup_dialog() -> void:
 		_setup_dialog.queue_free()
 		_setup_dialog = null
 		_on_setup_confirmed(
-			chosen_mode,
+			_setup_selected_mode,
 			int(prize_spin.value),
 			int(active_spin.value),
 			int(bench_spin.value)
@@ -291,11 +292,12 @@ func _start_game() -> void:
 	player_hand.card_played.connect(_on_card_played)
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
 
-	## Perspective-switch button (Developer Mode label or generic).
-	var switch_btn := Button.new()
-	switch_btn.text = "Switch Perspective"
-	switch_btn.pressed.connect(_switch_perspective)
-	$HUD/TopBar.add_child(switch_btn)
+	## Perspective switching is a Developer Mode-only affordance.
+	if is_developer_mode:
+		var switch_btn := Button.new()
+		switch_btn.text = "Switch Perspective"
+		switch_btn.pressed.connect(_switch_perspective)
+		$HUD/TopBar.add_child(switch_btn)
 
 	## Prize / status HUD labels.
 	_prize_label = Label.new()
@@ -1646,6 +1648,8 @@ func _snap_back(card: Card, from_zone: DropZone) -> void:
 # ===========================================================================
 
 func _switch_perspective() -> void:
+	if not is_developer_mode:
+		return
 	_switch_perspective_to(1 - controlling_player)
 
 
