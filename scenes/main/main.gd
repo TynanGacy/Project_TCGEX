@@ -9,11 +9,10 @@ extends Node3D
 ## Developer Mode: No CPU.  At turn-end the perspective automatically flips
 ##                 so the developer can play both sides.
 
-@onready var camera:             Camera3D = $Camera3D
-@onready var board:              Board    = $Board
-@onready var player_hand:        Hand     = $Board/PlayerHand
-@onready var opp_hand:           Hand     = $Board/OppHand
-@onready var camera_controller := $CameraController
+@onready var camera:      Camera3D = $Camera3D
+@onready var board:       Board    = $Board
+@onready var player_hand: Hand     = $Board/PlayerHand
+@onready var opp_hand:    Hand     = $Board/OppHand
 
 ## HUD elements created in the scene.
 @onready var phase_label:     Label         = $HUD/TopBar/PhaseLabel
@@ -37,6 +36,13 @@ var _bench_slots:  int = 5
 var controlling_player: int = 0
 var _p0_cam_transform: Transform3D
 var _p1_cam_transform: Transform3D
+
+## ── Debug camera adjuster ────────────────────────────────────────────────────
+var _cam_adjust_active: bool  = false
+var _cam_adjust_label:  Label = null
+const _CAM_STEP:     float = 0.05
+const _CAM_ROT_STEP: float = 1.0
+const _CAM_FOV_STEP: float = 1.0
 
 ## ── Drag state ───────────────────────────────────────────────────────────────
 var dragged_card:  Card     = null
@@ -91,7 +97,18 @@ func _ready() -> void:
 		Basis(Vector3.UP, PI) * camera.basis,
 		camera.position.rotated(Vector3.UP, PI)
 	)
-	camera_controller.connect("base_transform_changed", _on_camera_adjusted)
+
+	## Debug camera adjuster label (hidden until backtick is pressed).
+	_cam_adjust_label = Label.new()
+	_cam_adjust_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_cam_adjust_label.offset_left   =  10.0
+	_cam_adjust_label.offset_right  = 900.0
+	_cam_adjust_label.offset_top    = -52.0
+	_cam_adjust_label.offset_bottom =  -8.0
+	_cam_adjust_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.2))
+	_cam_adjust_label.add_theme_font_size_override("font_size", 13)
+	_cam_adjust_label.visible = false
+	$HUD.add_child(_cam_adjust_label)
 
 	## Build all UI panels (hidden until needed).
 	_build_attack_panel()
@@ -1113,6 +1130,100 @@ func _show_game_over_screen(winner_player_id: int) -> void:
 # INPUT — drag, drop, right-click card inspector
 # ===========================================================================
 
+func _input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var key: InputEventKey = event as InputEventKey
+	if not key.pressed or key.echo:
+		return
+	_handle_cam_adjust_key(key)
+
+
+func _handle_cam_adjust_key(key: InputEventKey) -> void:
+	## Backtick toggles adjust mode regardless of game state.
+	if key.keycode == KEY_QUOTELEFT:
+		_cam_adjust_active = not _cam_adjust_active
+		_cam_adjust_label.visible = _cam_adjust_active
+		if _cam_adjust_active:
+			_cam_adjust_refresh_label()
+		get_viewport().set_input_as_handled()
+		return
+
+	if not _cam_adjust_active:
+		return
+
+	## Consume all keys while the overlay is active so they don't move cards.
+	get_viewport().set_input_as_handled()
+
+	var shift: bool = key.shift_pressed
+	var pos: Vector3 = camera.position
+	var rot: Vector3 = camera.rotation_degrees
+	var fov: float   = camera.fov
+	var dirty: bool  = true
+
+	if key.keycode == KEY_RIGHT:
+		if shift:
+			rot.y -= _CAM_ROT_STEP
+		else:
+			pos.x += _CAM_STEP
+	elif key.keycode == KEY_LEFT:
+		if shift:
+			rot.y += _CAM_ROT_STEP
+		else:
+			pos.x -= _CAM_STEP
+	elif key.keycode == KEY_UP:
+		if shift:
+			pos.y += _CAM_STEP
+		else:
+			pos.z -= _CAM_STEP
+	elif key.keycode == KEY_DOWN:
+		if shift:
+			pos.y -= _CAM_STEP
+		else:
+			pos.z += _CAM_STEP
+	elif key.keycode == KEY_COMMA:
+		rot.x -= _CAM_ROT_STEP
+	elif key.keycode == KEY_PERIOD:
+		rot.x += _CAM_ROT_STEP
+	elif key.keycode == KEY_BRACKETLEFT:
+		fov = maxf(10.0, fov - _CAM_FOV_STEP)
+	elif key.keycode == KEY_BRACKETRIGHT:
+		fov = minf(120.0, fov + _CAM_FOV_STEP)
+	elif key.keycode == KEY_P:
+		print("=== Camera Debug ===")
+		print("  position:         ", camera.position)
+		print("  rotation_degrees: ", camera.rotation_degrees)
+		print("  fov:              ", camera.fov)
+		print("  transform:        ", camera.transform)
+		dirty = false
+	else:
+		dirty = false
+
+	if dirty:
+		camera.position         = pos
+		camera.rotation_degrees = rot
+		camera.fov              = fov
+		if controlling_player == 0:
+			_p0_cam_transform = camera.transform
+			_p1_cam_transform = Transform3D(
+				Basis(Vector3.UP, PI) * camera.basis,
+				camera.position.rotated(Vector3.UP, PI)
+			)
+		else:
+			_p1_cam_transform = camera.transform
+		_cam_adjust_refresh_label()
+
+
+func _cam_adjust_refresh_label() -> void:
+	var pos: Vector3 = camera.position
+	var rot: Vector3 = camera.rotation_degrees
+	_cam_adjust_label.text = (
+		"[CAM ADJUST]  ` exit  |  Arrows=pan X/Z  |  Shift+↑↓=height  |  Shift+←→=yaw  |  ,/.=pitch  |  [/]=FOV  |  P=print\n"
+		+ "pos (%.3f, %.3f, %.3f)   rot (%.1f, %.1f, %.1f)   fov %.1f" % [
+			pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, camera.fov
+		]
+	)
+
 func _unhandled_input(event: InputEvent) -> void:
 	if _game_over or game_state == null:
 		return
@@ -1505,18 +1616,6 @@ func _switch_perspective_to(pid: int) -> void:
 	_flip_board_card_rotations()
 	_refresh_attack_panel()
 
-
-## Keeps the cached P0/P1 transforms in sync when the debug camera controller
-## moves the camera. Recomputes the mirrored P1 transform from the new P0 base.
-func _on_camera_adjusted(new_transform: Transform3D) -> void:
-	if controlling_player == 0:
-		_p0_cam_transform = new_transform
-		_p1_cam_transform = Transform3D(
-			Basis(Vector3.UP, PI) * new_transform.basis,
-			new_transform.origin.rotated(Vector3.UP, PI)
-		)
-	else:
-		_p1_cam_transform = new_transform
 
 
 func _flip_board_card_rotations() -> void:

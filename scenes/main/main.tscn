@@ -4,7 +4,6 @@
 [ext_resource type="PackedScene" path="res://scenes/board/board.tscn" id="2_board"]
 [ext_resource type="PackedScene" path="res://scenes/hand/hand.tscn" id="3_hand"]
 [ext_resource type="PackedScene" path="res://scenes/card/card_zoom_popup.tscn" id="4_czp"]
-[ext_resource type="Script" path="res://scenes/main/camera_controller.gd" id="5_cc"]
 
 [node name="Main" type="Node3D" unique_id=1389932364]
 script = ExtResource("1_main")
@@ -62,6 +61,3 @@ layout_mode = 2
 scroll_following = true
 
 [node name="CardZoomPopup" parent="HUD" unique_id=126310421 instance=ExtResource("4_czp")]
-
-[node name="CameraController" type="Node" parent="." script=ExtResource("5_cc")]
-camera = NodePath("../Camera3D")
