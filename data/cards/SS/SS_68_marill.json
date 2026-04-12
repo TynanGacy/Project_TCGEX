@@ -1,0 +1,23 @@
+{
+  "card_id": "SS_68_marill",
+  "name_slug": "marill",
+  "display_name": "Marill",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 50,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Double Bubble",
+      "base_damage": 10,
+      "text": "Flip 2 coins. This attack does 10 damage times the number of heads. If either of the coins is heads, the Defending Pokémon is now Paralyzed.",
+      "cost_water": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

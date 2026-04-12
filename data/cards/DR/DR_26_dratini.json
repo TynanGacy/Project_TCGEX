@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_26_dratini",
+  "name_slug": "dratini",
+  "display_name": "Dratini",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 50,
+  "weakness": "COLORLESS",
+  "resistance": "GRASS",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Dragon Dew",
+      "base_damage": 0,
+      "text": "Remove 2 damage counters from 1 of your Pokémon (remove 1 if there is only 1).",
+      "cost_water": 1
+    },
+    {
+      "name": "Tail Slap",
+      "base_damage": 10,
+      "text": "",
+      "cost_lightning": 1
+    }
+  ]
+}

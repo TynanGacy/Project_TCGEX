@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_32_gyarados",
+  "name_slug": "gyarados",
+  "display_name": "Gyarados",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "magikarp",
+  "pokemon_type": "WATER",
+  "hp_max": 100,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Dragon Crush",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, this attack does 10 damage to each Defending Pokémon. Discard an Energy card from each Defending Pokémon.",
+      "cost_water": 1
+    },
+    {
+      "name": "Aqua Sonic",
+      "base_damage": 80,
+      "text": "This attack's damage is not affected by Resistance.",
+      "cost_water": 1,
+      "cost_colorless": 4
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_83_wailmer",
+  "name_slug": "wailmer",
+  "display_name": "Wailmer",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 80,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 3,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Rollout",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Super Hypno Wave",
+      "base_damage": 30,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_water": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

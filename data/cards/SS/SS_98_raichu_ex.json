@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_98_raichu_ex",
+  "name_slug": "raichu_ex",
+  "display_name": "Raichu ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "pikachu",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 100,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Dazzle Blast",
+      "base_damage": 20,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "cost_lightning": 1
+    },
+    {
+      "name": "Mega Thunderbolt",
+      "base_damage": 120,
+      "text": "Discard all Energy cards attached to Raichu ex.",
+      "cost_lightning": 2,
+      "cost_colorless": 1
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_81_wurmple",
+  "name_slug": "wurmple",
+  "display_name": "Wurmple",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 50,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Call for Friends",
+      "base_damage": 0,
+      "text": "Search your deck for Grass Basic Pokémon and put as many of them as you like onto your Bench. Shuffle your deck afterward.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "String Shot",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 1
+    }
+  ]
+}

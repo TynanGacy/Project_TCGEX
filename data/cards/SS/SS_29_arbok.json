@@ -1,0 +1,23 @@
+{
+  "card_id": "SS_29_arbok",
+  "name_slug": "arbok",
+  "display_name": "Arbok",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "ekans",
+  "pokemon_type": "GRASS",
+  "hp_max": 70,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Toxic",
+      "base_damage": 20,
+      "text": "The Defending Pokémon is now Poisoned. Put 2 damage counters instead of 1 on the Defending Pokémon between turns.",
+      "cost_grass": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

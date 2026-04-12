@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_24_umbreon",
+  "name_slug": "umbreon",
+  "display_name": "Umbreon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "eevee",
+  "pokemon_type": "DARKNESS",
+  "hp_max": 80,
+  "weakness": "FIGHTING",
+  "resistance": "PSYCHIC",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Confuse Ray",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Moon Impact",
+      "base_damage": 40,
+      "text": "",
+      "cost_darkness": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_37_fearow",
+  "name_slug": "fearow",
+  "display_name": "Fearow",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "spearow",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "FIGHTING",
+  "retreat_cost": 0,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Double Wing Attack",
+      "base_damage": 0,
+      "text": "Does 20 damage to each Defending Pokémon.",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Rend",
+      "base_damage": 30,
+      "text": "If the Defending Pokémon has any damage counters on it, this attack does 30 damage plus 20 more damage.",
+      "cost_colorless": 3
+    }
+  ]
+}

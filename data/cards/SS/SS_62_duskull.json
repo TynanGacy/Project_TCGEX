@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_62_duskull",
+  "name_slug": "duskull",
+  "display_name": "Duskull",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 40,
+  "weakness": "DARKNESS",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Haunt",
+      "base_damage": 0,
+      "text": "Put 1 damage counter on the Defending Pokémon.",
+      "cost_psychic": 1
+    },
+    {
+      "name": "Dark Mind",
+      "base_damage": 10,
+      "text": "Does 10 damage to 1 of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_colorless": 2
+    }
+  ]
+}

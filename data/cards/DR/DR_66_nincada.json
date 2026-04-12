@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_66_nincada",
+  "name_slug": "nincada",
+  "display_name": "Nincada",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 40,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Poison Breath",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Poisoned.",
+      "cost_grass": 1
+    }
+  ]
+}

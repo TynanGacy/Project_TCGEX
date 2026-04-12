@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_8_lunatone",
+  "name_slug": "lunatone",
+  "display_name": "Lunatone",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 60,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Cosmic Draw",
+      "base_damage": 0,
+      "text": "If your opponent has any Evolved Pokémon in play, draw 3 cards.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Lunar Blast",
+      "base_damage": 30,
+      "text": "",
+      "cost_psychic": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

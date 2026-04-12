@@ -1,0 +1,7 @@
+{
+  "card_id": "SS_86_double_full_heal",
+  "display_name": "Double Full Heal",
+  "card_type": "TRAINER",
+  "trainer_kind": "ITEM",
+  "rules_text": "Remove all Special Conditions from each of your Active Pokémon."
+}

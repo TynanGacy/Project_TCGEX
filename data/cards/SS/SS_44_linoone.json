@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_44_linoone",
+  "name_slug": "linoone",
+  "display_name": "Linoone",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "zigzagoon",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 0,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Sniff Out",
+      "base_damage": 0,
+      "text": "Put any 1 card from your discard pile into your hand.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Fury Swipes",
+      "base_damage": 20,
+      "text": "Flip 3 coins. This attack does 20 damage times the number of heads.",
+      "cost_colorless": 2
+    }
+  ]
+}

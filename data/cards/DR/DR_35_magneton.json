@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_35_magneton",
+  "name_slug": "magneton",
+  "display_name": "Magneton",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "magnemite",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 80,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Ram",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Triple Smash",
+      "base_damage": 20,
+      "text": "Flip 3 coins. This attack does 20 damage plus 20 more damage for each heads.",
+      "cost_lightning": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

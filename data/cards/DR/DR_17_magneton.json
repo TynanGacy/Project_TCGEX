@@ -1,0 +1,23 @@
+{
+  "card_id": "DR_17_magneton",
+  "name_slug": "magneton",
+  "display_name": "Magneton",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "magnemite",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 70,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Magnetic Force",
+      "base_damage": 10,
+      "text": "Does 10 damage times the amount of Energy attached to all of your Pokémon (including Magneton).",
+      "cost_lightning": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

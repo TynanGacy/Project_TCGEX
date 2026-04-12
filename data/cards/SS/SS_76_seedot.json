@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_76_seedot",
+  "name_slug": "seedot",
+  "display_name": "Seedot",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 40,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Surprise Attack",
+      "base_damage": 30,
+      "text": "Flip a coin. If tails, this attack does nothing.",
+      "cost_grass": 1
+    }
+  ]
+}

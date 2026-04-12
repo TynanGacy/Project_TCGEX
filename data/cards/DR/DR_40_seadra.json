@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_40_seadra",
+  "name_slug": "seadra",
+  "display_name": "Seadra",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "horsea",
+  "pokemon_type": "WATER",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Agility",
+      "base_damage": 20,
+      "text": "Flip a coin. If heads, prevent all effects of an attack, including damage, done to Seadra during your opponent's next turn.",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Waterfall",
+      "base_damage": 40,
+      "text": "",
+      "cost_water": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

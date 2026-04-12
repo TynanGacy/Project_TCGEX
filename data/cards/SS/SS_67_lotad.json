@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_67_lotad",
+  "name_slug": "lotad",
+  "display_name": "Lotad",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 50,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Tackle",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Blot",
+      "base_damage": 20,
+      "text": "Remove 1 damage counter from Lotad.",
+      "cost_colorless": 2
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "card_id": "SS_23_steelix",
+  "name_slug": "steelix",
+  "display_name": "Steelix",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "onix",
+  "pokemon_type": "METAL",
+  "hp_max": 100,
+  "weakness": "FIRE",
+  "resistance": "GRASS",
+  "retreat_cost": 4,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Rage",
+      "base_damage": 10,
+      "text": "Does 10 damage plus 10 more damage for each damage counter on Steelix.",
+      "cost_fighting": 1,
+      "cost_colorless": 2
+    },
+    {
+      "name": "Spinning Tail",
+      "base_damage": 0,
+      "text": "Does 20 damage to each of your opponent's Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_metal": 2,
+      "cost_colorless": 2
+    }
+  ]
+}

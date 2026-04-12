@@ -1,0 +1,30 @@
+{
+  "card_id": "SS_25_vaporeon",
+  "name_slug": "vaporeon",
+  "display_name": "Vaporeon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "eevee",
+  "pokemon_type": "WATER",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Aurora Beam",
+      "base_damage": 30,
+      "text": "",
+      "cost_water": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Aqua Sonic",
+      "base_damage": 50,
+      "text": "This attack's damage is not affected by Resistance.",
+      "cost_water": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

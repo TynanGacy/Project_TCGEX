@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_77_seedot",
+  "name_slug": "seedot",
+  "display_name": "Seedot",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 40,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Tackle",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    }
+  ]
+}

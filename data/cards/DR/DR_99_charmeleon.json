@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_99_charmeleon",
+  "name_slug": "charmeleon",
+  "display_name": "Charmeleon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "charmander",
+  "pokemon_type": "FIRE",
+  "hp_max": 70,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Smokescreen",
+      "base_damage": 10,
+      "text": "If the Defending Pokémon tries to attack during your opponent's next turn, your opponent flips a coin. If tails, that attack does nothing.",
+      "cost_fire": 1
+    },
+    {
+      "name": "Fireworks",
+      "base_damage": 40,
+      "text": "Flip a coin. If tails, discard a Fire Energy card attached to Charmeleon.",
+      "cost_fire": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

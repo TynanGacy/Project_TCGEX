@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_51_quilava",
+  "name_slug": "quilava",
+  "display_name": "Quilava",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "cyndaquil",
+  "pokemon_type": "FIRE",
+  "hp_max": 80,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Slash",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Burning Claw",
+      "base_damage": 40,
+      "text": "You may discard a Fire Energy card attached to Quilava. If you do, the Defending Pokémon is now Burned.",
+      "cost_fire": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

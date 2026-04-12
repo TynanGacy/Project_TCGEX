@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_81_spearow",
+  "name_slug": "spearow",
+  "display_name": "Spearow",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 40,
+  "weakness": "LIGHTNING",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Super Speed",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, prevent all effects of an attack, including damage, done to Spearow during your opponent's next turn.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Peck",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    }
+  ]
+}

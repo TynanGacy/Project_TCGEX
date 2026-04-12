@@ -1,0 +1,7 @@
+{
+  "card_id": "DR_86_low_pressure_system",
+  "display_name": "Low Pressure System",
+  "card_type": "TRAINER",
+  "trainer_kind": "STADIUM",
+  "rules_text": "This card stays in play when you play it. Discard this card if another Stadium card comes into play.\nEach Grass and Lightning Pokémon in play (both yours and your opponent's) gets +10 HP."
+}

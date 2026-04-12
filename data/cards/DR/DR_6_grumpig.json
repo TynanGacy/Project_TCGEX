@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_6_grumpig",
+  "name_slug": "grumpig",
+  "display_name": "Grumpig",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "spoink",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 80,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Psychic Boom",
+      "base_damage": 20,
+      "text": "Does 20 damage plus 10 more damage for each Energy attached to the Defending Pokémon.",
+      "cost_psychic": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Mind Trip",
+      "base_damage": 50,
+      "text": "If Grumpig and the Defending Pokémon have the same amount of Energy attached to them, the Defending Pokémon is now Confused.",
+      "cost_psychic": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

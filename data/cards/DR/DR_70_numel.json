@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_70_numel",
+  "name_slug": "numel",
+  "display_name": "Numel",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIRE",
+  "hp_max": 50,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Rollout",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Kindle",
+      "base_damage": 10,
+      "text": "Discard a Fire Energy card attached to Numel and then discard an Energy card attached to the Defending Pokémon.",
+      "cost_fire": 1
+    }
+  ]
+}

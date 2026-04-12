@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_98_charmander",
+  "name_slug": "charmander",
+  "display_name": "Charmander",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIRE",
+  "hp_max": 50,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Flare",
+      "base_damage": 10,
+      "text": "",
+      "cost_fire": 1
+    },
+    {
+      "name": "Rage",
+      "base_damage": 10,
+      "text": "Does 10 damage plus 10 more damage for each damage counter on Charmander.",
+      "cost_colorless": 2
+    }
+  ]
+}

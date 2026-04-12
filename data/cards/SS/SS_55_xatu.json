@@ -1,0 +1,23 @@
+{
+  "card_id": "SS_55_xatu",
+  "name_slug": "xatu",
+  "display_name": "Xatu",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "natu",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 70,
+  "weakness": "PSYCHIC",
+  "resistance": "FIGHTING",
+  "retreat_cost": 0,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Psyimpact",
+      "base_damage": 0,
+      "text": "Put 1 damage counter on each of your opponent's Pokémon.",
+      "cost_psychic": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

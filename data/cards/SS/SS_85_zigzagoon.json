@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_85_zigzagoon",
+  "name_slug": "zigzagoon",
+  "display_name": "Zigzagoon",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 40,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Collect",
+      "base_damage": 0,
+      "text": "Draw a card.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Headbutt",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    }
+  ]
+}

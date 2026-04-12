@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_63_eevee",
+  "name_slug": "eevee",
+  "display_name": "Eevee",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Signs of Evolution",
+      "base_damage": 0,
+      "text": "Search your deck for up to 3 cards that evolve from Eevee, show them to your opponent, and put them into your hand. Shuffle your deck afterward.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Quick Attack",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, this attack does 10 damage plus 10 more damage.",
+      "cost_colorless": 1
+    }
+  ]
+}

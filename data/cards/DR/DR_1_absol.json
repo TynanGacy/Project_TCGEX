@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_1_absol",
+  "name_slug": "absol",
+  "display_name": "Absol",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "DARKNESS",
+  "hp_max": 70,
+  "weakness": "FIGHTING",
+  "resistance": "PSYCHIC",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Bad News",
+      "base_damage": 0,
+      "text": "If the number of cards in your opponent's hand is at least 6, choose a number of cards there, without looking, until your opponent has 5 cards left. Have your opponent discard the cards you chose.",
+      "cost_darkness": 1
+    },
+    {
+      "name": "Prize Count",
+      "base_damage": 20,
+      "text": "If you have more Prize cards left than your opponent, this attack does 20 damage plus 20 more damage.",
+      "cost_darkness": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

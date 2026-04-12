@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_13_solrock",
+  "name_slug": "solrock",
+  "display_name": "Solrock",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 70,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Cosmic Draw",
+      "base_damage": 0,
+      "text": "If your opponent has any Evolved Pokémon in play, draw 3 cards.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Solar Blast",
+      "base_damage": 40,
+      "text": "",
+      "cost_fighting": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

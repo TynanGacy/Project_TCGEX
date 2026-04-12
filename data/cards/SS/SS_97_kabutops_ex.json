@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_97_kabutops_ex",
+  "name_slug": "kabutops_ex",
+  "display_name": "Kabutops ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "kabuto",
+  "pokemon_type": "WATER",
+  "hp_max": 150,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Hydrocutter",
+      "base_damage": 40,
+      "text": "Flip a number of coins equal to the amount of Energy attached to Kabutops ex. This attack does 40 damage times the number of heads. You can't flip more than 3 coins in this way.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Spiral Drain",
+      "base_damage": 70,
+      "text": "Remove 2 damage counter from Kabutops ex (remove 1 if there is only 1).",
+      "cost_fighting": 2,
+      "cost_colorless": 2
+    }
+  ]
+}

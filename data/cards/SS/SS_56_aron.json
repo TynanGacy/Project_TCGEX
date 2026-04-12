@@ -1,0 +1,23 @@
+{
+  "card_id": "SS_56_aron",
+  "name_slug": "aron",
+  "display_name": "Aron",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "METAL",
+  "hp_max": 50,
+  "weakness": "FIRE",
+  "resistance": "GRASS",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Steel Headbutt",
+      "base_damage": 20,
+      "text": "Flip a coin. If heads, this attack does 20 damage plus 20 more damage.",
+      "cost_metal": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

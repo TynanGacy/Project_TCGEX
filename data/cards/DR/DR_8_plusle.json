@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_8_plusle",
+  "name_slug": "plusle",
+  "display_name": "Plusle",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Cheer On",
+      "base_damage": 0,
+      "text": "Remove 1 damage counter from each of your Pokémon (including Plusle).",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Extra Circuit",
+      "base_damage": 0,
+      "text": "Choose 1 of your opponent's Pokémon. This attack does 20 damage to that Pokémon. If you choose Pokémon-ex, this attack does 40 damage instead. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_lightning": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

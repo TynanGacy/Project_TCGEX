@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_62_magnemite",
+  "name_slug": "magnemite",
+  "display_name": "Magnemite",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Random Spark",
+      "base_damage": 0,
+      "text": "Choose 1 of your opponent's Pokémon. This attack does 10 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_lightning": 1
+    }
+  ]
+}

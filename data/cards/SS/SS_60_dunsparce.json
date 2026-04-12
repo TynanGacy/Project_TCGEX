@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_60_dunsparce",
+  "name_slug": "dunsparce",
+  "display_name": "Dunsparce",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Strike and Run",
+      "base_damage": 0,
+      "text": "Search your deck for up to 3 Basic Pokémon and put them onto your Bench. Shuffle your deck afterward. You may switch Dunsparce with 1 of your Benched Pokémon.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Sudden Flash",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, each Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 1
+    }
+  ]
+}

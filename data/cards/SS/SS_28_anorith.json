@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_28_anorith",
+  "name_slug": "anorith",
+  "display_name": "Anorith",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "claw_fossil",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 80,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Slash",
+      "base_damage": 20,
+      "text": "",
+      "cost_fighting": 1
+    },
+    {
+      "name": "Double Scratch",
+      "base_damage": 40,
+      "text": "Flip 2 coins. This attack does 40 damage times the number of heads.",
+      "cost_colorless": 3
+    }
+  ]
+}

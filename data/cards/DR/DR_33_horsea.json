@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_33_horsea",
+  "name_slug": "horsea",
+  "display_name": "Horsea",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 40,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Retaliate",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, this attack does 10 damage times the number of damage counters on Horsea.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Smokescreen",
+      "base_damage": 10,
+      "text": "If the Defending Pokémon tries to attack during your opponent's next turn, your opponent flips a coin. If tails, that attack does nothing.",
+      "cost_water": 1
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_27_anorith",
+  "name_slug": "anorith",
+  "display_name": "Anorith",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "claw_fossil",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 80,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Fast Evolution",
+      "base_damage": 0,
+      "text": "Search your deck for an Evolution card, show it to your opponent, and put it into your hand. Shuffle your deck afterward.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Pierce",
+      "base_damage": 30,
+      "text": "",
+      "cost_fighting": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

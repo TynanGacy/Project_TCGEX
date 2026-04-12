@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_96_muk_ex",
+  "name_slug": "muk_ex",
+  "display_name": "Muk ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "grimer",
+  "pokemon_type": "GRASS",
+  "hp_max": 100,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Poison Breath",
+      "base_damage": 10,
+      "text": "The Defending Pokémon is now Poisoned.",
+      "cost_grass": 1
+    },
+    {
+      "name": "Slimy Water",
+      "base_damage": 40,
+      "text": "Does 40 damage plus 10 more damage for each Colorless Energy in the Defending Pokémon's Retreat Cost (after applying effects to the Retreat Cost).",
+      "cost_grass": 2,
+      "cost_colorless": 1
+    }
+  ]
+}

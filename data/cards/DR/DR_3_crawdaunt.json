@@ -1,0 +1,23 @@
+{
+  "card_id": "DR_3_crawdaunt",
+  "name_slug": "crawdaunt",
+  "display_name": "Crawdaunt",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "corphish",
+  "pokemon_type": "WATER",
+  "hp_max": 80,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Guillotine",
+      "base_damage": 50,
+      "text": "",
+      "cost_water": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

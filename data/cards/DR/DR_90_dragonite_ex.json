@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_90_dragonite_ex",
+  "name_slug": "dragonite_ex",
+  "display_name": "Dragonite ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "dragonair",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 150,
+  "weakness": "COLORLESS",
+  "resistance": "GRASS",
+  "retreat_cost": 2,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Dragon Wave",
+      "base_damage": 70,
+      "text": "Discard a Water Energy card and a Lightning Energy card attached to Dragonite ex.",
+      "cost_water": 1,
+      "cost_lightning": 1
+    },
+    {
+      "name": "Giant Tail",
+      "base_damage": 120,
+      "text": "Flip a coin. If tails, this attack does nothing.",
+      "cost_colorless": 4
+    }
+  ]
+}

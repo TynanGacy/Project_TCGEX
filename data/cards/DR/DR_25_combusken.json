@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_25_combusken",
+  "name_slug": "combusken",
+  "display_name": "Combusken",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "torchic",
+  "pokemon_type": "FIRE",
+  "hp_max": 70,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Quick Attack",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, this attack does 10 damage plus 20 more damage.",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Combustion",
+      "base_damage": 40,
+      "text": "",
+      "cost_fire": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_41_lairon",
+  "name_slug": "lairon",
+  "display_name": "Lairon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "aron",
+  "pokemon_type": "METAL",
+  "hp_max": 70,
+  "weakness": "FIRE",
+  "resistance": "GRASS",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Iron Defense",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, prevent all effects of an attack, including damage, done to Lairon during your opponent's next turn.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Headbutt",
+      "base_damage": 50,
+      "text": "",
+      "cost_metal": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

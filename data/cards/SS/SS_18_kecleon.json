@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_18_kecleon",
+  "name_slug": "kecleon",
+  "display_name": "Kecleon",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 60,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Double Scratch",
+      "base_damage": 20,
+      "text": "Flip 2 coins. This attack does 20 damage times the number of heads.",
+      "cost_colorless": 2
+    }
+  ]
+}

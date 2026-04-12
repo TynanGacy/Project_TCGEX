@@ -1,0 +1,23 @@
+{
+  "card_id": "DR_71_pineco",
+  "name_slug": "pineco",
+  "display_name": "Pineco",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 40,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Tackle",
+      "base_damage": 20,
+      "text": "",
+      "cost_grass": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

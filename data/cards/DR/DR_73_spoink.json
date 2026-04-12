@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_73_spoink",
+  "name_slug": "spoink",
+  "display_name": "Spoink",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 50,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Bounce",
+      "base_damage": 10,
+      "text": "After your attack, you may switch Spoink with 1 of your Benched Pokémon.",
+      "cost_colorless": 1
+    }
+  ]
+}

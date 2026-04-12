@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_61_duskull",
+  "name_slug": "duskull",
+  "display_name": "Duskull",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 40,
+  "weakness": "DARKNESS",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Surprise",
+      "base_damage": 0,
+      "text": "Choose 1 card from your opponent's hand without looking. Look at the card you chose, then have your opponent shuffle that card into his or her deck.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Confuse Ray",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "cost_psychic": 1
+    }
+  ]
+}

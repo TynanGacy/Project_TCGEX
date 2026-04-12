@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_14_zangoose",
+  "name_slug": "zangoose",
+  "display_name": "Zangoose",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Target Slash",
+      "base_damage": 10,
+      "text": "If the Defending Pokémon is Seviper, this attack does 10 damage plus 30 more damage.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Super Slash",
+      "base_damage": 30,
+      "text": "If the Defending Pokémon is an Evolved Pokémon, this attack does 30 damage plus 30 more damage.",
+      "cost_colorless": 3
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_45_swellow",
+  "name_slug": "swellow",
+  "display_name": "Swellow",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "taillow",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "FIGHTING",
+  "retreat_cost": 0,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Clutch",
+      "base_damage": 10,
+      "text": "The Defending Pokémon can't retreat until the end of your opponent's next turn.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Quick Dive",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, choose 1 of your opponent's Pokémon. This attack does 50 damage to that Pokémon. This attack's damage isn't affected by Weakness or Resistance.",
+      "cost_colorless": 2
+    }
+  ]
+}

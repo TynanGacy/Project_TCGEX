@@ -1,0 +1,23 @@
+{
+  "card_id": "SS_65_growlithe",
+  "name_slug": "growlithe",
+  "display_name": "Growlithe",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIRE",
+  "hp_max": 50,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Flare",
+      "base_damage": 20,
+      "text": "",
+      "cost_fire": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

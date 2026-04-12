@@ -1,0 +1,23 @@
+{
+  "card_id": "DR_31_grovyle",
+  "name_slug": "grovyle",
+  "display_name": "Grovyle",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "treecko",
+  "pokemon_type": "GRASS",
+  "hp_max": 70,
+  "weakness": "FIRE",
+  "resistance": "WATER",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Fury Cutter",
+      "base_damage": 10,
+      "text": "Flip 4 coins. If all of them are heads, this attack does 10 damage plus 60 more damage. If not, this attack does 10 damage plus 10 more damage for each heads.",
+      "cost_grass": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_94_latios_ex",
+  "name_slug": "latios_ex",
+  "display_name": "Latios ex",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 100,
+  "weakness": "COLORLESS",
+  "resistance": "GRASS",
+  "retreat_cost": 2,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Energy Stream",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, search your discard pile for a basic Energy card and attach it to Latios ex.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Luster Purge",
+      "base_damage": 100,
+      "text": "Discard 3 Energy attached to Latios ex.",
+      "cost_grass": 1,
+      "cost_lightning": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

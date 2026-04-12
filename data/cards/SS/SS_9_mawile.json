@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_9_mawile",
+  "name_slug": "mawile",
+  "display_name": "Mawile",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "METAL",
+  "hp_max": 60,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Scam",
+      "base_damage": 0,
+      "text": "Look at your opponent's hand. You may have your opponent shuffle a Supporter card you find there into his or her deck. If you do, your opponent draws a card.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Metal Hook",
+      "base_damage": 20,
+      "text": "Before doing damage, you may switch 1 of your opponent's Benched Pokémon with 1 of the Defending Pokémon. If you do, this attack does 20 damage to the new Defending Pokémon.",
+      "cost_metal": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

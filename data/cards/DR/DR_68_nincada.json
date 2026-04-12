@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_68_nincada",
+  "name_slug": "nincada",
+  "display_name": "Nincada",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 50,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Leech Life",
+      "base_damage": 10,
+      "text": "After your attack, remove from Nincada the number of damage counters equal to the damage you did to the Defending Pokémon. If Nincada has fewer damage counters than that, remove all of them.",
+      "cost_grass": 1
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_11_seviper",
+  "name_slug": "seviper",
+  "display_name": "Seviper",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 80,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Deadly Poison",
+      "base_damage": 10,
+      "text": "You may discard a Grass Energy card attached to Seviper. If you do, the Defending Pokémon is now Poisoned.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Extra Poison",
+      "base_damage": 20,
+      "text": "If the Defending Pokémon is Pokémon-ex, the Defending Pokémon is now Asleep and Poisoned.",
+      "cost_colorless": 2
+    }
+  ]
+}

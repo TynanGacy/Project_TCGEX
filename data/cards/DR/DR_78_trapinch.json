@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_78_trapinch",
+  "name_slug": "trapinch",
+  "display_name": "Trapinch",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 50,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Dig",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    }
+  ]
+}

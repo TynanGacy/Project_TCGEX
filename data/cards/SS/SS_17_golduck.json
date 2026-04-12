@@ -1,0 +1,23 @@
+{
+  "card_id": "SS_17_golduck",
+  "name_slug": "golduck",
+  "display_name": "Golduck",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "psyduck",
+  "pokemon_type": "WATER",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Special Blow",
+      "base_damage": 30,
+      "text": "If the Defending Pokémon has any Special Energy cards attached to it, this attack does 30 damage plus 40 more damage.",
+      "cost_water": 1,
+      "cost_psychic": 1
+    }
+  ]
+}

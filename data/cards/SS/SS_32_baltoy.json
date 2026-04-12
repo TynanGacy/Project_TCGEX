@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_32_baltoy",
+  "name_slug": "baltoy",
+  "display_name": "Baltoy",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 50,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Rapid Spin",
+      "base_damage": 10,
+      "text": "Your opponent switches the Defending Pokémon with 1 of his or her Benched Pokémon, if any. You switch Baltoy with 1 of your Benched Pokémon, if any.",
+      "cost_colorless": 1
+    }
+  ]
+}

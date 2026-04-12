@@ -1,0 +1,23 @@
+{
+  "card_id": "DR_89_ampharos_ex",
+  "name_slug": "ampharos_ex",
+  "display_name": "Ampharos ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "flaaffy",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 150,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 3,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Gigavolt",
+      "base_damage": 40,
+      "text": "Flip a coin. If heads, this attack does 40 damage plus 30 more damage. If tails, the Defending Pokémon is now Paralyzed.",
+      "cost_lightning": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

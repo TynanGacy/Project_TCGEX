@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_95_aggron_ex",
+  "name_slug": "aggron_ex",
+  "display_name": "Aggron ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "lairon",
+  "pokemon_type": "METAL",
+  "hp_max": 150,
+  "weakness": "FIGHTING",
+  "resistance": "GRASS",
+  "retreat_cost": 4,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Rend",
+      "base_damage": 30,
+      "text": "If the Defending Pokémon has any damage counters on it, this attack does 30 damage plus 30 more damage.",
+      "cost_colorless": 3
+    },
+    {
+      "name": "Metal Surge",
+      "base_damage": 50,
+      "text": "Does 20 damage to each of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_metal": 2,
+      "cost_colorless": 3
+    }
+  ]
+}

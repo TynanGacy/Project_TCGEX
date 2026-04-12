@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_75_sandshrew",
+  "name_slug": "sandshrew",
+  "display_name": "Sandshrew",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 50,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Poison Needle",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Poisoned.",
+      "cost_fighting": 1
+    }
+  ]
+}

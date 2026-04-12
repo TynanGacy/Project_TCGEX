@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_95_magcargo_ex",
+  "name_slug": "magcargo_ex",
+  "display_name": "Magcargo ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "slugma",
+  "pokemon_type": "FIRE",
+  "hp_max": 100,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 3,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Melting Mountain",
+      "base_damage": 20,
+      "text": "Discard the top card from your deck. If that card is a basic Energy card, attach it to Magcargo ex.",
+      "cost_fire": 1
+    },
+    {
+      "name": "Lava Flow",
+      "base_damage": 40,
+      "text": "You may discard any number of basic Energy cards attached to Magcargo ex when you use this attack. If you do, this attack does 40 damage plus 20 more damage for each basic Energy card you discarded.",
+      "cost_fire": 2,
+      "cost_colorless": 1
+    }
+  ]
+}

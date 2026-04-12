@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_79_skitty",
+  "name_slug": "skitty",
+  "display_name": "Skitty",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Energy Catch",
+      "base_damage": 0,
+      "text": "Search your discard pile for a basic Energy card, show it to your opponent, and put it into your hand.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Double-edge",
+      "base_damage": 30,
+      "text": "Skitty does 10 damage to itself.",
+      "cost_colorless": 2
+    }
+  ]
+}

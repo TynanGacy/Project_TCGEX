@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_82_trapinch",
+  "name_slug": "trapinch",
+  "display_name": "Trapinch",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 40,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Sand Pit",
+      "base_damage": 10,
+      "text": "The Defending Pokémon can't retreat until the end of your opponent's next turn.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Irongrip",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_79_trapinch",
+  "name_slug": "trapinch",
+  "display_name": "Trapinch",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 50,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Bind",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Rock Smash",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, this attack does 10 damage plus 20 more damage.",
+      "cost_colorless": 2
+    }
+  ]
+}

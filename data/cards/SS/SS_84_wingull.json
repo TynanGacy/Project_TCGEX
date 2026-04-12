@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_84_wingull",
+  "name_slug": "wingull",
+  "display_name": "Wingull",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 40,
+  "weakness": "LIGHTNING",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Supersonic",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "cost_colorless": 1
+    }
+  ]
+}

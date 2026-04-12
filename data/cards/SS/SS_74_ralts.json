@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_74_ralts",
+  "name_slug": "ralts",
+  "display_name": "Ralts",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 50,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Hypnosis",
+      "base_damage": 0,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Psychic Boom",
+      "base_damage": 10,
+      "text": "Does 10 damage times the amount of Energy attached to the Defending Pokémon.",
+      "cost_psychic": 1
+    }
+  ]
+}

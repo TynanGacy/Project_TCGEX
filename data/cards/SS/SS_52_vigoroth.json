@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_52_vigoroth",
+  "name_slug": "vigoroth",
+  "display_name": "Vigoroth",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "slakoth",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Focus Energy",
+      "base_damage": 0,
+      "text": "During your next turn, base damage of Vigoroth's Slash is attack is 90 instead of 40.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Slash",
+      "base_damage": 40,
+      "text": "",
+      "cost_colorless": 3
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_63_magnemite",
+  "name_slug": "magnemite",
+  "display_name": "Magnemite",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Thundershock",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_lightning": 1
+    }
+  ]
+}
