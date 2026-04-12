@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_53_corphish",
+  "name_slug": "corphish",
+  "display_name": "Corphish",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 50,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Irongrip",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Slash",
+      "base_damage": 20,
+      "text": "",
+      "cost_water": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

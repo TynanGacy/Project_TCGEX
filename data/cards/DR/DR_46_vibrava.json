@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_46_vibrava",
+  "name_slug": "vibrava",
+  "display_name": "Vibrava",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "trapinch",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "NONE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Razor Wing",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    }
+  ]
+}

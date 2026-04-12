@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_28_forretress",
+  "name_slug": "forretress",
+  "display_name": "Forretress",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "pineco",
+  "pokemon_type": "METAL",
+  "hp_max": 80,
+  "weakness": "FIRE",
+  "resistance": "GRASS",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Double Metal Ball",
+      "base_damage": 0,
+      "text": "Put 2 damage counters on each Defending Pokémon.",
+      "cost_metal": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Backspin",
+      "base_damage": 40,
+      "text": "After your attack, you may discard 1 Energy card attached to Forretress. If you do, switch Forretress with 1 of your Benched Pokémon.",
+      "cost_colorless": 3
+    }
+  ]
+}

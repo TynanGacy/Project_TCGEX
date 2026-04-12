@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_54_wynaut",
+  "name_slug": "wynaut",
+  "display_name": "Wynaut",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 50,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Alluring Smile",
+      "base_damage": 0,
+      "text": "Search your deck for a Basic Pokémon card or Evolution card for each Energy attached to Wynaut, show them to your opponent, and put them into your hand. Shuffle your deck afterward.",
+      "cost_psychic": 1
+    }
+  ]
+}

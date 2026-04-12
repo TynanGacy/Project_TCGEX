@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_39_seadra",
+  "name_slug": "seadra",
+  "display_name": "Seadra",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "horsea",
+  "pokemon_type": "WATER",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Energy Cannon",
+      "base_damage": 20,
+      "text": "Does 20 damage plus 10 more damage for each Energy attached to Seadra but not used to pay for this attack's Energy cost. You can't add more than 20 damage in this way.",
+      "cost_water": 1
+    },
+    {
+      "name": "Water Arrow",
+      "base_damage": 0,
+      "text": "Choose 1 of your opponent's Pokémon. This attack does 30 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_water": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

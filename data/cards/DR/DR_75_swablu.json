@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_75_swablu",
+  "name_slug": "swablu",
+  "display_name": "Swablu",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 40,
+  "weakness": "LIGHTNING",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Lullaby",
+      "base_damage": 10,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_water": 1
+    },
+    {
+      "name": "Stifling Fluff",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_lightning": 1
+    }
+  ]
+}

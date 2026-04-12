@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_2_altaria",
+  "name_slug": "altaria",
+  "display_name": "Altaria",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "swablu",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 80,
+  "weakness": "COLORLESS",
+  "resistance": "GRASS",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Dragon Dance",
+      "base_damage": 0,
+      "text": "During your next turn, if any of your current Active Pokémon does damage to any Defending Pokémon, this attack does 40 more damage (before applying Weakness and Resistance).",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Dragon Song",
+      "base_damage": 30,
+      "text": "Each Defending Pokémon is now Asleep.",
+      "cost_water": 1,
+      "cost_lightning": 1
+    }
+  ]
+}

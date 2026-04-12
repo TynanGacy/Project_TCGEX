@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_20_pichu",
+  "name_slug": "pichu",
+  "display_name": "Pichu",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 40,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Energy Retrieval",
+      "base_damage": 0,
+      "text": "Search your discard pile for up to 2 basic Energy cards and attach them to 1 of your Pokémon. Put 1 damage counter on that Pokémon for each Energy card attached in this way.",
+      "cost_lightning": 1
+    }
+  ]
+}

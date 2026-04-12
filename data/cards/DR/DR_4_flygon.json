@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_4_flygon",
+  "name_slug": "flygon",
+  "display_name": "Flygon",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "vibrava",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 120,
+  "weakness": "COLORLESS",
+  "resistance": "FIRE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Energy Shower",
+      "base_damage": 0,
+      "text": "Attach any number of basic Energy cards from your hand to your Pokémon in any way you like.",
+      "cost_grass": 1,
+      "cost_lightning": 1
+    },
+    {
+      "name": "Rainbow Burn",
+      "base_damage": 30,
+      "text": "Does 30 damage plus 10 more damage for each type of basic Energy card attached to Flygon.",
+      "cost_colorless": 3
+    }
+  ]
+}

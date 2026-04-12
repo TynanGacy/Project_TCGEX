@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_50_bagon",
+  "name_slug": "bagon",
+  "display_name": "Bagon",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 50,
+  "weakness": "NONE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Risky Kick",
+      "base_damage": 10,
+      "text": "Flip a coin. If tails, this attack does nothing.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Dragon Eye",
+      "base_damage": 20,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_fire": 1,
+      "cost_water": 1
+    }
+  ]
+}

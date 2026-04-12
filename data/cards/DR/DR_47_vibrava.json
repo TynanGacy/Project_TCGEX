@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_47_vibrava",
+  "name_slug": "vibrava",
+  "display_name": "Vibrava",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "trapinch",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "NONE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Dive",
+      "base_damage": 20,
+      "text": "",
+      "cost_grass": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Quick Turn",
+      "base_damage": 40,
+      "text": "Flip 2 coins. This attack does 40 damage times the number of heads.",
+      "cost_lightning": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

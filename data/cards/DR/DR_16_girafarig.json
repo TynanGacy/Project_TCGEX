@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_16_girafarig",
+  "name_slug": "girafarig",
+  "display_name": "Girafarig",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 70,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Synchronized Search",
+      "base_damage": 0,
+      "text": "If Girafarig and the Defending Pokémon have the same amount of Energy attached to them, pick any 1 card from your deck and put it into your hand. Shuffle your deck afterward.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Breaking Impact",
+      "base_damage": 0,
+      "text": "Choose 1 of your opponent's Pokémon. This attack does 10 damage for each Colorless Energy in that Pokémon's Retreat Cost to that Pokémon (after applying effects to the Retreat Cost). (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_psychic": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

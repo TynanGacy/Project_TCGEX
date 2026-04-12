@@ -1,0 +1,23 @@
+{
+  "card_id": "SS_12_shiftry",
+  "name_slug": "shiftry",
+  "display_name": "Shiftry",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "nuzleaf",
+  "pokemon_type": "GRASS",
+  "hp_max": 120,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Light Touch Throw",
+      "base_damage": 80,
+      "text": "Does 80 damage minus 10 damage for each Energy attached to the Defending Pokémon.",
+      "cost_grass": 2,
+      "cost_colorless": 2
+    }
+  ]
+}

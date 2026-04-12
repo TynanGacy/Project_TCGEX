@@ -1,0 +1,30 @@
+{
+  "card_id": "SS_4_dusclops",
+  "name_slug": "dusclops",
+  "display_name": "Dusclops",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "duskull",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 70,
+  "weakness": "DARKNESS",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Judgement",
+      "base_damage": 0,
+      "text": "Flip 2 coins. If both of them are heads, the Defending Pokémon is Knocked Out.",
+      "cost_psychic": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Random Curse",
+      "base_damage": 0,
+      "text": "Put a total of 5 damage counters on all Defending Pokémon in any way you like.",
+      "cost_psychic": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

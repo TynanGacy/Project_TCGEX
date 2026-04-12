@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_58_horsea",
+  "name_slug": "horsea",
+  "display_name": "Horsea",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 50,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Paralyzing Gaze",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Wave Splash",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    }
+  ]
+}

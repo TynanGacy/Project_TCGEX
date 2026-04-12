@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_20_shelgon",
+  "name_slug": "shelgon",
+  "display_name": "Shelgon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "bagon",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 80,
+  "weakness": "COLORLESS",
+  "resistance": "FIGHTING",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Scrunch",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, prevent all damage done to Shelgon during your opponent's next turn. (Any other effects of attacks still happen.)",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Rolling Attack",
+      "base_damage": 50,
+      "text": "",
+      "cost_fire": 1,
+      "cost_water": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_92_kingdra_ex",
+  "name_slug": "kingdra_ex",
+  "display_name": "Kingdra ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "seadra",
+  "pokemon_type": "WATER",
+  "hp_max": 150,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 3,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Genetic Memory",
+      "base_damage": 0,
+      "text": "Use any attack from Kingdra ex's Basic Pokémon card or Stage 1 Evolution card. (Kingdra ex doesn't have to pay for that attack's Energy cost.)",
+      "cost_water": 1
+    },
+    {
+      "name": "Hydrocannon",
+      "base_damage": 50,
+      "text": "Does 50 damage plus 20 more damage for each Water Energy attached to Kingdra ex but not used to pay for this attack's Energy cost. You can't add more than 40 damage in this way.",
+      "cost_colorless": 3
+    }
+  ]
+}

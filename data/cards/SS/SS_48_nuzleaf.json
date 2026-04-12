@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_48_nuzleaf",
+  "name_slug": "nuzleaf",
+  "display_name": "Nuzleaf",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "seedot",
+  "pokemon_type": "GRASS",
+  "hp_max": 80,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Steady Punch",
+      "base_damage": 20,
+      "text": "Flip a coin. If heads, this attack does 20 damage plus 10 more damage.",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Razor Leaf",
+      "base_damage": 40,
+      "text": "",
+      "cost_grass": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

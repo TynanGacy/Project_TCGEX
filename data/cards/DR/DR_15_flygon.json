@@ -1,0 +1,24 @@
+{
+  "card_id": "DR_15_flygon",
+  "name_slug": "flygon",
+  "display_name": "Flygon",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "vibrava",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 100,
+  "weakness": "NONE",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Air Slash",
+      "base_damage": 60,
+      "text": "Flip a coin. If tails, discard an Energy card attached to Flygon.",
+      "cost_grass": 1,
+      "cost_lightning": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

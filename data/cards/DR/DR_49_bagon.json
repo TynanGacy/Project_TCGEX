@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_49_bagon",
+  "name_slug": "bagon",
+  "display_name": "Bagon",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 40,
+  "weakness": "NONE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Headbutt",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Flare",
+      "base_damage": 20,
+      "text": "",
+      "cost_fire": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

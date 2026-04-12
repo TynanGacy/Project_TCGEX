@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_14_dragonair",
+  "name_slug": "dragonair",
+  "display_name": "Dragonair",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "dratini",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "COLORLESS",
+  "resistance": "GRASS",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Dazzle Blast",
+      "base_damage": 20,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "cost_lightning": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Healing Wave",
+      "base_damage": 30,
+      "text": "Remove 1 damage counter from each of your Active Pokémon.",
+      "cost_water": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

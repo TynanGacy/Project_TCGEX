@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_100_wailord_ex",
+  "name_slug": "wailord_ex",
+  "display_name": "Wailord ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "wailmer",
+  "pokemon_type": "WATER",
+  "hp_max": 200,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 5,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Super Deep Dive",
+      "base_damage": 0,
+      "text": "If you don't have any Benched Pokémon, this attack does nothing. Remove 3 damage counters from Wailord ex. Switch Wailord ex with 1 of your Benched Pokémon.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Dwindling Wave",
+      "base_damage": 100,
+      "text": "Does 100 damage minus 10 damage for each damage counter on Wailord ex.",
+      "cost_water": 3,
+      "cost_colorless": 1
+    }
+  ]
+}

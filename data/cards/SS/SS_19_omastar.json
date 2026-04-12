@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_19_omastar",
+  "name_slug": "omastar",
+  "display_name": "Omastar",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "omanyte",
+  "pokemon_type": "WATER",
+  "hp_max": 110,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Pull Down",
+      "base_damage": 0,
+      "text": "If your opponent has any Evolved Pokémon in play, remove the highest Stage Evolution card from each of them and put those cards back into his or her hand.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Hydrocannon",
+      "base_damage": 30,
+      "text": "Does 30 damage plus 20 more damage for each Water Energy attached to Omastar but not used to pay for this attack's Energy cost. You can't add more than 40 damage in this way.",
+      "cost_colorless": 2
+    }
+  ]
+}

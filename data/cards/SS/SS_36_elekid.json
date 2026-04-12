@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_36_elekid",
+  "name_slug": "elekid",
+  "display_name": "Elekid",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 40,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Gather Energy",
+      "base_damage": 0,
+      "text": "Search your deck for a basic Energy card and attach it to 1 of your Pokémon. Shuffle your deck afterward.",
+      "cost_lightning": 1
+    }
+  ]
+}

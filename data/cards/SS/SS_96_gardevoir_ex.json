@@ -1,0 +1,30 @@
+{
+  "card_id": "SS_96_gardevoir_ex",
+  "name_slug": "gardevoir_ex",
+  "display_name": "Gardevoir ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "kirlia",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 150,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Feedback",
+      "base_damage": 0,
+      "text": "Count the number of cards in your opponent's hand. Put that many damage counters on the Defending Pokémon.",
+      "cost_psychic": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Psystorm",
+      "base_damage": 10,
+      "text": "Does 10 damage times the total amount of Energy attached to all Pokémon in play.",
+      "cost_psychic": 1,
+      "cost_colorless": 3
+    }
+  ]
+}

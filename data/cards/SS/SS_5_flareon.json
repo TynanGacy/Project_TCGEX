@@ -1,0 +1,30 @@
+{
+  "card_id": "SS_5_flareon",
+  "name_slug": "flareon",
+  "display_name": "Flareon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "eevee",
+  "pokemon_type": "FIRE",
+  "hp_max": 80,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Super Singe",
+      "base_damage": 20,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Burned.",
+      "cost_fire": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Flamethrower",
+      "base_damage": 70,
+      "text": "Discard a Fire Energy card attached to Flareon.",
+      "cost_fire": 1,
+      "cost_colorless": 3
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_48_whiscash",
+  "name_slug": "whiscash",
+  "display_name": "Whiscash",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "barboach",
+  "pokemon_type": "WATER",
+  "hp_max": 90,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Surf",
+      "base_damage": 30,
+      "text": "",
+      "cost_water": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Magnitude",
+      "base_damage": 60,
+      "text": "Does 10 damage to each Benched Pokémon (both yours and your opponent's). (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_fighting": 1,
+      "cost_colorless": 3
+    }
+  ]
+}

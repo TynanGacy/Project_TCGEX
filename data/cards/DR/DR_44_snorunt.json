@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_44_snorunt",
+  "name_slug": "snorunt",
+  "display_name": "Snorunt",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 50,
+  "weakness": "METAL",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Powder Snow",
+      "base_damage": 10,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_water": 1
+    }
+  ]
+}

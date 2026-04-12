@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_42_shelgon",
+  "name_slug": "shelgon",
+  "display_name": "Shelgon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "bagon",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "NONE",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Granite Head",
+      "base_damage": 20,
+      "text": "Damage done to Shelgon by an opponent's attack is reduced by 10 (after applying Weakness and Resistance) during your opponent's next turn.",
+      "cost_water": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Flare",
+      "base_damage": 40,
+      "text": "",
+      "cost_fire": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

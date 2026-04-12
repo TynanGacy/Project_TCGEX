@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_70_omanyte",
+  "name_slug": "omanyte",
+  "display_name": "Omanyte",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "mysterious_fossil",
+  "pokemon_type": "WATER",
+  "hp_max": 70,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Team Assembly",
+      "base_damage": 0,
+      "text": "Search your deck for Omanyte, Kabuto, or any Basic Pokémon and put as many of them as you like onto your Bench. Shuffle your deck afterward. Treat the new Benched Pokémon as Basic Pokémon.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Bind",
+      "base_damage": 20,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 2
+    }
+  ]
+}

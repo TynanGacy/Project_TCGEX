@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_12_torkoal",
+  "name_slug": "torkoal",
+  "display_name": "Torkoal",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIRE",
+  "hp_max": 80,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 3,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Power Generation",
+      "base_damage": 0,
+      "text": "Search your discard pile for up to 2 basic Energy cards, show them to your opponent, and put them into your hand.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Scorching Smoke",
+      "base_damage": 0,
+      "text": "The Defending Pokémon is now Burned. Flip a coin. If tails, discard a Fire Energy card attached to Torkoal.",
+      "cost_fire": 1
+    }
+  ]
+}

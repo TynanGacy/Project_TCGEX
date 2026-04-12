@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_43_shuppet",
+  "name_slug": "shuppet",
+  "display_name": "Shuppet",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 50,
+  "weakness": "DARKNESS",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Hypnosis",
+      "base_damage": 0,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Night Attack",
+      "base_damage": 0,
+      "text": "Put 1 damage counter on 1 of your opponent's Pokémon.",
+      "cost_psychic": 1
+    }
+  ]
+}

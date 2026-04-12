@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_66_lotad",
+  "name_slug": "lotad",
+  "display_name": "Lotad",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 40,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Ram",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    }
+  ]
+}

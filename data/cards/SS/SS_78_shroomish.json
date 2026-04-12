@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_78_shroomish",
+  "name_slug": "shroomish",
+  "display_name": "Shroomish",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 40,
+  "weakness": "FIRE",
+  "resistance": "WATER",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Growth Spurt",
+      "base_damage": 0,
+      "text": "Attach a Grass Energy card from your hand to Shroomish.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Poisonpowder",
+      "base_damage": 10,
+      "text": "The Defending Pokémon is now Poisoned.",
+      "cost_grass": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

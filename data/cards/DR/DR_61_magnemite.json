@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_61_magnemite",
+  "name_slug": "magnemite",
+  "display_name": "Magnemite",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 40,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Rollout",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Hook",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    }
+  ]
+}

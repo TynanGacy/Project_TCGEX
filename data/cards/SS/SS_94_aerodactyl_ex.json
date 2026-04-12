@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_94_aerodactyl_ex",
+  "name_slug": "aerodactyl_ex",
+  "display_name": "Aerodactyl ex",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "mysterious_fossil",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 100,
+  "weakness": "LIGHTNING",
+  "resistance": "FIGHTING",
+  "retreat_cost": 1,
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "attacks": [
+    {
+      "name": "Supersonic",
+      "base_damage": 10,
+      "text": "The Defending Pokémon is now Confused.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Wing Attack",
+      "base_damage": 60,
+      "text": "",
+      "cost_colorless": 3
+    }
+  ]
+}

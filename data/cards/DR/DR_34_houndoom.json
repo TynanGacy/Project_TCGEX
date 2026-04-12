@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_34_houndoom",
+  "name_slug": "houndoom",
+  "display_name": "Houndoom",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "houndour",
+  "pokemon_type": "DARKNESS",
+  "hp_max": 70,
+  "weakness": "FIGHTING",
+  "resistance": "PSYCHIC",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Feint Attack",
+      "base_damage": 0,
+      "text": "Choose 1 of your opponent's Pokémon. This attack does 20 damage to that Pokémon. This attack's damage isn't affected by Weakness, Resistance, Poké-Powers, Poké-Bodies, or any other effects on that Pokémon.",
+      "cost_darkness": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Flamethrower",
+      "base_damage": 50,
+      "text": "Discard a Fire Energy card attached to Houndoom.",
+      "cost_fighting": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

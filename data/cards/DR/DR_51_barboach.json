@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_51_barboach",
+  "name_slug": "barboach",
+  "display_name": "Barboach",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 50,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Splash",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Mud Slap",
+      "base_damage": 20,
+      "text": "",
+      "cost_fighting": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

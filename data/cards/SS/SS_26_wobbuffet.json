@@ -1,0 +1,23 @@
+{
+  "card_id": "SS_26_wobbuffet",
+  "name_slug": "wobbuffet",
+  "display_name": "Wobbuffet",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "PSYCHIC",
+  "hp_max": 80,
+  "weakness": "PSYCHIC",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Flip Over",
+      "base_damage": 50,
+      "text": "Wobbuffet does 10 damage to itself, and don't apply Weakness and Resistance to this damage.",
+      "cost_psychic": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

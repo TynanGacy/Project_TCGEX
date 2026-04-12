@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_47_murkrow",
+  "name_slug": "murkrow",
+  "display_name": "Murkrow",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "DARKNESS",
+  "hp_max": 60,
+  "weakness": "FIGHTING",
+  "resistance": "PSYCHIC",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Surprise",
+      "base_damage": 0,
+      "text": "Choose 1 card from your opponent's hand without looking. Look at the card you chose, then have your opponent shuffle that card into his or her deck.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Dark Mind",
+      "base_damage": 20,
+      "text": "Does 10 damage to 1 of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_darkness": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

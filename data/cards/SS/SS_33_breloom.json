@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_33_breloom",
+  "name_slug": "breloom",
+  "display_name": "Breloom",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "shroomish",
+  "pokemon_type": "GRASS",
+  "hp_max": 70,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Super Poison Breath",
+      "base_damage": 0,
+      "text": "Each Defending Pokémon is now Poisoned.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Sky Uppercut",
+      "base_damage": 50,
+      "text": "This attack's damage is not affected by Resistance.",
+      "cost_fighting": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

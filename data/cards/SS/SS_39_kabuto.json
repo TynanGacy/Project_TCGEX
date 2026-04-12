@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_39_kabuto",
+  "name_slug": "kabuto",
+  "display_name": "Kabuto",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "mysterious_fossil",
+  "pokemon_type": "WATER",
+  "hp_max": 60,
+  "weakness": "GRASS",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Team Assembly",
+      "base_damage": 0,
+      "text": "Search your deck for Omanyte, Kabuto, or any Basic Pokémon and put as many of them as you like onto your Bench. Shuffle your deck afterward. Treat the new Benched Pokémon as Basic Pokémon.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Pierce",
+      "base_damage": 20,
+      "text": "",
+      "cost_fighting": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

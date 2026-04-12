@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_27_flaaffy",
+  "name_slug": "flaaffy",
+  "display_name": "Flaaffy",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "mareep",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 80,
+  "weakness": "FIGHTING",
+  "resistance": "METAL",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Energy Recall",
+      "base_damage": 0,
+      "text": "Attach up to 2 basic Energy cards from your discard pile to Flaaffy.",
+      "cost_lightning": 1
+    },
+    {
+      "name": "Lightning Ball",
+      "base_damage": 30,
+      "text": "",
+      "cost_lightning": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

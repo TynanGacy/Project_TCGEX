@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_71_onix",
+  "name_slug": "onix",
+  "display_name": "Onix",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 80,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 3,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Bind",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 2
+    },
+    {
+      "name": "Rage",
+      "base_damage": 10,
+      "text": "Does 10 damage plus 10 more damage for each damage counter on Onix.",
+      "cost_fighting": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

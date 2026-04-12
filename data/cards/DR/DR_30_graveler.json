@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_30_graveler",
+  "name_slug": "graveler",
+  "display_name": "Graveler",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "geodude",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 80,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 3,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Magnitude",
+      "base_damage": 20,
+      "text": "Does 10 damage to each Benched Pokémon (both yours and your opponent's). (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_fighting": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Rollout",
+      "base_damage": 40,
+      "text": "",
+      "cost_fighting": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

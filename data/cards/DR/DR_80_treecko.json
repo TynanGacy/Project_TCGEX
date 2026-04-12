@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_80_treecko",
+  "name_slug": "treecko",
+  "display_name": "Treecko",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 50,
+  "weakness": "FIRE",
+  "resistance": "WATER",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Quick Attack",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, this attack does 10 damage plus 20 more damage.",
+      "cost_colorless": 2
+    }
+  ]
+}

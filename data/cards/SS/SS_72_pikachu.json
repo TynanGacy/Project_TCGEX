@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_72_pikachu",
+  "name_slug": "pikachu",
+  "display_name": "Pikachu",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "LIGHTNING",
+  "hp_max": 50,
+  "weakness": "FIGHTING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Scratch",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Pika Bolt",
+      "base_damage": 40,
+      "text": "",
+      "cost_lightning": 1,
+      "cost_colorless": 2
+    }
+  ]
+}

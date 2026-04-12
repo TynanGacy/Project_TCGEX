@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_65_mudkip",
+  "name_slug": "mudkip",
+  "display_name": "Mudkip",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 50,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Water Gun",
+      "base_damage": 10,
+      "text": "Does 10 damage plus 10 more damage for each Water Energy attached to Mudkip but not used to pay for this attack's Energy cost. You can't add more than 20 damage in this way.",
+      "cost_colorless": 1
+    }
+  ]
+}

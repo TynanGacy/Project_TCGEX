@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_67_nincada",
+  "name_slug": "nincada",
+  "display_name": "Nincada",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 50,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Bite",
+      "base_damage": 10,
+      "text": "",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Double Scratch",
+      "base_damage": 20,
+      "text": "Flip 2 coins. This attack does 20 damage times the number of heads.",
+      "cost_grass": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

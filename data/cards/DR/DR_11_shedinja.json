@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_11_shedinja",
+  "name_slug": "shedinja",
+  "display_name": "Shedinja",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "nincada",
+  "pokemon_type": "GRASS",
+  "hp_max": 30,
+  "weakness": "NONE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Damage Curse",
+      "base_damage": 0,
+      "text": "Put 1 damage counter, plus 1 more damage counter for each damage counter on Shedinja, on the Defending Pokémon.",
+      "cost_colorless": 1
+    }
+  ]
+}

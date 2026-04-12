@@ -1,0 +1,23 @@
+{
+  "card_id": "DR_36_marshtomp",
+  "name_slug": "marshtomp",
+  "display_name": "Marshtomp",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "mudkip",
+  "pokemon_type": "WATER",
+  "hp_max": 80,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Mud Splash",
+      "base_damage": 20,
+      "text": "Does 10 damage to 1 of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_water": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

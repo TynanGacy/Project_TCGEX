@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_9_roselia",
+  "name_slug": "roselia",
+  "display_name": "Roselia",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 60,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Speed Growth",
+      "base_damage": 0,
+      "text": "Attach up to 2 Grass Energy cards from your hand to your Pokémon in any way you like.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Sleep Powder",
+      "base_damage": 10,
+      "text": "The Defending Pokémon is now Asleep.",
+      "cost_grass": 1
+    }
+  ]
+}

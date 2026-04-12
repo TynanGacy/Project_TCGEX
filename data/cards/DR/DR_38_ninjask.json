@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_38_ninjask",
+  "name_slug": "ninjask",
+  "display_name": "Ninjask",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "nincada",
+  "pokemon_type": "GRASS",
+  "hp_max": 70,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 0,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Supersonic",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Sonic Wing",
+      "base_damage": 30,
+      "text": "This attack's damage is not affected by Resistance.",
+      "cost_grass": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

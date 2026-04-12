@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_56_geodude",
+  "name_slug": "geodude",
+  "display_name": "Geodude",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "FIGHTING",
+  "hp_max": 40,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Steady Punch",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, this attack does 10 damage plus 10 more damage.",
+      "cost_fighting": 1
+    }
+  ]
+}

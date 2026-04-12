@@ -1,0 +1,28 @@
+{
+  "card_id": "SS_42_lileep",
+  "name_slug": "lileep",
+  "display_name": "Lileep",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "root_fossil",
+  "pokemon_type": "GRASS",
+  "hp_max": 80,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Influence",
+      "base_damage": 0,
+      "text": "Search your deck for Omanyte, Kabuto, Aerodactyl, Lileep, or Anorith and put up to 2 of them onto your Bench. Shuffle your deck afterward. Treat the new Benched Pokémon as Basic Pokémon.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Time Spiral",
+      "base_damage": 0,
+      "text": "If your opponent has any Evolved Pokémon in play, choose 1 of them and flip a coin. If heads, remove the highest Stage Evolution card on that Pokémon and have your opponent shuffle it into his or her deck.",
+      "cost_colorless": 2
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "card_id": "SS_45_lombre",
+  "name_slug": "lombre",
+  "display_name": "Lombre",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "lotad",
+  "pokemon_type": "WATER",
+  "hp_max": 60,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Double Scratch",
+      "base_damage": 30,
+      "text": "Flip 2 coins. This attack does 30 damage times the number of heads.",
+      "cost_water": 1,
+      "cost_colorless": 1
+    }
+  ]
+}

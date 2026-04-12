@@ -1,0 +1,30 @@
+{
+  "card_id": "DR_100_charizard",
+  "name_slug": "charizard",
+  "display_name": "Charizard",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "charmeleon",
+  "pokemon_type": "FIRE",
+  "hp_max": 120,
+  "weakness": "WATER",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Collect Fire",
+      "base_damage": 30,
+      "text": "Flip a coin. If heads, search your discard pile for 2 Fire Energy cards and attach them to Charizard (1 if there is only 1).",
+      "cost_fire": 1,
+      "cost_colorless": 1
+    },
+    {
+      "name": "Flame Pillar",
+      "base_damage": 60,
+      "text": "You may discard a Fire Energy card attached to Charizard. If you do, choose 1 of your opponent's Benched Pokémon and do 30 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_fire": 1,
+      "cost_colorless": 3
+    }
+  ]
+}

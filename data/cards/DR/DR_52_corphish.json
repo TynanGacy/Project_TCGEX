@@ -1,0 +1,28 @@
+{
+  "card_id": "DR_52_corphish",
+  "name_slug": "corphish",
+  "display_name": "Corphish",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "WATER",
+  "hp_max": 40,
+  "weakness": "LIGHTNING",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Poison Claws",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Poisoned.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Bubble",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_water": 1
+    }
+  ]
+}

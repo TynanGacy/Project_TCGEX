@@ -66,7 +66,22 @@ SET_ABBREVIATIONS = {
     "ex14": "CG",   # Crystal Guardians
     "ex15": "DF",   # Dragon Frontiers
     "ex16": "PK",   # Power Keepers
-}
+    "pop1": "P1",   # POP Series 1
+    "pop2": "P2",   # POP Series 2
+    "pop3": "P3",   # POP Series 3
+    "pop4": "P4",   # POP Series 4
+    "pop5": "P5",   # POP Series 5
+    "np":   "NP",   # Nintendo Black Star Promos
+    "tk1a": "T1",   # Various Trainer Kits (latias)
+    "tk1o": "T2",   # Various Trainer Kits (latios)
+    "tk2m": "T3",   # Various Trainer Kits (Minun)
+    "tk2p": "T4",   # Various Trainer Kits (Plusle)
+    "miscpt_ja": "J1",   # Various Japanese Exclusives (Imakuni's Whismur Line)
+    "advp_ja":   "J2",   # Various Japanese Exclusives (Owner's Pokemon)
+    "miscp_ja":  "J3",   # Various Japanese Exclusives (Champion Trainers)
+    "playp_ja":  "J4",   # Various Japanese Exclusives (Pokemon Card Fan etc.)
+    "pcgp_ja":   "J5",   # Various Japanese Exclusives (Imakuni's Whismur Line)
+    }
 
 def set_abbrev(card: dict) -> str:
     set_id = card.get("set", {}).get("id", "unknown")

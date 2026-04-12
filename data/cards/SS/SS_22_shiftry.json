@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_22_shiftry",
+  "name_slug": "shiftry",
+  "display_name": "Shiftry",
+  "card_type": "POKEMON",
+  "stage": "STAGE2",
+  "evolves_from": "nuzleaf",
+  "pokemon_type": "GRASS",
+  "hp_max": 120,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Feint Attack",
+      "base_damage": 0,
+      "text": "Choose 1 of your opponent's Pokémon. This attack does 40 damage to that Pokémon. This attack's damage isn't affected by Weakness, Resistance, Poké-Powers, Poké-Bodies, or any other effects on that Pokémon.",
+      "cost_colorless": 3
+    },
+    {
+      "name": "Slash",
+      "base_damage": 60,
+      "text": "",
+      "cost_grass": 1,
+      "cost_colorless": 3
+    }
+  ]
+}

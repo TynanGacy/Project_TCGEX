@@ -1,0 +1,22 @@
+{
+  "card_id": "DR_41_shelgon",
+  "name_slug": "shelgon",
+  "display_name": "Shelgon",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "bagon",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 70,
+  "weakness": "NONE",
+  "resistance": "NONE",
+  "retreat_cost": 2,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Rollout",
+      "base_damage": 20,
+      "text": "",
+      "cost_colorless": 2
+    }
+  ]
+}

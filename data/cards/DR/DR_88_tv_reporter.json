@@ -1,0 +1,7 @@
+{
+  "card_id": "DR_88_tv_reporter",
+  "display_name": "TV Reporter",
+  "card_type": "TRAINER",
+  "trainer_kind": "SUPPORTER",
+  "rules_text": "You can play only one Supporter card each turn. When you play this card, put it next to your Active Pokémon. When your turn ends, discard this card.\nDraw 3 cards. Then discard any 1 card from your hand."
+}

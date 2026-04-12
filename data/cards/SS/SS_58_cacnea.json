@@ -1,0 +1,22 @@
+{
+  "card_id": "SS_58_cacnea",
+  "name_slug": "cacnea",
+  "display_name": "Cacnea",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 50,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Poison Sting",
+      "base_damage": 10,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Poisoned.",
+      "cost_grass": 1
+    }
+  ]
+}

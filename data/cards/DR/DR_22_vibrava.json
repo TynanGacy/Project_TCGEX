@@ -1,0 +1,29 @@
+{
+  "card_id": "DR_22_vibrava",
+  "name_slug": "vibrava",
+  "display_name": "Vibrava",
+  "card_type": "POKEMON",
+  "stage": "STAGE1",
+  "evolves_from": "trapinch",
+  "pokemon_type": "COLORLESS",
+  "hp_max": 80,
+  "weakness": "COLORLESS",
+  "resistance": "FIRE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Quick Charge",
+      "base_damage": 0,
+      "text": "Search your deck for up to 3 different types of basic Energy cards, show them to your opponent, and put them into your hand. Shuffle your deck afterward.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Dragon Spark",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, this attack does 20 damage to each of your opponent's Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_grass": 1,
+      "cost_lightning": 1
+    }
+  ]
+}

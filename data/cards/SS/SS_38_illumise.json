@@ -1,0 +1,29 @@
+{
+  "card_id": "SS_38_illumise",
+  "name_slug": "illumise",
+  "display_name": "Illumise",
+  "card_type": "POKEMON",
+  "stage": "BASIC",
+  "evolves_from": "",
+  "pokemon_type": "GRASS",
+  "hp_max": 60,
+  "weakness": "FIRE",
+  "resistance": "NONE",
+  "retreat_cost": 1,
+  "rules_text": "",
+  "attacks": [
+    {
+      "name": "Chaotic Noise",
+      "base_damage": 0,
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused. If tails, the Defending Pokémon is now Asleep.",
+      "cost_colorless": 1
+    },
+    {
+      "name": "Pester",
+      "base_damage": 20,
+      "text": "If the Defending Pokémon is affected by a Special Condition, this attack does 20 damage plus 20 more damage.",
+      "cost_grass": 1,
+      "cost_colorless": 1
+    }
+  ]
+}
