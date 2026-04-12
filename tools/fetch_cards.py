@@ -423,7 +423,9 @@ def main() -> None:
         if args.name:
             parts.append(f'name:"{args.name}"')
         if args.set:
-            parts.append(f"set.id:{args.set}")
+            # Quote set ids so values like np, pop1, advp_ja are parsed
+            # as literals by the API query language.
+            parts.append(f'set.id:"{args.set}"')
         cards  = fetch_search(" ".join(parts), session)
         set_id = args.set if args.set else (cards[0].get("set", {}).get("id", "unknown") if cards else "unknown")
 
