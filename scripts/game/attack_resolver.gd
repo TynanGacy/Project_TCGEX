@@ -37,7 +37,7 @@ const _TYPED_COSTS: Array = [
 ## Returns true when [pokemon]'s attached energy fully covers [attack]'s cost.
 static func can_afford(pokemon: CardInstance, attack: AttackData) -> bool:
 	var counts := _count_energy(pokemon)
-	var wilds  := counts.get(_WILD, 0)  # Rainbow / valid Multi energy units
+	var wilds: int  = counts.get(_WILD, 0)  # Rainbow / valid Multi energy units
 
 	## --- Satisfy each specific-colour requirement first -------------------
 	for pair in _TYPED_COSTS:
@@ -46,11 +46,11 @@ static func can_afford(pokemon: CardInstance, attack: AttackData) -> bool:
 		var cost: int = attack.get(prop) if attack.get(prop) != null else 0
 		if cost == 0:
 			continue
-		var have := counts.get(etype, 0)
+		var have: int = counts.get(etype, 0)
 		if have >= cost:
 			continue
 		# Deficit — try to fill with wilds.
-		var deficit := cost - have
+		var deficit: int = cost - have
 		if wilds >= deficit:
 			wilds -= deficit
 		else:
@@ -60,7 +60,7 @@ static func can_afford(pokemon: CardInstance, attack: AttackData) -> bool:
 		return true
 
 	## --- Count all remaining energy for the colorless requirement ---------
-	var remaining := wilds
+	var remaining: int = wilds
 	for etype: int in counts:
 		if etype == _WILD:
 			continue
@@ -99,7 +99,7 @@ static func calculate_damage(
 
 	## Darkness Energy: +10 if attacker is Darkness type and has ≥1 Darkness Energy.
 	if atk_pdata.pokemon_type == PokemonCardData.EnergyType.DARKNESS:
-		var darkness_units := _count_energy(attacker).get(
+		var darkness_units: int = _count_energy(attacker).get(
 			PokemonCardData.EnergyType.DARKNESS, 0)
 		damage += darkness_units * 10
 
