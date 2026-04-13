@@ -573,7 +573,13 @@ func _complete_placement_phase() -> void:
 	_refresh_board_card_visuals()
 
 
-## Find the Card node in the scene tree that wraps [inst].
+## Finds the Card node that wraps [inst] by scanning all zones and hands.
+##
+## Complexity: O(total held cards).  For the current game size (~60 cards
+## distributed across ~12 zones + 2 hands) this is fast enough.
+## If card counts grow significantly, replace with a Dictionary keyed on
+## CardInstance (populated in _start_game when cards are spawned, updated
+## on every spawn / free).
 func _find_card_node(inst: CardInstance) -> Card:
 	for zone in board.all_zones:
 		for card in zone.held_cards:
@@ -668,6 +674,10 @@ func _on_pokemon_knocked_out(victim: CardInstance, scoring_player_id: int) -> vo
 ## discard zone that currently has no visual representation.  This covers
 ## attached energy, attached tools, and prior-stage Pokemon whose Card nodes
 ## were destroyed when they were originally attached or evolved.
+##
+## Drag signals are only wired up for player 0's newly spawned discard cards.
+## In Developer Mode, player 1's discard cards are therefore not draggable
+## from that perspective — they are informational display only.
 func _sync_discard_visuals(player_id: int) -> void:
 	var discard_name := "Discard" if player_id == 0 else "Opp Discard"
 	var discard_zone := board.get_zone_by_name(discard_name)
@@ -872,8 +882,13 @@ func _sync_promotion(action: ActionPromoteFromBench) -> void:
 		break
 
 
-## Refreshes damage counters and status overlays on every face-up card currently
-## in a board zone.  Call after any action that may change HP or conditions.
+## Refreshes damage counters and status overlays on every face-up card in a
+## board zone.  Called after any action that may change HP or conditions.
+##
+## NOTE: this visits all cards in all zones on each call.  For the current
+## game size this is acceptable.  A targeted approach (only refresh the card
+## that was actually affected) would reduce per-action node churn if the
+## number of in-play cards grows.
 func _refresh_board_card_visuals() -> void:
 	if board == null:
 		return
@@ -1474,7 +1489,10 @@ func _instance_in_drop_zone(drop_zone: DropZone) -> CardInstance:
 	return (drop_zone.held_cards[0] as Card).card_instance
 
 
-## Converts a logical zone id ("p0_active_0", "p1_bench", …) to its visual DropZone.
+## Converts a logical BoardState zone id to its corresponding visual DropZone.
+## Returns null if the zone id is unknown or all bench slots are occupied.
+## Handles the p0/p1 active and bench zones; discard zones are also mapped.
+## Energy / tool / stadium zones have no visual DropZone and return null.
 func _logic_zone_to_visual_zone(zone_id: String) -> DropZone:
 	if zone_id.begins_with("p0_active_"):
 		var slot := int(zone_id.get_slice("_", 2))
@@ -1508,7 +1526,8 @@ func _active_zone_name_for(pid: int, slot_idx: int) -> String:
 		return "Opp Active" if slot_idx == 0 else "Opp Active %d" % (slot_idx + 1)
 
 
-## Return zone names used by the controlling player.
+## Returns the visual zone names for the controlling player's active slot(s).
+## Slot 0 is just "Active" / "Opp Active"; slot 1+ appends the slot number.
 func _player_active_zone_names() -> Array[String]:
 	var names: Array[String] = []
 	var prefix := "" if controlling_player == 0 else "Opp "
@@ -1517,6 +1536,7 @@ func _player_active_zone_names() -> Array[String]:
 	return names
 
 
+## Returns the visual zone names for all of the controlling player's bench slots.
 func _player_bench_zone_names() -> Array[String]:
 	var names: Array[String] = []
 	var prefix := "" if controlling_player == 0 else "Opp "
@@ -1709,6 +1729,15 @@ func _on_end_turn_pressed() -> void:
 # BOARD CARD MOVED — deck→hand draw visual sync
 # ===========================================================================
 
+## Reacts to logical card movements emitted by BoardState.card_moved.
+##
+## Two responsibilities:
+##   • deck → hand: triggers the visual draw animation (_sync_deck_draw_visual).
+##   • active/bench → anywhere else: clears in-play state (damage, energy, etc.)
+##     so cards are logically clean when they leave the battlefield.
+##
+## NOTE: player_id is parsed from the zone id string ("p0_deck" → pid 0).
+## This relies on the two-player "p{0|1}_…" naming convention.
 func _on_board_card_moved(inst: CardInstance, from_zone: String, to_zone: String) -> void:
 	if from_zone.ends_with("_deck") and to_zone.ends_with("_hand"):
 		var pid := int(from_zone.substr(1).split("_")[0])
@@ -1926,7 +1955,11 @@ func _make_popup_status_chip(label_text: String, color: Color) -> Label:
 	style.content_margin_top    = 3.0
 	style.content_margin_bottom = 3.0
 	chip.add_theme_stylebox_override("normal", style)
-	chip.custom_minimum_size = Vector2(chip.get_minimum_size().x + 12.0, 24.0)
+	## get_minimum_size() returns 0 before the node is in the scene tree, so
+	## we estimate width from character count instead.  At 13 px font size each
+	## character is roughly 8 px wide; add 16 px for the two content margins.
+	## The longest status name is "PARALYZED" (9 chars) → ~88 px.
+	chip.custom_minimum_size = Vector2(label_text.length() * 8.0 + 16.0, 24.0)
 	return chip
 
 

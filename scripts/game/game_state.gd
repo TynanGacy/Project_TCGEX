@@ -95,9 +95,13 @@ func draw_starting_hand(player_id: int, count: int = 7) -> void:
 		player.draw_card(board)
 
 
+## Maximum number of mulligan reshuffles before giving up.
+## Prevents an infinite loop when a deck has no Basic Pokemon (e.g. corrupt JSON).
+const MAX_MULLIGANS := 20
+
 ## Draws a starting hand with the mulligan rule: if the hand contains no Basic
 ## Pokemon, shuffle all cards back into the deck and redraw.  Repeats until a
-## hand with at least one Basic Pokemon is found.
+## hand with at least one Basic Pokemon is found, or MAX_MULLIGANS is reached.
 ##
 ## Returns the number of reshuffles (mulligans) that occurred.  The caller may
 ## log or store this value for debugging purposes.
@@ -107,7 +111,7 @@ func draw_starting_hand_with_mulligan(player_id: int, count: int = 7) -> int:
 		return 0
 
 	var reshuffles := 0
-	while true:
+	while reshuffles <= MAX_MULLIGANS:
 		for _i in count:
 			player.draw_card(board)
 
@@ -122,12 +126,23 @@ func draw_starting_hand_with_mulligan(player_id: int, count: int = 7) -> int:
 		player.shuffle_deck_zone(board)
 		reshuffles += 1
 
+		if reshuffles > MAX_MULLIGANS:
+			push_error(
+				"draw_starting_hand_with_mulligan: P%d exceeded %d mulligans — "
+				+ "deck may have no Basic Pokemon." % [player_id, MAX_MULLIGANS]
+			)
+			break
+
 	return reshuffles
 
 
 ## Deals [count] cards from the top of [player_id]'s deck into their prize
 ## zone.  Must be called AFTER setup_player_deck() and BEFORE
 ## draw_starting_hand() so prizes come from the freshly shuffled deck.
+## Moves [count] cards from the top of [player_id]'s deck into their prize zone.
+## Must be called AFTER setup_player_deck() (deck populated & shuffled) and
+## BEFORE draw_starting_hand() so prizes come from the freshly shuffled deck.
+## Stops early without error if the deck runs out before [count] cards are taken.
 func setup_prizes(player_id: int, count: int) -> void:
 	var deck_zone    := "p%d_deck"   % player_id
 	var prizes_zone  := "p%d_prizes" % player_id
@@ -159,8 +174,8 @@ func get_active_cards(player_id: int) -> Array[CardInstance]:
 	return result
 
 
+## Returns all Pokemon currently in play for [player_id] (active + bench).
 func get_all_in_play(player_id: int) -> Array[CardInstance]:
-	## Active + bench Pokemon combined.
 	var result := get_active_cards(player_id)
 	result.append_array(board.get_bench_cards(player_id))
 	return result
@@ -293,6 +308,19 @@ func _has_no_basic_in_hand(player_id: int) -> bool:
 
 ## Applies end-of-turn damage for Burn and Poison, and resolves Sleep/Paralysis.
 ## Call this at the END of [player_id]'s turn (before the turn flips).
+## Applies end-of-turn special-condition effects for all of [player_id]'s
+## Pokemon currently in play (active + bench).  Call at the END of that
+## player's turn (before the turn counter flips).
+##
+## Rules (Generation III / RS format):
+##   Poison    — 10 damage per turn (1 damage counter).
+##   Burn      — coin flip: heads removes Burn; tails deals 20 damage.
+##   Paralysis — automatically cured at end of turn.
+##   Sleep     — coin flip: heads wakes the Pokemon.
+##   Confusion — no end-of-turn effect; resolved on attack.
+##
+## NOTE: randi() is used for coin flips.  There is no UI feedback for the flip
+## outcome beyond what shows up in the damage counter / condition badge changes.
 func apply_end_of_turn_conditions(player_id: int) -> void:
 	for pokemon in get_all_in_play(player_id):
 		if pokemon.has_condition(CardInstance.SpecialCondition.POISONED):
