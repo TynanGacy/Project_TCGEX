@@ -36,7 +36,8 @@ func validate(state: GameState) -> ActionResult:
 
 func apply(state: GameState) -> void:
 	state.board.move_card(card, "p%d_discard" % actor_id)
-	# TODO: trigger card effect via effect system
+	var ctx := CardEffectContext.for_trainer(state, actor_id, card)
+	CardEffectRegistry.dispatch_item(ctx)
 
 
 func description() -> String:

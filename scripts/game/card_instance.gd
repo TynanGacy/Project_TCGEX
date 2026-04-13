@@ -110,3 +110,56 @@ func attach_tool(card: CardInstance) -> bool:
 		return false
 	attached_tools.append(card)
 	return true
+
+
+## Returns true if a Tool with the given card_id is attached to this Pokémon.
+func has_tool_id(tool_card_id: String) -> bool:
+	for tool in attached_tools:
+		if tool.data != null and tool.data.card_id == tool_card_id:
+			return true
+	return false
+
+
+## Returns the first attached Tool CardInstance, or null if none.
+func get_tool() -> CardInstance:
+	if attached_tools.is_empty():
+		return null
+	return attached_tools[0]
+
+
+## Returns the effective maximum HP, applying any active Stadium bonus.
+## Pass the current GameState; if null the raw hp_max is returned.
+func get_effective_hp_max(state: GameState = null) -> int:
+	var base := hp_max()
+	if state == null or not (data is PokemonCardData):
+		return base
+
+	# Low Pressure System: +10 HP to all Grass and Lightning Pokémon.
+	var stadium := state.get_active_stadium_id()
+	if stadium == "DR_86_low_pressure_system":
+		var ptype := (data as PokemonCardData).pokemon_type
+		if ptype == PokemonCardData.EnergyType.GRASS \
+				or ptype == PokemonCardData.EnergyType.LIGHTNING:
+			base += 10
+
+	return base
+
+
+## Returns the effective retreat cost, applying stadium and tool modifiers.
+func get_effective_retreat_cost(state: GameState = null) -> int:
+	if not (data is PokemonCardData):
+		return 0
+	var base := (data as PokemonCardData).retreat_cost
+
+	# Balloon Berry: free retreat (energy-free) when attached.
+	if has_tool_id("DR_82_balloon_berry"):
+		return 0
+
+	# High Pressure System: −1 retreat cost for Fire and Water Pokémon.
+	if state != null and state.get_active_stadium_id() == "DR_85_high_pressure_system":
+		var ptype := (data as PokemonCardData).pokemon_type
+		if ptype == PokemonCardData.EnergyType.FIRE \
+				or ptype == PokemonCardData.EnergyType.WATER:
+			base = maxi(0, base - 1)
+
+	return maxi(0, base)

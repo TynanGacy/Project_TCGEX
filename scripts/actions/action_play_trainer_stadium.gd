@@ -51,7 +51,9 @@ func apply(state: GameState) -> void:
 
 	state.board.move_card(card, "stadium")
 	state.get_player(actor_id).mark_stadium_played()
-	# TODO: trigger stadium effect via effect system
+	# Dispatch any on-play stadium effect.
+	var ctx := CardEffectContext.for_trainer(state, actor_id, card)
+	CardEffectRegistry.dispatch_stadium(ctx)
 
 
 func description() -> String:

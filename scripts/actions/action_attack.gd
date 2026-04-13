@@ -72,7 +72,7 @@ func apply(state: GameState) -> void:
 	if attacker == null:
 		return
 
-	var pdata := attacker.data as PokemonCardData
+	var pdata  := attacker.data as PokemonCardData
 	var attack := pdata.attacks[attack_index]
 	var opp_id := 1 - actor_id
 
@@ -84,17 +84,37 @@ func apply(state: GameState) -> void:
 			state.has_attacked_this_turn = true
 			return
 
+	## Build effect context and run pre-damage hooks (may set damage_bonus /
+	## damage_override on the context).
+	var ctx := CardEffectContext.for_attack(
+		state, actor_id, attacker, defender, attack, attack_index)
+	CardEffectRegistry.dispatch_attack_pre(ctx)
+
+	## Determine the effective base damage.
+	var effective_base := ctx.damage_override if ctx.damage_override >= 0 \
+		else attack.base_damage + ctx.damage_bonus
+
+	## Apply damage using a temporary AttackData copy that carries the modified
+	## base so AttackResolver can still apply Weakness / Resistance on top.
+	var modified_attack := attack.duplicate() as AttackData
+	modified_attack.base_damage = effective_base
+
 	if attack.hits_each_defending:
 		## Spread attack — damage every occupied opponent active slot.
 		for slot_idx in range(state.board.num_active_slots):
 			var opp := state.board.get_active_card(opp_id, slot_idx)
 			if opp != null:
-				var dmg := AttackResolver.calculate_damage(attacker, opp, attack)
+				var dmg := AttackResolver.calculate_damage(attacker, opp, modified_attack)
 				opp.apply_damage(dmg)
+				ctx.damage_dealt += dmg
 	else:
 		## Single target attack.
-		var dmg := AttackResolver.calculate_damage(attacker, defender, attack)
+		var dmg := AttackResolver.calculate_damage(attacker, defender, modified_attack)
 		defender.apply_damage(dmg)
+		ctx.damage_dealt = dmg
+
+	## Run post-damage hooks (secondary effects, energy discard, bench damage…).
+	CardEffectRegistry.dispatch_attack_post(ctx)
 
 	state.has_attacked_this_turn = true
 
