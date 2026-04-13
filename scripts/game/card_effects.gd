@@ -236,7 +236,8 @@ static func search_deck_for_pokemon(
 ) -> Array[CardInstance]:
 	return search_deck(state, player_id, count, func(c: CardInstance) -> bool:
 		return (c.data is PokemonCardData) \
-			and (c.data as PokemonCardData).stage == stage)
+			and (c.data as PokemonCardData).stage == stage
+	)
 
 
 ## Deals [damage] to the target, ignoring Weakness and Resistance.
