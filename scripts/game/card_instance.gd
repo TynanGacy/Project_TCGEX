@@ -49,7 +49,9 @@ func hp_remaining() -> int:
 func apply_damage(amount: int) -> void:
 	if not is_pokemon():
 		return
-	damage = max(0, damage + max(0, amount))
+	## Clamp amount to 0 so negative values cannot accidentally heal.
+	## damage itself is always >= 0, so no outer clamp is needed.
+	damage += max(0, amount)
 
 func heal(amount: int) -> void:
 	if not is_pokemon():

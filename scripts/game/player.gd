@@ -1,6 +1,11 @@
 class_name Player
 extends RefCounted
 
+## NOTE: the three signals below are defined for potential future use but are
+## not currently connected anywhere in the codebase.
+## - deck_empty  : could drive a "deck out" loss condition UI notification.
+## - prize_taken : shadowed by TurnController.prize_taken which IS connected.
+## - deck_shuffled: could animate a shuffle effect.
 signal deck_empty
 signal prize_taken(remaining: int)
 signal deck_shuffled
@@ -72,6 +77,14 @@ func draw_card(board: BoardState) -> CardInstance:
 	return card
 
 
+## NOT USED by the action system.
+## The game moves prize cards via ActionTakePrize → board.move_card(), which
+## keeps the BoardState signals and CardInstance.zone in sync.
+##
+## WARNING: this method modifies the internal zone array directly via pop_back(),
+## bypassing board.move_card().  If called it would leave card.zone == PRIZES
+## and skip all card_moved / card_removed_from_zone signals.  It exists only as
+## a lower-level building block for potential future non-action flows.
 func take_prize_card(board: BoardState) -> CardInstance:
 	var prizes_zone_id := "p%d_prizes" % player_id
 	var prize_cards := board.get_zone(prizes_zone_id)

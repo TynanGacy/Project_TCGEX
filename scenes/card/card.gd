@@ -90,6 +90,9 @@ var _body_material: StandardMaterial3D = null
 var _face_shader_material: ShaderMaterial = null
 ## Holds an instance assigned before _ready() runs (nodes not yet available).
 var _pending_instance: CardInstance = null
+## True while a _queue_face_refresh() coroutine is already awaiting render.
+## Prevents multiple concurrent coroutines from all waiting on the same render.
+var _face_refresh_pending: bool = false
 
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var static_body: StaticBody3D = $StaticBody3D
@@ -184,22 +187,36 @@ func set_display_width(w: float) -> void:
 
 ## Queues an async face refresh (fire-and-forget — do not await).
 ## Uses board mode (art crop) or hand mode (full image) based on _board_mode.
+##
+## Multiple calls in the same frame are coalesced: every call updates the
+## SubViewport content synchronously (so the final call's state is always
+## rendered), but only one coroutine waits for the two-frame render cycle.
+## This prevents N concurrent coroutines when the card's state changes rapidly
+## (e.g. set_board_mode() called right after set_instance()).
 func _queue_face_refresh() -> void:
 	if not is_node_ready() or card_instance == null or card_instance.data == null:
 		return
+	## Always sync the SubViewport content immediately so the latest state
+	## is ready before the renderer fires — even if a coroutine is already waiting.
 	if _board_mode:
 		card_face.setup_board(card_instance)
 	else:
 		card_face.setup(card_instance.data)
+	if _face_refresh_pending:
+		return  ## An existing coroutine will pick up the updated content.
+	_face_refresh_pending = true
 	## Wait two frames — one for layout, one for the SubViewport to render.
 	## Guard each await: the card node may be freed (e.g. deck teardown).
 	await get_tree().process_frame
 	if not is_inside_tree():
+		_face_refresh_pending = false
 		return
 	face_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await get_tree().process_frame
 	if not is_inside_tree():
+		_face_refresh_pending = false
 		return
+	_face_refresh_pending = false
 	_update_visuals()
 
 
@@ -398,8 +415,13 @@ func set_home(pos: Vector3, rot: Vector3, index: int) -> void:
 ## Rebuilds the small overlay circles showing attached energy and tools.
 ## Call this whenever the card's attached_energy or attached_tools change.
 func update_attachment_icons() -> void:
+	## remove_child() + queue_free() removes the node from the scene tree
+	## immediately so the new icons appear clean on the very next frame.
+	## Using queue_free() alone defers destruction to the next idle frame,
+	## leaving old and new icons visible simultaneously for one frame.
 	for child in get_children():
 		if child.name.begins_with("AttachIcon_"):
+			remove_child(child)
 			child.queue_free()
 	if card_instance == null:
 		return
@@ -470,18 +492,20 @@ func _spawn_energy_overflow(x: float) -> void:
 	add_child(icon)
 
 
-## Updates the HP display after damage changes.
-## HP is shown in the nameplate (no 3D disc overlay); just refreshes the label text.
 ## Strips all in-play visual overlays so the card looks like it has never been
-## played.  Call whenever a card leaves an active or bench zone for any
-## off-board zone (discard, hand, deck).  The card_instance's logical state
-## should already be reset by game_state before this is called.
+## played (no energy/tool icons, no HP counter, no status badges).
+## Call whenever a card leaves an active or bench zone for any off-board zone
+## (discard, hand, deck).  The card_instance's logical state should already be
+## reset by game_state before this is called.
 func clear_play_state() -> void:
 	update_attachment_icons()
 	update_damage_counter()
 	update_status_overlays()
 
 
+## Updates the HP display in the nameplate (board mode only).
+## HP is shown as a "X/Y HP" label strip above the card art; there is no
+## separate 3D disc overlay.
 func update_damage_counter() -> void:
 	if _damage_ctr_node != null and is_instance_valid(_damage_ctr_node):
 		_damage_ctr_node.queue_free()

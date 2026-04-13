@@ -32,6 +32,10 @@ var state: GameState
 
 
 func _ready() -> void:
+	## _ready() fires immediately when the autoload is registered — before
+	## main.gd calls set_state().  Create a throw-away GameState so signals
+	## emitted here have a valid object to reference, even though no listeners
+	## are connected yet.  set_state() replaces it with the real one.
 	if state == null:
 		state = GameState.new()
 	_start_turn(state.current_player_id)
@@ -117,7 +121,11 @@ func _resolve_post_attack(action: ActionAttack) -> void:
 		## 2. Auto-take one prize card for each knockout.
 		var prizes_zone := state.board.get_zone("p%d_prizes" % action.actor_id)
 		if not prizes_zone.is_empty():
-			var prize_card := prizes_zone.back() as CardInstance
+			## Capture front() BEFORE apply() removes it — ActionTakePrize always
+			## takes prizes.front() (Prize 1 = visual top of the stack), so the
+			## signal must reference that same card for the visual layer to show
+			## the correct card face in the hand.
+			var prize_card := prizes_zone.front() as CardInstance
 			var take := ActionTakePrize.new(action.actor_id)
 			take.apply(state)  ## validate() not needed — system-only path.
 			prize_taken.emit(action.actor_id, prize_card)

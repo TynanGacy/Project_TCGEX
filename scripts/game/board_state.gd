@@ -1,5 +1,20 @@
 class_name BoardState
 extends RefCounted
+## Tracks the logical location of every CardInstance across all game zones.
+##
+## Zones are keyed by string IDs of the form "p{player_id}_{zone_type}" or
+## "p{player_id}_active_{slot_index}".  Examples: "p0_hand", "p1_bench",
+## "p0_active_0", "stadium".
+##
+## All mutations go through move_card() / move_card_to_position() /
+## remove_card() / swap_cards() so the card_moved family of signals fires
+## consistently.  Callers must NEVER modify the arrays returned by get_zone()
+## directly — use the provided mutation helpers instead.
+##
+## NOTE: find_card_location() performs a linear scan across all zones.
+## For the current game scale (~12 zones, ~60 cards) this is fast enough.
+## If zone counts grow significantly, consider adding a CardInstance→zone_id
+## cache updated inside move_card() / remove_card().
 
 signal card_moved(card: CardInstance, from_zone_id: String, to_zone_id: String)
 signal card_added_to_zone(card: CardInstance, zone_id: String)
@@ -64,6 +79,9 @@ func count_cards_in_zone(zone_id: String) -> int:
 	return get_zone(zone_id).size()
 
 
+## Returns true if [zone_id] exists and has room for another card.
+## Bench zones are capped at max_bench_size; active slots hold exactly one card.
+## All other zones (hand, deck, discard, prizes, stadium) are unlimited.
 func can_add_to_zone(zone_id: String, _card: CardInstance = null) -> bool:
 	if not zones.has(zone_id):
 		return false
@@ -145,6 +163,11 @@ func move_card_to_position(card: CardInstance, to_zone_id: String, pos: int) -> 
 	return true
 
 
+## Swaps two cards between their current zones, or within the same zone.
+##
+## Same-zone swap: updates by index so no elements shift, preserving all other
+## positions.  Cross-zone swap: erases both and appends them to the opposite
+## zone.  Emits card_moved for each card in both cases.
 func swap_cards(card_a: CardInstance, card_b: CardInstance) -> bool:
 	if card_a == null or card_b == null:
 		return false
@@ -162,7 +185,7 @@ func swap_cards(card_a: CardInstance, card_b: CardInstance) -> bool:
 	var index_b := array_b.find(card_b)
 
 	if zone_a == zone_b:
-		# In-place swap by index: no erase so positions stay valid.
+		## In-place swap by index: no erase so positions stay valid.
 		array_a[index_a] = card_b
 		array_a[index_b] = card_a
 	else:
