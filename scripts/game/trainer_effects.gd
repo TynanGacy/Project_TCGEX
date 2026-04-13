@@ -18,7 +18,7 @@ static func register_all() -> void:
 	CardEffectRegistry.register_item("RS_82_energy_switch",    _energy_switch)
 	CardEffectRegistry.register_item("RS_86_pok_ball",         _poke_ball)
 	CardEffectRegistry.register_item("RS_87_pok_mon_reversal", _pokemon_reversal)
-	CardEffectRegistry.register_item("RS_88_pok_nav",          _pokénav)
+	CardEffectRegistry.register_item("RS_88_pok_nav",          _pokenav)
 	CardEffectRegistry.register_item("RS_90_energy_search",    _energy_search)
 	CardEffectRegistry.register_item("RS_91_potion",           _potion)
 	CardEffectRegistry.register_item("RS_92_switch",           _switch)
@@ -104,8 +104,9 @@ static func _energy_switch(ctx: CardEffectContext) -> void:
 static func _poke_ball(ctx: CardEffectContext) -> void:
 	if randi() % 2 == 0:  # tails
 		return
-	CardEffects.search_deck(ctx.state, ctx.actor_id, 1,
-		func(c: CardInstance) -> bool: return c.data is PokemonCardData)
+	var filter := func(c: CardInstance) -> bool:
+		return c.data is PokemonCardData
+	CardEffects.search_deck(ctx.state, ctx.actor_id, 1, filter)
 
 
 ## RS_87: Flip a coin. If heads, opponent switches their Active with a Bench Pokémon.
@@ -123,7 +124,7 @@ static func _pokemon_reversal(ctx: CardEffectContext) -> void:
 
 
 ## RS_88: Look at top 3 cards; take 1 Pokémon/Evolution/Energy, return the rest.
-static func _pokénav(ctx: CardEffectContext) -> void:
+static func _pokenav(ctx: CardEffectContext) -> void:
 	var deck_zone := "p%d_deck" % ctx.actor_id
 	var deck := ctx.state.board.get_zone(deck_zone)
 	if deck.is_empty():
@@ -146,10 +147,10 @@ static func _pokénav(ctx: CardEffectContext) -> void:
 
 ## RS_90: Search deck for 1 Basic Energy card, put in hand.
 static func _energy_search(ctx: CardEffectContext) -> void:
-	CardEffects.search_deck(ctx.state, ctx.actor_id, 1,
-		func(c: CardInstance) -> bool:
-			return (c.data is EnergyCardData) \
-				and _is_basic_energy((c.data as EnergyCardData).energy_type))
+	var filter := func(c: CardInstance) -> bool:
+		return (c.data is EnergyCardData) \
+			and TrainerEffects._is_basic_energy((c.data as EnergyCardData).energy_type)
+	CardEffects.search_deck(ctx.state, ctx.actor_id, 1, filter)
 
 
 ## RS_91: Remove 2 damage counters (20 HP) from one of your Pokémon.

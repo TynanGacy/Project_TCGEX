@@ -65,7 +65,7 @@ static func register_all(library: CardLibrary = null) -> void:
 	# DR_7 Minun (Special Circuit — 20 / 40 to any Pokémon)
 	CardEffectRegistry.register_attack_post("DR_7_minun", 1, _minun_special_circuit)
 
-	# Generic "self-damage equal to damage dealt" (Nincada, Pelipper, etc.)
+	# Generic "self-heal equal to damage dealt" (Nincada, Pelipper, etc.)
 	_register_self_heal_after_attack("DR_11_shedinja",  0)
 	_register_self_heal_after_attack("RS_19_pelipper",  1)
 
@@ -121,8 +121,7 @@ static func _parse_flip_damage(text: String) -> Array:
 	if m2 != null:
 		return [-1, int(m2.get_string(1)), flips]  # base left to base_damage
 
-	# "does 40 damage times the number of heads" already covered above; also
-	# handle "flip a coin until you get tails"
+	# "flip a coin until you get tails"
 	if "flip a coin until you get tails" in tl:
 		var r3 := RegEx.new()
 		r3.compile("(\\d+) damage times the number of heads")
@@ -136,9 +135,9 @@ static func _parse_flip_damage(text: String) -> Array:
 # Detects the condition name from text such as "now Poisoned", "now Asleep".
 static func _parse_condition(text: String) -> CardInstance.SpecialCondition:
 	var tl := text.to_lower()
-	if "poisoned" in tl: return CardInstance.SpecialCondition.POISONED
-	if "asleep"   in tl: return CardInstance.SpecialCondition.ASLEEP
-	if "burned"   in tl: return CardInstance.SpecialCondition.BURNED
+	if "poisoned"  in tl: return CardInstance.SpecialCondition.POISONED
+	if "asleep"    in tl: return CardInstance.SpecialCondition.ASLEEP
+	if "burned"    in tl: return CardInstance.SpecialCondition.BURNED
 	if "paralyzed" in tl: return CardInstance.SpecialCondition.PARALYZED
 	if "confused"  in tl: return CardInstance.SpecialCondition.CONFUSED
 	return CardInstance.SpecialCondition.NONE
@@ -203,6 +202,9 @@ static func _parse_excess_energy_bonus(text: String) -> Dictionary:
 
 
 # Main auto-register function: inspects attack text and registers generic handlers.
+# All lambdas are stored in named variables first to avoid GDScript 4 parser
+# issues with inline multi-line lambdas whose closing ')' sits on the last
+# lambda-body line.
 static func _auto_register(card_id: String, atk_idx: int, attack: AttackData) -> void:
 	var text := attack.text
 	if text == "":
@@ -216,23 +218,23 @@ static func _auto_register(card_id: String, atk_idx: int, attack: AttackData) ->
 		var flips:    int = flip_info[2]
 		if flips == -1:
 			# flip-until-tails variant
-			CardEffectRegistry.register_attack_pre(card_id, atk_idx,
-				func(ctx: CardEffectContext) -> void:
-					var heads := 0
-					while randi() % 2 == 1:
-						heads += 1
-					ctx.damage_override = per_head * heads)
+			var fn := func(ctx: CardEffectContext) -> void:
+				var heads := 0
+				while randi() % 2 == 1:
+					heads += 1
+				ctx.damage_override = per_head * heads
+			CardEffectRegistry.register_attack_pre(card_id, atk_idx, fn)
 		else:
-			CardEffectRegistry.register_attack_pre(card_id, atk_idx,
-				func(ctx: CardEffectContext) -> void:
-					var heads := 0
-					for _i in flips:
-						if randi() % 2 == 1:
-							heads += 1
-					if base >= 0:
-						ctx.damage_override = per_head * heads
-					else:
-						ctx.damage_bonus += per_head * heads)
+			var fn := func(ctx: CardEffectContext) -> void:
+				var heads := 0
+				for _i in flips:
+					if randi() % 2 == 1:
+						heads += 1
+				if base >= 0:
+					ctx.damage_override = per_head * heads
+				else:
+					ctx.damage_bonus += per_head * heads
+			CardEffectRegistry.register_attack_pre(card_id, atk_idx, fn)
 		return  # flip damage replaces other patterns
 
 	# --- Simple condition application --------------------------------------
@@ -244,91 +246,92 @@ static func _auto_register(card_id: String, atk_idx: int, attack: AttackData) ->
 		var cond := _parse_condition(text)
 		if cond != CardInstance.SpecialCondition.NONE:
 			if has_coin:
-				CardEffectRegistry.register_attack_post(card_id, atk_idx,
-					func(ctx: CardEffectContext) -> void:
-						if randi() % 2 == 1 and ctx.defender != null:
-							ctx.defender.add_condition(cond))
+				var fn := func(ctx: CardEffectContext) -> void:
+					if randi() % 2 == 1 and ctx.defender != null:
+						ctx.defender.add_condition(cond)
+				CardEffectRegistry.register_attack_post(card_id, atk_idx, fn)
 			else:
-				CardEffectRegistry.register_attack_post(card_id, atk_idx,
-					func(ctx: CardEffectContext) -> void:
-						if ctx.defender != null:
-							ctx.defender.add_condition(cond))
+				var fn := func(ctx: CardEffectContext) -> void:
+					if ctx.defender != null:
+						ctx.defender.add_condition(cond)
+				CardEffectRegistry.register_attack_post(card_id, atk_idx, fn)
 
 	# --- Per-damage-counter bonus ------------------------------------------
 	var pdc := _parse_per_damage_counter(text)
 	if not pdc.is_empty():
-		var bonus: int   = pdc["bonus"]
+		var bonus:  int    = pdc["bonus"]
 		var target: String = pdc.get("target", "defender")
-		CardEffectRegistry.register_attack_pre(card_id, atk_idx,
-			func(ctx: CardEffectContext) -> void:
-				var source := ctx.attacker if target == "self" else ctx.defender
-				if source != null:
-					ctx.damage_bonus += source.damage / 10 * bonus)
+		var fn := func(ctx: CardEffectContext) -> void:
+			var source := ctx.attacker if target == "self" else ctx.defender
+			if source != null:
+				ctx.damage_bonus += source.damage / 10 * bonus
+		CardEffectRegistry.register_attack_pre(card_id, atk_idx, fn)
 
 	# --- Excess-energy bonus -----------------------------------------------
 	var eeb := _parse_excess_energy_bonus(text)
 	if not eeb.is_empty():
-		var bp: int  = eeb["bonus_per"]
+		var bp:  int = eeb["bonus_per"]
 		var cap: int = eeb["cap"]
-		CardEffectRegistry.register_attack_pre(card_id, atk_idx,
-			func(ctx: CardEffectContext) -> void:
-				if ctx.attacker == null or ctx.attack == null:
-					return
-				var total   := AttackResolver.total_energy_count(ctx.attacker)
-				var cost    := AttackResolver.total_cost(ctx.attack)
-				var excess  := maxi(0, total - cost)
-				var raw     := excess * bp
-				ctx.damage_bonus += mini(raw, cap) if cap >= 0 else raw)
+		var fn := func(ctx: CardEffectContext) -> void:
+			if ctx.attacker == null or ctx.attack == null:
+				return
+			var total  := AttackResolver.total_energy_count(ctx.attacker)
+			var cost   := AttackResolver.total_cost(ctx.attack)
+			var excess := maxi(0, total - cost)
+			var raw    := excess * bp
+			ctx.damage_bonus += mini(raw, cap) if cap >= 0 else raw
+		CardEffectRegistry.register_attack_pre(card_id, atk_idx, fn)
 
 	# --- Bench damage (post-attack) ----------------------------------------
 	var bd := _parse_bench_damage(text)
 	if not bd.is_empty():
 		var bdmg:  int  = bd["damage"]
-		var bcnt:  int  = bd["count"]    # -1 = all
+		var bcnt:  int  = bd["count"]   # -1 = all
 		var bboth: bool = bd.get("both", false)
-		CardEffectRegistry.register_attack_post(card_id, atk_idx,
-			func(ctx: CardEffectContext) -> void:
-				var opp_id := 1 - ctx.actor_id
-				var targets := ctx.state.board.get_bench_cards(opp_id)
-				if bboth:
-					for b in ctx.state.board.get_bench_cards(ctx.actor_id):
-						b.apply_damage(bdmg)
-				var count := bcnt
-				for b in targets:
-					if count == 0:
-						break
+		var fn := func(ctx: CardEffectContext) -> void:
+			var opp_id := 1 - ctx.actor_id
+			var targets := ctx.state.board.get_bench_cards(opp_id)
+			if bboth:
+				for b in ctx.state.board.get_bench_cards(ctx.actor_id):
 					b.apply_damage(bdmg)
-					if count > 0:
-						count -= 1)
+			var count := bcnt
+			for b in targets:
+				if count == 0:
+					break
+				b.apply_damage(bdmg)
+				if count > 0:
+					count -= 1
+		CardEffectRegistry.register_attack_post(card_id, atk_idx, fn)
 
-	# --- Coin-flip: discard 1 energy from defender -----------------------
+	# --- Coin-flip: discard 1 energy from defender -------------------------
 	if "flip a coin. if heads, discard 1 energy card attached to the defending" in tl:
-		CardEffectRegistry.register_attack_post(card_id, atk_idx,
-			func(ctx: CardEffectContext) -> void:
-				if randi() % 2 == 0:
-					return
-				if ctx.defender == null or ctx.defender.attached_energy.is_empty():
-					return
-				var opp_id := 1 - ctx.actor_id
-				var e := ctx.defender.attached_energy[0] as CardInstance
-				ctx.defender.attached_energy.erase(e)
-				ctx.state.board.move_card(e, "p%d_discard" % opp_id))
+		var fn := func(ctx: CardEffectContext) -> void:
+			if randi() % 2 == 0:
+				return
+			if ctx.defender == null or ctx.defender.attached_energy.is_empty():
+				return
+			var opp_id := 1 - ctx.actor_id
+			var e := ctx.defender.attached_energy[0] as CardInstance
+			ctx.defender.attached_energy.erase(e)
+			ctx.state.board.move_card(e, "p%d_discard" % opp_id)
+		CardEffectRegistry.register_attack_post(card_id, atk_idx, fn)
 
-	# --- "Draw a card" ----------------------------------------------------
+	# --- "Draw a card" -----------------------------------------------------
 	if text.strip_edges().to_lower() == "draw a card.":
-		CardEffectRegistry.register_attack_post(card_id, atk_idx,
-			func(ctx: CardEffectContext) -> void:
-				CardEffects.draw_cards(ctx.state, ctx.actor_id, 1))
+		var fn := func(ctx: CardEffectContext) -> void:
+			CardEffects.draw_cards(ctx.state, ctx.actor_id, 1)
+		CardEffectRegistry.register_attack_post(card_id, atk_idx, fn)
 
-	# --- "Attach a [Type] Energy card from your discard pile to [Self]" ---
+	# --- "Attach a [Type] Energy card from your discard pile to [Self]" ----
 	if "attach" in tl and "from your discard pile" in tl and "energy" in tl:
 		# Only register a simple "1 energy from discard" variant here;
 		# complex variants are handled by specific overrides.
 		if not ("up to 2" in tl or "up to 3" in tl):
-			CardEffectRegistry.register_attack_post(card_id, atk_idx,
-				func(ctx: CardEffectContext) -> void:
-					_attach_energy_from_discard(ctx.state, ctx.actor_id,
-						ctx.attacker, 1, PokemonCardData.EnergyType.NONE))
+			var fn := func(ctx: CardEffectContext) -> void:
+				AttackEffects._attach_energy_from_discard(
+					ctx.state, ctx.actor_id,
+					ctx.attacker, 1, PokemonCardData.EnergyType.NONE)
+			CardEffectRegistry.register_attack_post(card_id, atk_idx, fn)
 
 
 # ---------------------------------------------------------------------------
@@ -360,9 +363,9 @@ static func _attach_energy_from_discard(
 
 
 static func _register_self_heal_after_attack(card_id: String, atk_idx: int) -> void:
-	CardEffectRegistry.register_attack_post(card_id, atk_idx,
-		func(ctx: CardEffectContext) -> void:
-			ctx.attacker.heal(ctx.damage_dealt))
+	var fn := func(ctx: CardEffectContext) -> void:
+		ctx.attacker.heal(ctx.damage_dealt)
+	CardEffectRegistry.register_attack_post(card_id, atk_idx, fn)
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +373,7 @@ static func _register_self_heal_after_attack(card_id: String, atk_idx: int) -> v
 # ---------------------------------------------------------------------------
 
 # -- DR_1 Absol: Bad News (atk 0) -----------------------------------------
-# "If opponent has ≥ 6 cards, discard until they have 5."
+# "If opponent has >= 6 cards, discard until they have 5."
 static func _absol_bad_news_pre(ctx: CardEffectContext) -> void:
 	ctx.damage_override = 0  # Bad News deals 0 damage.
 	var opp_id := 1 - ctx.actor_id
@@ -399,7 +402,7 @@ static func _charizard_collect_fire(ctx: CardEffectContext) -> void:
 
 
 # -- DR_100 Charizard: Flame Pillar (atk 1) --------------------------------
-# "You may discard 1 Fire Energy; if so, do 30 to a Bench Pokémon."
+# "You may discard 1 Fire Energy; if so, do 30 to a Bench Pokemon."
 # Auto-select: always discard (more aggressive play) if Fire Energy available.
 static func _charizard_flame_pillar(ctx: CardEffectContext) -> void:
 	var fire_e: CardInstance = null
@@ -413,7 +416,7 @@ static func _charizard_flame_pillar(ctx: CardEffectContext) -> void:
 	# Discard the Fire Energy.
 	ctx.attacker.attached_energy.erase(fire_e)
 	ctx.state.board.move_card(fire_e, "p%d_discard" % ctx.actor_id)
-	# Deal 30 to first opponent bench Pokémon.
+	# Deal 30 to first opponent bench Pokemon.
 	var bench := ctx.state.board.get_bench_cards(1 - ctx.actor_id)
 	if not bench.is_empty():
 		bench[0].apply_damage(30)
@@ -460,7 +463,7 @@ static func _flygon_air_slash(ctx: CardEffectContext) -> void:
 
 
 # -- RS_103 Sneasel-ex: Beat Up (atk 1) -----------------------------------
-# "Flip a coin for each of your Pokémon in play. 20 damage × heads."
+# "Flip a coin for each of your Pokemon in play. 20 damage * heads."
 static func _sneasel_beat_up_pre(ctx: CardEffectContext) -> void:
 	var all_mine := ctx.state.get_all_in_play(ctx.actor_id)
 	var heads := 0
@@ -482,17 +485,17 @@ static func _breloom_battle_blast_pre(ctx: CardEffectContext) -> void:
 
 
 # -- DR_7 Minun: Cheer On (atk 0) -----------------------------------------
-# "Remove 1 damage counter from each of your Pokémon."
+# "Remove 1 damage counter from each of your Pokemon."
 static func _minun_cheer_on(ctx: CardEffectContext) -> void:
 	for pokemon in ctx.state.get_all_in_play(ctx.actor_id):
 		pokemon.heal(10)
 
 
 # -- DR_7 Minun: Special Circuit (atk 1) ----------------------------------
-# "20 damage to any Pokémon; 40 if that Pokémon has a Poké-Power or Poké-Body."
+# "20 damage to any Pokemon; 40 if that Pokemon has a Poke-Power or Poke-Body."
 static func _minun_special_circuit(ctx: CardEffectContext) -> void:
 	var opp_id := 1 - ctx.actor_id
-	# Auto-target: opponent's active Pokémon.
+	# Auto-target: opponent's active Pokemon.
 	var target := ctx.state.board.get_active_card(opp_id, 0)
 	if target == null:
 		return
