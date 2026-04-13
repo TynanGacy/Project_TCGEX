@@ -113,6 +113,11 @@ func _parse_pokemon(d: Dictionary) -> PokemonCardData:
 			if atk_dict is Dictionary:
 				card.attacks.append(_parse_attack(atk_dict as Dictionary))
 
+	if d.has("abilities") and d["abilities"] is Array:
+		for abil_dict in d["abilities"] as Array:
+			if abil_dict is Dictionary:
+				card.abilities.append(_parse_ability(abil_dict as Dictionary))
+
 	return card
 
 
@@ -159,7 +164,20 @@ func _parse_attack(d: Dictionary) -> AttackData:
 	atk.cost_darkness         = int(d.get("cost_darkness", 0))
 	atk.cost_metal            = int(d.get("cost_metal", 0))
 	atk.hits_each_defending   = bool(d.get("hits_each_defending", false))
+	atk.effect_key            = d.get("effect_key", "")
 	return atk
+
+
+func _parse_ability(d: Dictionary) -> AbilityData:
+	var abil := AbilityData.new()
+	abil.ability_name = d.get("name", "")
+	abil.text         = d.get("text", "")
+	abil.effect_key   = d.get("effect_key", "")
+	var kind_str: String = d.get("kind", "POKE_BODY")
+	match kind_str:
+		"POKE_POWER": abil.kind = AbilityData.AbilityKind.POKE_POWER
+		_:            abil.kind = AbilityData.AbilityKind.POKE_BODY
+	return abil
 
 
 func _parse_energy_type(s: String) -> PokemonCardData.EnergyType:

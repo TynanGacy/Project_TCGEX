@@ -28,7 +28,23 @@ signal active_slot_emptied(player_id: int)
 ## Emitted when the game ends.
 signal game_over(winner_player_id: int)
 
+## Effect-choice signals: emitted when a card effect needs a player decision.
+## The UI layer should connect to these and call resolve_effect_choice() with
+## the chosen CardInstance array once the player has made their selection.
+##
+## [reason]    — human-readable description of why a choice is needed.
+## [player_id] — the player who must decide.
+## [choices]   — Array[CardInstance] of legal options to pick from.
+signal effect_choice_required(reason: String, player_id: int, choices: Array)
+
+## Emitted after resolve_effect_choice() completes.
+signal effect_choice_resolved(player_id: int, chosen: Array)
+
 var state: GameState
+
+## Pending choice context set by an effect that needs player input.
+## Cleared after resolve_effect_choice() is called.
+var _pending_choice: Dictionary = {}
 
 
 func _ready() -> void:
@@ -38,11 +54,50 @@ func _ready() -> void:
 	## are connected yet.  set_state() replaces it with the real one.
 	if state == null:
 		state = GameState.new()
+	# Initialise card effects that don't depend on the CardLibrary (Trainer effects).
+	# AttackEffects auto-detection is deferred until set_state() where the
+	# library is also available.
+	CardEffectRegistry.setup()
 	_start_turn(state.current_player_id)
 
 
 func set_state(gs: GameState) -> void:
 	state = gs
+
+
+## Extended set_state that also finishes CardEffectRegistry setup with the
+## CardLibrary so AttackEffects auto-detection can run.
+func set_state_with_library(gs: GameState, library: CardLibrary) -> void:
+	state = gs
+	# Re-run setup with the library.  The guard inside setup() prevents
+	# double-registration; reset the flag so AttackEffects.register_all() runs.
+	CardEffectRegistry._initialized = false
+	CardEffectRegistry.setup(library)
+
+
+## Called by the UI layer in response to effect_choice_required.
+## [chosen] is an Array[CardInstance] with the player's selection.
+func resolve_effect_choice(player_id: int, chosen: Array) -> void:
+	if _pending_choice.is_empty():
+		return
+	var callback: Callable = _pending_choice.get("callback", Callable())
+	_pending_choice.clear()
+	if callback.is_valid():
+		callback.call(chosen)
+	effect_choice_resolved.emit(player_id, chosen)
+
+
+## Convenience: emit an effect_choice_required signal and store the callback
+## for when the player responds.  Called by effect implementations that need
+## player input.
+func request_effect_choice(
+		reason: String,
+		player_id: int,
+		choices: Array,
+		callback: Callable
+) -> void:
+	_pending_choice = {"reason": reason, "player_id": player_id, "callback": callback}
+	effect_choice_required.emit(reason, player_id, choices)
 
 
 ## ============================================================

@@ -16,3 +16,7 @@ class_name AttackData
 @export_multiline var text: String = ""
 
 @export var hits_each_defending: bool = false
+
+## Optional key into CardEffectRegistry.  When set it takes priority over
+## text-based auto-detection so new cards can declare their effect in JSON.
+@export var effect_key: String = ""

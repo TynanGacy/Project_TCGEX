@@ -161,6 +161,21 @@ func setup_prizes(player_id: int, count: int) -> void:
 
 
 # ---------------------------------------------------------------------------
+# Stadium queries
+# ---------------------------------------------------------------------------
+
+## Returns the card_id of the currently active Stadium card, or "" if none.
+func get_active_stadium_id() -> String:
+	var zone := board.get_zone("stadium")
+	if zone.is_empty():
+		return ""
+	var card := zone[0] as CardInstance
+	if card == null or card.data == null:
+		return ""
+	return card.data.card_id
+
+
+# ---------------------------------------------------------------------------
 # In-play Pokemon queries
 # ---------------------------------------------------------------------------
 
@@ -306,11 +321,9 @@ func _has_no_basic_in_hand(player_id: int) -> bool:
 # Special-condition end-of-turn effects
 # ---------------------------------------------------------------------------
 
-## Applies end-of-turn damage for Burn and Poison, and resolves Sleep/Paralysis.
-## Call this at the END of [player_id]'s turn (before the turn flips).
-## Applies end-of-turn special-condition effects for all of [player_id]'s
-## Pokemon currently in play (active + bench).  Call at the END of that
-## player's turn (before the turn counter flips).
+## Applies end-of-turn damage for Burn and Poison, resolves Sleep/Paralysis,
+## and triggers between-turns tool effects (Lum Berry, Oran Berry, Buffer Piece).
+## Call at the END of [player_id]'s turn (before the turn counter flips).
 ##
 ## Rules (Generation III / RS format):
 ##   Poison    — 10 damage per turn (1 damage counter).
@@ -322,22 +335,41 @@ func _has_no_basic_in_hand(player_id: int) -> bool:
 ## NOTE: randi() is used for coin flips.  There is no UI feedback for the flip
 ## outcome beyond what shows up in the damage counter / condition badge changes.
 func apply_end_of_turn_conditions(player_id: int) -> void:
-	for pokemon in get_all_in_play(player_id):
-		if pokemon.has_condition(CardInstance.SpecialCondition.POISONED):
-			pokemon.apply_damage(10)  ## 1 damage counter per turn.
+	## Process each player's Pokémon to handle special-condition and tool effects.
+	for pid in range(players.size()):
+		for pokemon in get_all_in_play(pid):
+			## --- Special conditions ------------------------------------------
+			if pokemon.has_condition(CardInstance.SpecialCondition.POISONED):
+				pokemon.apply_damage(10)  ## 1 damage counter per turn.
 
-		if pokemon.has_condition(CardInstance.SpecialCondition.BURNED):
-			## Coin flip: heads = remove burn, tails = 20 damage.
-			if randi() % 2 == 0:  # heads
-				pokemon.remove_condition(CardInstance.SpecialCondition.BURNED)
-			else:
-				pokemon.apply_damage(20)
+			if pokemon.has_condition(CardInstance.SpecialCondition.BURNED):
+				## Coin flip: heads = remove burn, tails = 20 damage.
+				if randi() % 2 == 0:  # heads
+					pokemon.remove_condition(CardInstance.SpecialCondition.BURNED)
+				else:
+					pokemon.apply_damage(20)
 
-		## Paralysis wears off after one turn.
-		if pokemon.has_condition(CardInstance.SpecialCondition.PARALYZED):
-			pokemon.remove_condition(CardInstance.SpecialCondition.PARALYZED)
+			## Paralysis wears off after one turn.
+			if pokemon.has_condition(CardInstance.SpecialCondition.PARALYZED):
+				pokemon.remove_condition(CardInstance.SpecialCondition.PARALYZED)
 
-		## Coin flip to wake up from Sleep.
-		if pokemon.has_condition(CardInstance.SpecialCondition.ASLEEP):
-			if randi() % 2 == 1:  # heads
-				pokemon.remove_condition(CardInstance.SpecialCondition.ASLEEP)
+			## Coin flip to wake up from Sleep.
+			if pokemon.has_condition(CardInstance.SpecialCondition.ASLEEP):
+				if randi() % 2 == 1:  # heads
+					pokemon.remove_condition(CardInstance.SpecialCondition.ASLEEP)
+
+			## --- Tool between-turns triggers --------------------------------
+			## Iterate a copy because tools may be removed (discarded) mid-loop.
+			for tool in pokemon.attached_tools.duplicate():
+				CardEffectRegistry.dispatch_tool_between_turns(tool, pokemon, self)
+
+	## Buffer Piece: discard at the end of the OPPONENT'S turn.
+	## We identify Buffer Pieces held by the player whose turn just ended
+	## (player_id) and discard them — they were protecting against this turn's
+	## attacks and now expire.
+	var opp_id := 1 - player_id
+	for pokemon in get_all_in_play(opp_id):
+		for tool in pokemon.attached_tools.duplicate():
+			if tool.data != null and tool.data.card_id == "DR_83_buffer_piece":
+				pokemon.attached_tools.erase(tool)
+				board.move_card(tool, "p%d_discard" % opp_id)

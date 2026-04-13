@@ -18,5 +18,8 @@ enum EnergyType { NONE, FIRE, WATER, GRASS, LIGHTNING, PSYCHIC, FIGHTING, DARKNE
 
 @export var attacks: Array[AttackData] = []
 
+## Poké-Powers and Poké-Bodies on this card (usually 0 or 1).
+@export var abilities: Array[AbilityData] = []
+
 static func energy_type_to_string(t: EnergyType) -> String:
 	return String(EnergyType.keys()[t])

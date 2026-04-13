@@ -152,3 +152,96 @@ static func recover_from_discard(state: GameState, player_id: int) -> void:
 	var player := state.get_player(player_id)
 	if player:
 		player.shuffle_deck_zone(state.board)
+
+
+## Returns [player_id]'s hand as an Array[CardInstance] (convenience alias).
+static func get_hand(state: GameState, player_id: int) -> Array[CardInstance]:
+	return state.board.get_hand_cards(player_id)
+
+
+## Discards the first [count] cards from [player_id]'s hand that satisfy
+## [filter_fn].  Pass a null filter to discard any card.
+## Returns the discarded cards.
+static func discard_from_hand(
+		state: GameState,
+		player_id: int,
+		count: int,
+		filter_fn: Callable = Callable()
+) -> Array[CardInstance]:
+	var hand    := state.board.get_hand_cards(player_id)
+	var removed: Array[CardInstance] = []
+	for card in hand:
+		if removed.size() >= count:
+			break
+		if filter_fn.is_valid() and not filter_fn.call(card):
+			continue
+		state.board.move_card(card, "p%d_discard" % player_id)
+		removed.append(card)
+	return removed
+
+
+## Returns the top [count] cards of [player_id]'s deck without moving them.
+## The first element in the returned array is the top card.
+static func peek_top_deck(
+		state: GameState,
+		player_id: int,
+		count: int
+) -> Array[CardInstance]:
+	var deck := state.board.get_zone("p%d_deck" % player_id)
+	var result: Array[CardInstance] = []
+	var n := mini(count, deck.size())
+	for i in n:
+		result.append(deck[deck.size() - 1 - i] as CardInstance)
+	return result
+
+
+## Moves a basic Energy card that is already attached to [source_pokemon] and
+## reattaches it to [target_pokemon].  Returns true on success.
+static func move_energy(
+		source_pokemon: CardInstance,
+		target_pokemon: CardInstance,
+		energy_card: CardInstance
+) -> bool:
+	if not source_pokemon.attached_energy.has(energy_card):
+		return false
+	if not (energy_card.data is EnergyCardData):
+		return false
+	var edata := energy_card.data as EnergyCardData
+	# Only basic energy can be moved (special energy rules differ per card).
+	const BASICS := [
+		PokemonCardData.EnergyType.FIRE,
+		PokemonCardData.EnergyType.WATER,
+		PokemonCardData.EnergyType.GRASS,
+		PokemonCardData.EnergyType.LIGHTNING,
+		PokemonCardData.EnergyType.PSYCHIC,
+		PokemonCardData.EnergyType.FIGHTING,
+		PokemonCardData.EnergyType.DARKNESS,
+		PokemonCardData.EnergyType.METAL,
+	]
+	if not (edata.energy_type in BASICS):
+		return false
+	source_pokemon.attached_energy.erase(energy_card)
+	target_pokemon.attached_energy.append(energy_card)
+	return true
+
+
+## Searches [player_id]'s deck for up to [count] cards matching [filter_fn],
+## filtered to a specific Pokémon stage (or Stage.BASIC for basic search).
+## Convenience wrapper around search_deck.
+static func search_deck_for_pokemon(
+		state: GameState,
+		player_id: int,
+		count: int,
+		stage: PokemonCardData.Stage = PokemonCardData.Stage.BASIC
+) -> Array[CardInstance]:
+	return search_deck(state, player_id, count, func(c: CardInstance) -> bool:
+		return (c.data is PokemonCardData) \
+			and (c.data as PokemonCardData).stage == stage
+	)
+
+
+## Deals [damage] to the target, ignoring Weakness and Resistance.
+## Used for bench damage and spread effects.
+static func deal_flat_damage(target: CardInstance, damage: int) -> void:
+	if target != null:
+		target.apply_damage(damage)

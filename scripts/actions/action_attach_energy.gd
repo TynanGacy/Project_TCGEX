@@ -49,6 +49,10 @@ func apply(state: GameState) -> void:
 	target.attach_energy(card)
 	state.get_player(actor_id).mark_energy_attached()
 
+	# Rainbow Energy: put 1 damage counter on the Pokémon it was just attached to.
+	if card.data != null and card.data.card_id == "RS_95_rainbow_energy":
+		target.apply_damage(10)
+
 
 func description() -> String:
 	if card != null and target != null and card.data != null and target.data != null:
