@@ -278,7 +278,7 @@ static func _auto_register(card_id: String, atk_idx: int, attack: AttackData) ->
 				var cost    := AttackResolver.total_cost(ctx.attack)
 				var excess  := maxi(0, total - cost)
 				var raw     := excess * bp
-				ctx.damage_bonus += cap >= 0 ? mini(raw, cap) : raw)
+				ctx.damage_bonus += mini(raw, cap) if cap >= 0 else raw)
 
 	# --- Bench damage (post-attack) ----------------------------------------
 	var bd := _parse_bench_damage(text)

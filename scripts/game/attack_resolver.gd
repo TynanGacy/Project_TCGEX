@@ -1,5 +1,18 @@
 class_name AttackResolver
 ## Static utility for attack damage calculation and energy cost checking.
+
+## Pairs of [EnergyType, cost_property_name] for the eight typed energy costs.
+## Defined at class level so it's accessible from all static functions.
+const _TYPED_COSTS: Array = [
+	[PokemonCardData.EnergyType.FIRE,      "cost_fire"],
+	[PokemonCardData.EnergyType.WATER,     "cost_water"],
+	[PokemonCardData.EnergyType.GRASS,     "cost_grass"],
+	[PokemonCardData.EnergyType.LIGHTNING, "cost_lightning"],
+	[PokemonCardData.EnergyType.PSYCHIC,   "cost_psychic"],
+	[PokemonCardData.EnergyType.FIGHTING,  "cost_fighting"],
+	[PokemonCardData.EnergyType.DARKNESS,  "cost_darkness"],
+	[PokemonCardData.EnergyType.METAL,     "cost_metal"],
+]
 ##
 ## Damage rules follow the Generation III (Ruby/Sapphire) format:
 ##   Weakness  → damage × 2
@@ -27,17 +40,7 @@ static func can_afford(pokemon: CardInstance, attack: AttackData) -> bool:
 	var wilds  := counts.get(_WILD, 0)  # Rainbow / valid Multi energy units
 
 	## --- Satisfy each specific-colour requirement first -------------------
-	const TYPED := [
-		[PokemonCardData.EnergyType.FIRE,      "cost_fire"],
-		[PokemonCardData.EnergyType.WATER,     "cost_water"],
-		[PokemonCardData.EnergyType.GRASS,     "cost_grass"],
-		[PokemonCardData.EnergyType.LIGHTNING, "cost_lightning"],
-		[PokemonCardData.EnergyType.PSYCHIC,   "cost_psychic"],
-		[PokemonCardData.EnergyType.FIGHTING,  "cost_fighting"],
-		[PokemonCardData.EnergyType.DARKNESS,  "cost_darkness"],
-		[PokemonCardData.EnergyType.METAL,     "cost_metal"],
-	]
-	for pair in TYPED:
+	for pair in _TYPED_COSTS:
 		var etype: int = pair[0]
 		var prop: String = pair[1]
 		var cost: int = attack.get(prop) if attack.get(prop) != null else 0
@@ -62,7 +65,7 @@ static func can_afford(pokemon: CardInstance, attack: AttackData) -> bool:
 		if etype == _WILD:
 			continue
 		var surplus: int = counts[etype]
-		for pair in TYPED:
+		for pair in _TYPED_COSTS:
 			if pair[0] == etype:
 				surplus = maxi(0, surplus - (attack.get(pair[1]) if attack.get(pair[1]) != null else 0))
 		remaining += surplus
