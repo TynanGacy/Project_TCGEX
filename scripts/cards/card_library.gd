@@ -133,6 +133,7 @@ func _parse_trainer(d: Dictionary) -> TrainerCardData:
 	card.display_name = d.get("display_name", "")
 	card.card_type    = CardData.CardType.TRAINER
 	card.rules_text   = d.get("rules_text", "")
+	card.effect_handler_id = d.get("effect_handler", d.get("handler", ""))
 
 	var kind_str: String = d.get("trainer_kind", "ITEM")
 	match kind_str:
@@ -159,6 +160,7 @@ func _parse_attack(d: Dictionary) -> AttackData:
 	atk.cost_darkness         = int(d.get("cost_darkness", 0))
 	atk.cost_metal            = int(d.get("cost_metal", 0))
 	atk.hits_each_defending   = bool(d.get("hits_each_defending", false))
+	atk.effect_handler_id    = d.get("effect_handler", d.get("handler", ""))
 	return atk
 
 

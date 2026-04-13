@@ -16,3 +16,5 @@ class_name AttackData
 @export_multiline var text: String = ""
 
 @export var hits_each_defending: bool = false
+
+@export var effect_handler_id: String = ""
