@@ -1780,20 +1780,27 @@ func _switch_perspective() -> void:
 
 
 func _switch_perspective_to(pid: int) -> void:
+	if pid == controlling_player:
+		## Avoid double-applying board rotation when callers request the
+		## currently active perspective (e.g. first placement prompt for P0).
+		_configure_hand_for_player(player_hand, pid == 0)
+		_configure_hand_for_player(opp_hand,    pid == 1)
+		_refresh_attack_panel()
+		return
 	controlling_player = pid
 	camera.transform = _p0_cam_transform if pid == 0 else _p1_cam_transform
 	_configure_hand_for_player(player_hand, pid == 0)
 	_configure_hand_for_player(opp_hand,    pid == 1)
-	_flip_board_card_rotations()
+	_apply_board_perspective(pid)
 	_refresh_attack_panel()
 
 
-
-func _flip_board_card_rotations() -> void:
+func _apply_board_perspective(pid: int) -> void:
+	var y_rot := 0.0 if pid == 0 else PI
 	for zone in board.all_zones:
 		if zone.zone_name == "Deck" or zone.zone_name == "Opp Deck":
 			continue
-		zone.perspective_y_rotation = fmod(zone.perspective_y_rotation + PI, TAU)
+		zone.perspective_y_rotation = y_rot
 		zone.relayout()
 
 
