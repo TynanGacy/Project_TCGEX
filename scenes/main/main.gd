@@ -642,11 +642,19 @@ func _register_card_node(card_node: Card) -> void:
 
 ## Returns the Card node for [inst] via O(1) dictionary lookup.
 func _find_card_node(inst: CardInstance) -> Card:
+	if inst == null or not is_instance_valid(inst):
+		return null
+
 	var raw: Variant = _card_node_cache.get(inst, null)
-	if raw != null and not is_instance_valid(raw):
+	if raw == null:
+		return null
+	if not is_instance_valid(raw):
 		_card_node_cache.erase(inst)
 		return null
-	return raw as Card
+	if not (raw is Card):
+		_card_node_cache.erase(inst)
+		return null
+	return raw
 
 
 # ===========================================================================
@@ -745,7 +753,7 @@ func _sync_discard_visuals(player_id: int) -> void:
 	var logic_discard := game_state.board.get_zone("p%d_discard" % player_id)
 	for raw in logic_discard:
 		var inst := raw as CardInstance
-		if inst == null:
+		if inst == null or not is_instance_valid(inst):
 			continue
 		if _find_card_node(inst) != null:
 			continue  ## already has a visual node
