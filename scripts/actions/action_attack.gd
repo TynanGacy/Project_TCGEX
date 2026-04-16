@@ -27,8 +27,8 @@ func _init(pid: int, slot: int, target: CardInstance, atk_idx: int) -> void:
 
 
 func validate(state: GameState) -> ActionResult:
-	if state.phase != TurnPhase.Phase.MAIN and state.phase != TurnPhase.Phase.ATTACK:
-		return ActionResult.fail("Can only attack during MAIN/ATTACK phase.")
+	if state.phase != TurnPhase.Phase.MAIN:
+		return ActionResult.fail("Can only attack during the MAIN phase.")
 
 	if state.has_attacked_this_turn:
 		return ActionResult.fail("Already attacked this turn.")

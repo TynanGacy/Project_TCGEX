@@ -63,8 +63,8 @@ func begin_turn(player_id: int) -> void:
 func advance_phase() -> void:
 	match phase:
 		TurnPhase.Phase.START:  phase = TurnPhase.Phase.MAIN
-		TurnPhase.Phase.MAIN:   phase = TurnPhase.Phase.ATTACK
-		TurnPhase.Phase.ATTACK: phase = TurnPhase.Phase.END
+		TurnPhase.Phase.MAIN:   phase = TurnPhase.Phase.END
+		TurnPhase.Phase.ATTACK: phase = TurnPhase.Phase.END  # legacy fallback
 		TurnPhase.Phase.END:    pass
 
 
