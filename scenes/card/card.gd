@@ -78,8 +78,13 @@ var _damage_ctr_node: Node3D = null
 var _status_badge_nodes: Array[Node3D] = []
 var face_down: bool = false:
 	set(value):
+		var was_down := face_down
 		face_down = value
 		_update_visuals()
+		## When a face-down card is revealed, the SubViewport hasn't been
+		## rendered yet (skipped for performance).  Trigger it now.
+		if was_down and not value:
+			_queue_face_refresh()
 var home_position := Vector3.ZERO
 var home_rotation := Vector3.ZERO
 var hand_index := 0
@@ -93,6 +98,9 @@ var _pending_instance: CardInstance = null
 ## True while a _queue_face_refresh() coroutine is already awaiting render.
 ## Prevents multiple concurrent coroutines from all waiting on the same render.
 var _face_refresh_pending: bool = false
+## True when a face refresh was requested while the node was outside the tree.
+## Picked up by _enter_tree so the refresh runs once the node is back.
+var _face_refresh_deferred: bool = false
 
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var static_body: StaticBody3D = $StaticBody3D
@@ -130,6 +138,12 @@ func _ready() -> void:
 		_update_visuals()
 
 
+func _enter_tree() -> void:
+	if _face_refresh_deferred:
+		_face_refresh_deferred = false
+		_queue_face_refresh()
+
+
 func set_instance(inst: CardInstance) -> void:
 	if not is_node_ready():
 		_pending_instance = inst
@@ -150,13 +164,11 @@ func set_board_mode(on: bool) -> void:
 	_board_mode = on
 	_resize_meshes(on)
 	if on:
-		_build_nameplate()
-		if card_instance != null and card_instance.data != null:
-			_queue_face_refresh()
+		_ensure_nameplate()
 	else:
-		_remove_nameplate()
-		if card_instance != null and card_instance.data != null:
-			_queue_face_refresh()
+		_hide_nameplate()
+	if card_instance != null and card_instance.data != null:
+		_queue_face_refresh()
 
 
 ## Resizes the face PlaneMesh, body BoxMesh, and collision shape for board mode
@@ -194,7 +206,15 @@ func set_display_width(w: float) -> void:
 ## This prevents N concurrent coroutines when the card's state changes rapidly
 ## (e.g. set_board_mode() called right after set_instance()).
 func _queue_face_refresh() -> void:
-	if not is_node_ready() or card_instance == null or card_instance.data == null:
+	if card_instance == null or card_instance.data == null:
+		return
+	if not is_node_ready() or not is_inside_tree():
+		_face_refresh_deferred = true
+		return
+	## Face-down cards don't display the SubViewport texture, so skip the
+	## expensive render.  The face_down setter triggers a refresh when
+	## the card is later revealed.
+	if face_down:
 		return
 	## Always sync the SubViewport content immediately so the latest state
 	## is ready before the renderer fires — even if a coroutine is already waiting.
@@ -220,10 +240,23 @@ func _queue_face_refresh() -> void:
 	_update_visuals()
 
 
+## Lazily builds the nameplate if it doesn't exist, then shows and repositions it.
+func _ensure_nameplate() -> void:
+	if card_instance == null or card_instance.data == null:
+		_hide_nameplate()
+		return
+	if _nameplate_node == null or not is_instance_valid(_nameplate_node):
+		_build_nameplate()
+	else:
+		_reposition_nameplate()
+	if _nameplate_node != null:
+		_nameplate_node.visible = true
+
+
 ## Builds and attaches the 3D nameplate strip above the card's top edge.
 ## Shows name on the left and HP fraction on the right (Pokemon only).
 func _build_nameplate() -> void:
-	_remove_nameplate()
+	_hide_nameplate()
 	if card_instance == null or card_instance.data == null:
 		return
 
@@ -235,6 +268,7 @@ func _build_nameplate() -> void:
 
 	## Dark background plane lying flat on the table.
 	var bg := MeshInstance3D.new()
+	bg.name = "NameplateBG"
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(_card_w, np_h)
 	bg.mesh = plane
@@ -277,15 +311,43 @@ func _build_nameplate() -> void:
 	add_child(_nameplate_node)
 
 
-func _remove_nameplate() -> void:
+## Repositions the existing nameplate to match the current card dimensions
+## and updates text content without allocating new nodes.
+func _reposition_nameplate() -> void:
+	if _nameplate_node == null or card_instance == null:
+		return
+	var sc := _card_w / CARD_WIDTH
+	var np_h := NAMEPLATE_H * sc
+
+	var bg := _nameplate_node.get_node_or_null("NameplateBG") as MeshInstance3D
+	if bg != null:
+		(bg.mesh as PlaneMesh).size = Vector2(_card_w, np_h)
+
+	var name_lbl := _nameplate_node.get_node_or_null("NameplateName") as Label3D
+	if name_lbl != null:
+		name_lbl.text = card_instance.data.display_name if card_instance.data else ""
+		name_lbl.pixel_size = 0.00085 * sc
+		name_lbl.position = Vector3(-_card_w * 0.5 + 0.035 * sc, 0.002, 0.0)
+
+	var hp_lbl := _nameplate_node.get_node_or_null("NameplateHP") as Label3D
+	if hp_lbl != null:
+		hp_lbl.text = "%d/%d HP" % [card_instance.hp_remaining(), card_instance.hp_max()]
+		hp_lbl.pixel_size = 0.00085 * sc
+		hp_lbl.position = Vector3(_card_w * 0.5 - 0.035 * sc, 0.002, 0.0)
+
+	_nameplate_node.position = Vector3(
+		0.0, NAMEPLATE_Y, -(_card_h * 0.5 + np_h * 0.5)
+	)
+
+
+func _hide_nameplate() -> void:
 	if _nameplate_node != null and is_instance_valid(_nameplate_node):
-		_nameplate_node.queue_free()
-	_nameplate_node = null
+		_nameplate_node.visible = false
 
 
 ## Updates just the HP text on the nameplate without re-rendering the face.
 func _update_nameplate_hp() -> void:
-	if _nameplate_node == null or card_instance == null:
+	if _nameplate_node == null or not _nameplate_node.visible or card_instance == null:
 		return
 	var hp_lbl := _nameplate_node.get_node_or_null("NameplateHP") as Label3D
 	if hp_lbl != null:

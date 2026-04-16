@@ -74,12 +74,43 @@ static func register_all(library: CardLibrary = null) -> void:
 # Auto-detection helpers
 # ---------------------------------------------------------------------------
 
+# Pre-compiled regex patterns — built once, reused for every card.
+static var _re_leading_int:       RegEx
+static var _re_flip_count:        RegEx
+static var _re_flip_dmg_times:    RegEx
+static var _re_flip_dmg_plus:     RegEx
+static var _re_flip_dmg_tails:    RegEx
+static var _re_per_damage_ctr:    RegEx
+static var _re_bench_dmg_n:       RegEx
+static var _re_bench_dmg_each:    RegEx
+static var _re_excess_energy:     RegEx
+static var _re_excess_energy_cap: RegEx
+
+static func _ensure_regex() -> void:
+	if _re_leading_int != null:
+		return
+	_re_leading_int       = _compile("^\\D*(\\d+)")
+	_re_flip_count        = _compile("flip (\\d+) coins?")
+	_re_flip_dmg_times    = _compile("does (\\d+) damage times the number of heads")
+	_re_flip_dmg_plus     = _compile("plus (\\d+) more damage for each heads")
+	_re_flip_dmg_tails    = _compile("(\\d+) damage times the number of heads")
+	_re_per_damage_ctr    = _compile("plus (\\d+) more damage for each damage counter on (\\w+)")
+	_re_bench_dmg_n       = _compile("does (\\d+) damage to (\\d+|each) of your opponent.s bench")
+	_re_bench_dmg_each    = _compile("does (\\d+) damage to each benched")
+	_re_excess_energy     = _compile("plus (\\d+) more damage for each \\w+ energy attached.*not used to pay")
+	_re_excess_energy_cap = _compile("can.t add more than (\\d+) damage")
+
+static func _compile(pattern: String) -> RegEx:
+	var r := RegEx.new()
+	r.compile(pattern)
+	return r
+
+
 # Returns the integer value after the first occurrence of a digit sequence
 # at the very start of the text, or -1 if not found.
 static func _extract_leading_int(t: String) -> int:
-	var r := RegEx.new()
-	r.compile("^\\D*(\\d+)")
-	var m := r.search(t)
+	_ensure_regex()
+	var m := _re_leading_int.search(t)
 	if m == null:
 		return -1
 	return int(m.get_string(1))
@@ -87,12 +118,11 @@ static func _extract_leading_int(t: String) -> int:
 
 # Parses "Flip N coins" or "Flip a coin" → number of flips (1 if "a coin").
 static func _parse_flip_count(text: String) -> int:
+	_ensure_regex()
 	var tl := text.to_lower()
 	if "flip a coin" in tl:
 		return 1
-	var r := RegEx.new()
-	r.compile("flip (\\d+) coins?")
-	var m := r.search(tl)
+	var m := _re_flip_count.search(tl)
 	if m != null:
 		return int(m.get_string(1))
 	return 0
@@ -102,30 +132,25 @@ static func _parse_flip_count(text: String) -> int:
 # times the number of heads" / "plus Y more for each heads" patterns.
 # Returns (-1,-1,0) when not matched.
 static func _parse_flip_damage(text: String) -> Array:
+	_ensure_regex()
 	var tl := text.to_lower()
 	var flips := _parse_flip_count(tl)
 	if flips == 0:
 		return [-1, -1, 0]
 
 	# "X damage times the number of heads"
-	var r1 := RegEx.new()
-	r1.compile("does (\\d+) damage times the number of heads")
-	var m1 := r1.search(tl)
+	var m1 := _re_flip_dmg_times.search(tl)
 	if m1 != null:
 		return [0, int(m1.get_string(1)), flips]
 
 	# "X damage plus Y more damage for each heads"
-	var r2 := RegEx.new()
-	r2.compile("plus (\\d+) more damage for each heads")
-	var m2 := r2.search(tl)
+	var m2 := _re_flip_dmg_plus.search(tl)
 	if m2 != null:
 		return [-1, int(m2.get_string(1)), flips]  # base left to base_damage
 
 	# "flip a coin until you get tails"
 	if "flip a coin until you get tails" in tl:
-		var r3 := RegEx.new()
-		r3.compile("(\\d+) damage times the number of heads")
-		var m3 := r3.search(tl)
+		var m3 := _re_flip_dmg_tails.search(tl)
 		if m3 != null:
 			return [0, int(m3.get_string(1)), -1]  # -1 flips = flip-until-tails
 
@@ -146,9 +171,8 @@ static func _parse_condition(text: String) -> CardInstance.SpecialCondition:
 # Detects "+Y damage per damage counter on [self|defender]" and returns
 # {bonus, target} where target is "self" or "defender".
 static func _parse_per_damage_counter(text: String) -> Dictionary:
-	var r := RegEx.new()
-	r.compile("plus (\\d+) more damage for each damage counter on (\\w+)")
-	var m := r.search(text.to_lower())
+	_ensure_regex()
+	var m := _re_per_damage_ctr.search(text.to_lower())
 	if m == null:
 		return {}
 	var y := int(m.get_string(1))
@@ -160,23 +184,20 @@ static func _parse_per_damage_counter(text: String) -> Dictionary:
 # Detects "Does X damage to N of your opponent's Benched Pokémon".
 # Returns {damage, count} or {} if not matched.
 static func _parse_bench_damage(text: String) -> Dictionary:
+	_ensure_regex()
 	var tl := text.to_lower()
 	if "benched" not in tl:
 		return {}
 
 	# "N of your opponent's Benched Pokémon"
-	var r1 := RegEx.new()
-	r1.compile("does (\\d+) damage to (\\d+|each) of your opponent.s bench")
-	var m1 := r1.search(tl)
+	var m1 := _re_bench_dmg_n.search(tl)
 	if m1 != null:
 		var dmg   := int(m1.get_string(1))
 		var count := -1 if m1.get_string(2) == "each" else int(m1.get_string(2))
 		return {"damage": dmg, "count": count}
 
 	# "Does X damage to each Benched Pokémon (both)"
-	var r2 := RegEx.new()
-	r2.compile("does (\\d+) damage to each benched")
-	var m2 := r2.search(tl)
+	var m2 := _re_bench_dmg_each.search(tl)
 	if m2 != null:
 		return {"damage": int(m2.get_string(1)), "count": -1, "both": true}
 
@@ -185,15 +206,12 @@ static func _parse_bench_damage(text: String) -> Dictionary:
 
 # Detects "+Y for each Energy attached to [pokemon] not used to pay"
 static func _parse_excess_energy_bonus(text: String) -> Dictionary:
+	_ensure_regex()
 	var tl := text.to_lower()
-	var r := RegEx.new()
-	r.compile("plus (\\d+) more damage for each \\w+ energy attached.*not used to pay")
-	var m := r.search(tl)
+	var m := _re_excess_energy.search(tl)
 	if m != null:
 		# Look for cap "You can't add more than X damage"
-		var cap_r := RegEx.new()
-		cap_r.compile("can.t add more than (\\d+) damage")
-		var cap_m := cap_r.search(tl)
+		var cap_m := _re_excess_energy_cap.search(tl)
 		var cap := -1
 		if cap_m != null:
 			cap = int(cap_m.get_string(1))
