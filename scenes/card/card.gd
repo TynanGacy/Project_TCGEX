@@ -78,8 +78,13 @@ var _damage_ctr_node: Node3D = null
 var _status_badge_nodes: Array[Node3D] = []
 var face_down: bool = false:
 	set(value):
+		var was_down := face_down
 		face_down = value
 		_update_visuals()
+		## When a face-down card is revealed, the SubViewport hasn't been
+		## rendered yet (skipped for performance).  Trigger it now.
+		if was_down and not value:
+			_queue_face_refresh()
 var home_position := Vector3.ZERO
 var home_rotation := Vector3.ZERO
 var hand_index := 0
@@ -193,6 +198,11 @@ func set_display_width(w: float) -> void:
 ## (e.g. set_board_mode() called right after set_instance()).
 func _queue_face_refresh() -> void:
 	if not is_node_ready() or card_instance == null or card_instance.data == null:
+		return
+	## Face-down cards don't display the SubViewport texture, so skip the
+	## expensive render.  The face_down setter triggers a refresh when
+	## the card is later revealed.
+	if face_down:
 		return
 	## Always sync the SubViewport content immediately so the latest state
 	## is ready before the renderer fires — even if a coroutine is already waiting.

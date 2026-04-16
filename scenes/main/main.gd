@@ -581,23 +581,23 @@ func _complete_placement_phase() -> void:
 	_refresh_board_card_visuals()
 
 
-## Registers a Card node in the cache and wires up automatic cleanup when
-## the node exits the tree.
+## Registers a Card node in the cache.  Stale entries (freed nodes) are
+## detected by is_instance_valid() in _find_card_node().  We intentionally
+## do NOT use tree_exiting for cleanup because cards are routinely
+## reparented (hand → board) which fires tree_exiting without the card
+## actually being freed.
 func _register_card_node(card_node: Card) -> void:
 	if card_node.card_instance != null:
 		_card_node_cache[card_node.card_instance] = card_node
-		if not card_node.tree_exiting.is_connected(_on_card_node_exiting):
-			card_node.tree_exiting.connect(_on_card_node_exiting.bind(card_node))
-
-
-func _on_card_node_exiting(card_node: Card) -> void:
-	if card_node.card_instance != null:
-		_card_node_cache.erase(card_node.card_instance)
 
 
 ## Returns the Card node for [inst] via O(1) dictionary lookup.
 func _find_card_node(inst: CardInstance) -> Card:
-	return _card_node_cache.get(inst, null)
+	var card: Card = _card_node_cache.get(inst, null)
+	if card != null and not is_instance_valid(card):
+		_card_node_cache.erase(inst)
+		return null
+	return card
 
 
 # ===========================================================================
