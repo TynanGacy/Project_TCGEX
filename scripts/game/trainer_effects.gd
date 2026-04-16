@@ -120,7 +120,26 @@ static func _pokemon_reversal(ctx: CardEffectContext) -> void:
 	var active := ctx.state.board.get_active_card(opp_id, 0)
 	if active == null:
 		return
-	ctx.state.board.swap_cards(active, bench[0])
+	if bench.size() == 1:
+		ctx.state.board.swap_cards(active, bench[0])
+		return
+	var choices: Array = []
+	for b in bench:
+		choices.append(b)
+	TurnControllerSingleton.request_effect_choice(
+		"Choose a Benched Pokemon to switch into Active.",
+		opp_id,
+		choices,
+		func(chosen: Array) -> void:
+			if chosen.is_empty():
+				return
+			var selected := chosen[0] as CardInstance
+			var current_active := ctx.state.board.get_active_card(opp_id, 0)
+			if current_active == null:
+				return
+			if ctx.state.board.find_card_location(selected) == "p%d_bench" % opp_id:
+				ctx.state.board.swap_cards(current_active, selected)
+	)
 
 
 ## RS_88: Look at top 3 cards; take 1 Pokémon/Evolution/Energy, return the rest.
@@ -173,7 +192,26 @@ static func _switch(ctx: CardEffectContext) -> void:
 	var bench := ctx.state.board.get_bench_cards(actor_id)
 	if bench.is_empty():
 		return
-	ctx.state.board.swap_cards(active, bench[0])
+	if bench.size() == 1:
+		ctx.state.board.swap_cards(active, bench[0])
+		return
+	var choices: Array = []
+	for b in bench:
+		choices.append(b)
+	TurnControllerSingleton.request_effect_choice(
+		"Choose a Benched Pokemon to switch into Active.",
+		actor_id,
+		choices,
+		func(chosen: Array) -> void:
+			if chosen.is_empty():
+				return
+			var selected := chosen[0] as CardInstance
+			var current_active := ctx.state.board.get_active_card(actor_id, 0)
+			if current_active == null:
+				return
+			if ctx.state.board.find_card_location(selected) == "p%d_bench" % actor_id:
+				ctx.state.board.swap_cards(current_active, selected)
+	)
 
 
 ## SS_86: Remove all Special Conditions from each of your Active Pokémon.

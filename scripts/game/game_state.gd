@@ -16,6 +16,7 @@ var board: BoardState
 var players: Array[Player] = []
 
 var has_attacked_this_turn: bool = false
+var has_retreated_this_turn: bool = false
 
 ## Set true once prizes have been dealt and the game is underway.
 ## Win-condition checks are suppressed until then.
@@ -54,6 +55,7 @@ func begin_turn(player_id: int) -> void:
 	current_player_id = player_id
 	phase = TurnPhase.Phase.START
 	has_attacked_this_turn = false
+	has_retreated_this_turn = false
 
 	var player := get_current_player()
 	if player:
@@ -209,6 +211,42 @@ func swap_active_with_bench(player_id: int, active_slot: int, bench_index: int) 
 	var bench_card  := board.get_bench_card_at(player_id, bench_index)
 	if active_card != null and bench_card != null:
 		board.swap_cards(active_card, bench_card)
+
+
+func can_retreat_active(player_id: int, active_slot: int, bench_index: int) -> bool:
+	if not can_swap_active_with_bench(player_id, active_slot, bench_index):
+		return false
+	var active_card := board.get_active_card(player_id, active_slot)
+	if active_card == null:
+		return false
+	return active_card.attached_energy.size() >= active_card.get_effective_retreat_cost(self)
+
+
+func retreat_active_to_bench(player_id: int, active_slot: int, bench_index: int) -> bool:
+	if not can_retreat_active(player_id, active_slot, bench_index):
+		return false
+
+	var active_card := board.get_active_card(player_id, active_slot)
+	if active_card == null:
+		return false
+
+	# Balloon Berry: discard the tool when retreating instead of Energy cards.
+	var balloon := active_card.get_tool()
+	if balloon != null and balloon.data != null and balloon.data.card_id == "DR_82_balloon_berry":
+		active_card.attached_tools.erase(balloon)
+		board.move_card(balloon, "p%d_discard" % player_id)
+	else:
+		var retreat_cost := active_card.get_effective_retreat_cost(self)
+		for i in range(retreat_cost):
+			if active_card.attached_energy.is_empty():
+				break
+			var energy := active_card.attached_energy[0] as CardInstance
+			active_card.attached_energy.remove_at(0)
+			board.move_card(energy, "p%d_discard" % player_id)
+
+	swap_active_with_bench(player_id, active_slot, bench_index)
+	has_retreated_this_turn = true
+	return true
 
 
 func can_promote_from_bench(player_id: int, bench_index: int) -> bool:
