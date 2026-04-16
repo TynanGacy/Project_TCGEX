@@ -830,10 +830,8 @@ func _try_advance_after_promotion() -> void:
 	if _advance_after_promotion and not _game_over:
 		if game_state.phase == TurnPhase.Phase.MAIN or game_state.phase == TurnPhase.Phase.ATTACK:
 			_advance_after_promotion = false
-			if game_state.phase == TurnPhase.Phase.MAIN:
-				turn_controller.next_phase(game_state.current_player_id)  ## MAIN -> ATTACK
-			if game_state.phase == TurnPhase.Phase.ATTACK:
-				turn_controller.next_phase(game_state.current_player_id)  ## ATTACK -> END
+			while game_state.phase != TurnPhase.Phase.END:
+				turn_controller.next_phase(game_state.current_player_id)
 
 
 func _on_game_over(winner_player_id: int) -> void:
