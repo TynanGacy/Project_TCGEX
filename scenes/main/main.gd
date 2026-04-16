@@ -89,6 +89,7 @@ var _pending_atk_index: int = -1
 
 ## Table plane for card drag intersections.
 const DRAG_PLANE := Plane(Vector3.UP, 0.0)
+const STARTUP_SPAWN_BATCH := 12
 
 
 # ===========================================================================
@@ -275,6 +276,7 @@ func _on_setup_confirmed(
 
 
 func _start_game() -> void:
+	var startup_t0 := Time.get_ticks_msec()
 	## ── Build game state ──────────────────────────────────────────────────
 	game_state = GameState.new(2, _active_slots, _bench_slots)
 	turn_controller.set_state(game_state)
@@ -315,20 +317,25 @@ func _start_game() -> void:
 
 	## ── Deal decks and starting hands (prizes placed after mulligan draw) ──
 	## Decks are loaded from data/decks/*.json; fall back to random if missing.
+	var deck_load_t0 := Time.get_ticks_msec()
 	game_state.setup_player_deck(0, DeckLoader.load_deck(0))
 	game_state.setup_player_deck(1, DeckLoader.load_deck(1))
+	var deck_load_ms := Time.get_ticks_msec() - deck_load_t0
 
 	## Draw starting hands with mulligan rule (reshuffle if no Basic found).
+	var opening_t0 := Time.get_ticks_msec()
 	var reshuffles_p0 := game_state.draw_starting_hand_with_mulligan(0, 7)
 	var reshuffles_p1 := game_state.draw_starting_hand_with_mulligan(1, 7)
 
 	## Prizes are placed after the opening hand is established.
 	game_state.setup_prizes(0, _prize_count)
 	game_state.setup_prizes(1, _prize_count)
+	var opening_ms := Time.get_ticks_msec() - opening_t0
 
 	## game_started stays false until placement phase completes.
 
 	## ── Spawn visual cards ────────────────────────────────────────────────
+	var visuals_t0 := Time.get_ticks_msec()
 	var p0_from := board.get_zone_by_name("Deck").global_position + Vector3(0, 0.1, 0) \
 		if board.get_zone_by_name("Deck") else Vector3.ZERO
 	for inst in game_state.board.get_hand_cards(0):
@@ -339,16 +346,8 @@ func _start_game() -> void:
 		card.drag_ended.connect(_on_card_drag_ended)
 		player_hand.add_card_animated(card, p0_from)
 
-	var p1_from := board.get_zone_by_name("Opp Deck").global_position + Vector3(0, 0.1, 0) \
-		if board.get_zone_by_name("Opp Deck") else Vector3.ZERO
-	for inst in game_state.board.get_hand_cards(1):
-		var card := _make_card_node(inst, true)
-		opp_hand.add_card_animated(card, p1_from)
-
-	_spawn_deck_visual(0)
-	_spawn_deck_visual(1)
-	_spawn_prize_visuals(0)
-	_spawn_prize_visuals(1)
+	await _spawn_hidden_startup_visuals()
+	var visuals_ms := Time.get_ticks_msec() - visuals_t0
 
 	## ── CPU player (Player Mode only — never created in Developer Mode) ───
 	if not is_developer_mode:
@@ -365,6 +364,12 @@ func _start_game() -> void:
 		_log_line("P0 had no Basic in opening hand — reshuffled %d time(s)." % reshuffles_p0)
 	if reshuffles_p1 > 0:
 		_log_line("P1 had no Basic in opening hand — reshuffled %d time(s)." % reshuffles_p1)
+	_log_line("Startup timings — deck load: %d ms | opening setup: %d ms | visuals: %d ms | total: %d ms" % [
+		deck_load_ms,
+		opening_ms,
+		visuals_ms,
+		Time.get_ticks_msec() - startup_t0
+	])
 
 	_start_placement_phase()
 
@@ -408,6 +413,48 @@ func _make_card_node(inst: CardInstance, start_face_down: bool = false) -> Card:
 	card.set_instance(inst)
 	_register_card_node(card)
 	return card
+
+
+## Spawns hidden startup visuals in small batches across frames so setup
+## does not stall the game loop on one long frame.
+func _spawn_hidden_startup_visuals() -> void:
+	var spawned_in_batch := 0
+	var p1_from := board.get_zone_by_name("Opp Deck").global_position + Vector3(0, 0.1, 0) \
+		if board.get_zone_by_name("Opp Deck") else Vector3.ZERO
+	for inst in game_state.board.get_hand_cards(1):
+		var card := _make_card_node(inst, true)
+		opp_hand.add_card_animated(card, p1_from)
+		spawned_in_batch += 1
+		if spawned_in_batch >= STARTUP_SPAWN_BATCH:
+			spawned_in_batch = 0
+			await get_tree().process_frame
+
+	for pid in range(2):
+		var zone_name := "Deck" if pid == 0 else "Opp Deck"
+		var deck_zone := board.get_zone_by_name(zone_name)
+		if deck_zone != null:
+			for inst in game_state.board.get_zone("p%d_deck" % pid):
+				var deck_card := _make_card_node(inst as CardInstance, true)
+				board.add_child(deck_card)
+				deck_zone.receive_card(deck_card)
+				spawned_in_batch += 1
+				if spawned_in_batch >= STARTUP_SPAWN_BATCH:
+					spawned_in_batch = 0
+					await get_tree().process_frame
+
+		var prefix := "Prize " if pid == 0 else "Opp Prize "
+		var prize_cards := game_state.board.get_zone("p%d_prizes" % pid)
+		for i in range(prize_cards.size()):
+			var prize_zone := board.get_zone_by_name(prefix + str(i + 1))
+			if prize_zone == null:
+				continue
+			var prize_card := _make_card_node(prize_cards[i] as CardInstance, true)
+			board.add_child(prize_card)
+			prize_zone.receive_card(prize_card)
+			spawned_in_batch += 1
+			if spawned_in_batch >= STARTUP_SPAWN_BATCH:
+				spawned_in_batch = 0
+				await get_tree().process_frame
 
 
 ## Removes the visual card node from the lowest-numbered occupied prize zone
