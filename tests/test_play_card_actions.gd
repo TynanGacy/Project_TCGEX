@@ -358,7 +358,7 @@ func test_attach_energy_to_non_pokemon_fails() -> void:
 
 
 func test_attach_energy_outside_main_phase_fails() -> void:
-	state.phase = TurnPhase.Phase.ATTACK
+	state.phase = TurnPhase.Phase.END
 
 	var energy := _make_energy()
 	state.board.move_card(energy, "p0_hand")

@@ -795,18 +795,15 @@ func _on_active_slot_emptied(player_id: int) -> void:
 		return
 
 	## CPU handles promotion in Player Mode only; never in Developer Mode.
+	## Do NOT auto-advance here — _resolve_post_attack() handles phase
+	## advancement after this synchronous signal handler returns.
 	if not is_developer_mode and player_id == 1 and cpu_player != null:
 		cpu_player.handle_promotion_needed()
-		## After CPU promotes, auto-advance if an attack was what triggered this.
-		_try_advance_after_promotion()
 		return
 
 	## Human player must choose.
 	_pending_promotion_player = player_id
-	_advance_after_promotion  = (
-		game_state.phase == TurnPhase.Phase.MAIN
-		or game_state.phase == TurnPhase.Phase.ATTACK
-	)
+	_advance_after_promotion  = (game_state.phase == TurnPhase.Phase.MAIN)
 
 	if bench.size() == 1:
 		## Only one option: auto-promote immediately.
@@ -823,15 +820,13 @@ func _execute_forced_promotion(player_id: int, bench_index: int) -> void:
 	)
 	turn_controller.request_action(action)
 	_pending_promotion_player = -1
-	_try_advance_after_promotion()
 
 
 func _try_advance_after_promotion() -> void:
 	if _advance_after_promotion and not _game_over:
-		if game_state.phase == TurnPhase.Phase.MAIN or game_state.phase == TurnPhase.Phase.ATTACK:
-			_advance_after_promotion = false
-			while game_state.phase != TurnPhase.Phase.END:
-				turn_controller.next_phase(game_state.current_player_id)
+		_advance_after_promotion = false
+		if game_state.phase == TurnPhase.Phase.MAIN:
+			turn_controller.next_phase(game_state.current_player_id)   ## MAIN -> END
 
 
 func _on_game_over(winner_player_id: int) -> void:
@@ -1044,11 +1039,9 @@ func _refresh_attack_panel() -> void:
 	if _attack_panel == null or game_state == null:
 		return
 
-	## MAIN and ATTACK are both attack-legal; panel is shown during MAIN so the
-	## player doesn't need to click through a separate ATTACK step.
+	## Attacks happen during MAIN phase (ATTACK phase is no longer in the flow).
 	var human_turn := (controlling_player == game_state.current_player_id)
-	var attack_window := (game_state.phase == TurnPhase.Phase.MAIN \
-		or game_state.phase == TurnPhase.Phase.ATTACK)
+	var attack_window := (game_state.phase == TurnPhase.Phase.MAIN)
 	_attack_panel.visible = attack_window and human_turn and not _game_over
 
 	## Rebuild the button list.
@@ -1246,6 +1239,7 @@ func _show_bench_picker(player_id: int, bench: Array[CardInstance]) -> void:
 			_bench_picker.queue_free()
 			_bench_picker = null
 			_execute_forced_promotion(player_id, captured_idx)
+			_try_advance_after_promotion()
 		)
 		vbox.add_child(btn)
 

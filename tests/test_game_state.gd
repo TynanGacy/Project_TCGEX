@@ -23,9 +23,7 @@ func test_advance_phase_full_cycle() -> void:
 	state.advance_phase()
 	assert_eq(state.phase, TurnPhase.Phase.MAIN)
 	state.advance_phase()
-	assert_eq(state.phase, TurnPhase.Phase.ATTACK)
-	state.advance_phase()
-	assert_eq(state.phase, TurnPhase.Phase.END)
+	assert_eq(state.phase, TurnPhase.Phase.END)   ## ATTACK is skipped
 	state.advance_phase()
 	assert_eq(state.phase, TurnPhase.Phase.END)
 

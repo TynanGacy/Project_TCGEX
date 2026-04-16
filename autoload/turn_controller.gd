@@ -215,11 +215,11 @@ func _resolve_post_attack(action: ActionAttack) -> void:
 
 	## 5. Auto-advance to END phase.  Skip if a human promotion dialog is still
 	##    open — main.gd will call next_phase() after the player chooses.
-	##    MAIN and ATTACK are both attack-legal; after attacking we still walk
-	##    through ATTACK -> END so phase triggers remain intact.
+	##    Attacks happen from MAIN; one advance step reaches END (ATTACK phase
+	##    is no longer part of the normal flow).
 	if not needs_promotion:
-		while state.phase != TurnPhase.Phase.END:
-			next_phase(action.actor_id)
+		if state.phase == TurnPhase.Phase.MAIN:
+			next_phase(action.actor_id)   ## MAIN -> END
 
 
 ## ============================================================

@@ -54,10 +54,8 @@ func _run_turn() -> void:
 
 	await get_tree().create_timer(THINK_DELAY).timeout
 
-	## START phase: draw card (handled automatically by TurnController signal).
-	## Advance to MAIN.
-	_advance_phase()
-	await get_tree().create_timer(THINK_DELAY).timeout
+	## START phase is auto-advanced to MAIN by the phase_changed handler,
+	## so we begin directly in MAIN.
 
 	## ── MAIN PHASE ──────────────────────────────────────────────────────────
 
@@ -71,23 +69,18 @@ func _run_turn() -> void:
 	await get_tree().create_timer(THINK_DELAY).timeout
 
 	_try_attach_energy()
-	await get_tree().create_timer(THINK_DELAY).timeout
-
-	## Advance to ATTACK phase.
-	_advance_phase()
 	await get_tree().create_timer(ATTACK_DELAY).timeout
 
-	## ── ATTACK PHASE ────────────────────────────────────────────────────────
-
+	## Attack from MAIN phase.  If the attack succeeds, _resolve_post_attack
+	## auto-advances to END (which auto-ends the turn via phase_changed).
 	_try_attack()
 	await get_tree().create_timer(THINK_DELAY).timeout
 
-	## Advance to END phase.
-	_advance_phase()
-	await get_tree().create_timer(THINK_DELAY).timeout
-
-	## End turn.
-	_tc.end_turn(_player_id)
+	## If the turn hasn't already ended (no attack was made or it was
+	## rejected), advance to END manually — the auto-end-turn handler in
+	## main.gd will finish the turn.
+	if _state.current_player_id == _player_id:
+		_advance_phase()   ## MAIN -> END (auto-ends turn)
 
 	_running = false
 
