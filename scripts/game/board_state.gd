@@ -11,10 +11,8 @@ extends RefCounted
 ## consistently.  Callers must NEVER modify the arrays returned by get_zone()
 ## directly — use the provided mutation helpers instead.
 ##
-## NOTE: find_card_location() performs a linear scan across all zones.
-## For the current game scale (~12 zones, ~60 cards) this is fast enough.
-## If zone counts grow significantly, consider adding a CardInstance→zone_id
-## cache updated inside move_card() / remove_card().
+## find_card_location() is backed by a Dictionary cache (_location_cache)
+## maintained by every mutation helper, giving O(1) lookups.
 
 signal card_moved(card: CardInstance, from_zone_id: String, to_zone_id: String)
 signal card_added_to_zone(card: CardInstance, zone_id: String)
@@ -27,6 +25,10 @@ var max_prizes: int = 6
 
 var zones: Dictionary = {}
 
+## CardInstance → zone_id cache.  Updated by every mutation helper so that
+## find_card_location() is O(1) instead of scanning all zones.
+var _location_cache: Dictionary = {}
+
 
 func _init(players: int = 2, active_slots: int = 1, bench_size: int = 5) -> void:
 	num_players = players
@@ -37,6 +39,7 @@ func _init(players: int = 2, active_slots: int = 1, bench_size: int = 5) -> void
 
 func setup_zones() -> void:
 	zones.clear()
+	_location_cache.clear()
 
 	for player_id in range(num_players):
 		zones["p%d_hand" % player_id] = []
@@ -68,11 +71,7 @@ func get_player_zone_ids(player_id: int) -> Array:
 
 
 func find_card_location(card: CardInstance) -> String:
-	for zone_id in zones.keys():
-		var zone_array: Array = zones[zone_id]
-		if zone_array.has(card):
-			return zone_id
-	return ""
+	return _location_cache.get(card, "")
 
 
 func count_cards_in_zone(zone_id: String) -> int:
@@ -127,6 +126,7 @@ func move_card(card: CardInstance, to_zone_id: String) -> bool:
 	var to_array: Array = zones[to_zone_id]
 	to_array.append(card)
 
+	_location_cache[card] = to_zone_id
 	card.zone = _zone_id_to_enum(to_zone_id)
 
 	card_added_to_zone.emit(card, to_zone_id)
@@ -154,6 +154,7 @@ func move_card_to_position(card: CardInstance, to_zone_id: String, pos: int) -> 
 	var clamped_pos := clampi(pos, 0, to_array.size())
 	to_array.insert(clamped_pos, card)
 
+	_location_cache[card] = to_zone_id
 	card.zone = _zone_id_to_enum(to_zone_id)
 
 	card_added_to_zone.emit(card, to_zone_id)
@@ -194,6 +195,8 @@ func swap_cards(card_a: CardInstance, card_b: CardInstance) -> bool:
 		array_b.append(card_a)
 		array_a.append(card_b)
 
+	_location_cache[card_a] = zone_b
+	_location_cache[card_b] = zone_a
 	card_a.zone = _zone_id_to_enum(zone_b)
 	card_b.zone = _zone_id_to_enum(zone_a)
 
@@ -210,6 +213,7 @@ func remove_card(card: CardInstance) -> bool:
 
 	var zone_array: Array = zones[zone_id]
 	zone_array.erase(card)
+	_location_cache.erase(card)
 	card.zone = CardInstance.Zone.OTHER
 
 	card_removed_from_zone.emit(card, zone_id)

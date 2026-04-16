@@ -150,13 +150,11 @@ func set_board_mode(on: bool) -> void:
 	_board_mode = on
 	_resize_meshes(on)
 	if on:
-		_build_nameplate()
-		if card_instance != null and card_instance.data != null:
-			_queue_face_refresh()
+		_ensure_nameplate()
 	else:
-		_remove_nameplate()
-		if card_instance != null and card_instance.data != null:
-			_queue_face_refresh()
+		_hide_nameplate()
+	if card_instance != null and card_instance.data != null:
+		_queue_face_refresh()
 
 
 ## Resizes the face PlaneMesh, body BoxMesh, and collision shape for board mode
@@ -220,10 +218,23 @@ func _queue_face_refresh() -> void:
 	_update_visuals()
 
 
+## Lazily builds the nameplate if it doesn't exist, then shows and repositions it.
+func _ensure_nameplate() -> void:
+	if card_instance == null or card_instance.data == null:
+		_hide_nameplate()
+		return
+	if _nameplate_node == null or not is_instance_valid(_nameplate_node):
+		_build_nameplate()
+	else:
+		_reposition_nameplate()
+	if _nameplate_node != null:
+		_nameplate_node.visible = true
+
+
 ## Builds and attaches the 3D nameplate strip above the card's top edge.
 ## Shows name on the left and HP fraction on the right (Pokemon only).
 func _build_nameplate() -> void:
-	_remove_nameplate()
+	_hide_nameplate()
 	if card_instance == null or card_instance.data == null:
 		return
 
@@ -235,6 +246,7 @@ func _build_nameplate() -> void:
 
 	## Dark background plane lying flat on the table.
 	var bg := MeshInstance3D.new()
+	bg.name = "NameplateBG"
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(_card_w, np_h)
 	bg.mesh = plane
@@ -277,15 +289,43 @@ func _build_nameplate() -> void:
 	add_child(_nameplate_node)
 
 
-func _remove_nameplate() -> void:
+## Repositions the existing nameplate to match the current card dimensions
+## and updates text content without allocating new nodes.
+func _reposition_nameplate() -> void:
+	if _nameplate_node == null or card_instance == null:
+		return
+	var sc := _card_w / CARD_WIDTH
+	var np_h := NAMEPLATE_H * sc
+
+	var bg := _nameplate_node.get_node_or_null("NameplateBG") as MeshInstance3D
+	if bg != null:
+		(bg.mesh as PlaneMesh).size = Vector2(_card_w, np_h)
+
+	var name_lbl := _nameplate_node.get_node_or_null("NameplateName") as Label3D
+	if name_lbl != null:
+		name_lbl.text = card_instance.data.display_name if card_instance.data else ""
+		name_lbl.pixel_size = 0.00085 * sc
+		name_lbl.position = Vector3(-_card_w * 0.5 + 0.035 * sc, 0.002, 0.0)
+
+	var hp_lbl := _nameplate_node.get_node_or_null("NameplateHP") as Label3D
+	if hp_lbl != null:
+		hp_lbl.text = "%d/%d HP" % [card_instance.hp_remaining(), card_instance.hp_max()]
+		hp_lbl.pixel_size = 0.00085 * sc
+		hp_lbl.position = Vector3(_card_w * 0.5 - 0.035 * sc, 0.002, 0.0)
+
+	_nameplate_node.position = Vector3(
+		0.0, NAMEPLATE_Y, -(_card_h * 0.5 + np_h * 0.5)
+	)
+
+
+func _hide_nameplate() -> void:
 	if _nameplate_node != null and is_instance_valid(_nameplate_node):
-		_nameplate_node.queue_free()
-	_nameplate_node = null
+		_nameplate_node.visible = false
 
 
 ## Updates just the HP text on the nameplate without re-rendering the face.
 func _update_nameplate_hp() -> void:
-	if _nameplate_node == null or card_instance == null:
+	if _nameplate_node == null or not _nameplate_node.visible or card_instance == null:
 		return
 	var hp_lbl := _nameplate_node.get_node_or_null("NameplateHP") as Label3D
 	if hp_lbl != null:

@@ -61,6 +61,10 @@ var _advance_after_promotion: bool = false
 ## ── Game-over flag ───────────────────────────────────────────────────────────
 var _game_over: bool = false
 
+## CardInstance → Card node cache.  Populated when cards are spawned and
+## cleaned up when they are freed, making _find_card_node() O(1).
+var _card_node_cache: Dictionary = {}
+
 ## ── Pre-game placement phase ─────────────────────────────────────────────────
 ## True while players are choosing their starting Active Pokemon.
 var _in_placement_phase: bool = false
@@ -330,6 +334,7 @@ func _start_game() -> void:
 	for inst in game_state.board.get_hand_cards(0):
 		var card: Card = card_scene.instantiate()
 		card.set_instance(inst)
+		_register_card_node(card)
 		card.drag_started.connect(_on_card_drag_started)
 		card.drag_ended.connect(_on_card_drag_ended)
 		player_hand.add_card_animated(card, p0_from)
@@ -339,6 +344,7 @@ func _start_game() -> void:
 	for inst in game_state.board.get_hand_cards(1):
 		var card: Card = card_scene.instantiate()
 		card.set_instance(inst)
+		_register_card_node(card)
 		card.face_down = true
 		opp_hand.add_card_animated(card, p1_from)
 
@@ -378,6 +384,7 @@ func _spawn_deck_visual(pid: int) -> void:
 	for inst in game_state.board.get_zone("p%d_deck" % pid):
 		var card: Card = card_scene.instantiate()
 		card.set_instance(inst as CardInstance)
+		_register_card_node(card)
 		card.face_down = true
 		board.add_child(card)
 		deck_zone.receive_card(card)
@@ -395,6 +402,7 @@ func _spawn_prize_visuals(pid: int) -> void:
 			continue
 		var card: Card = card_scene.instantiate()
 		card.set_instance(prize_cards[i] as CardInstance)
+		_register_card_node(card)
 		card.face_down = true
 		board.add_child(card)
 		prize_zone.receive_card(card)
@@ -573,28 +581,23 @@ func _complete_placement_phase() -> void:
 	_refresh_board_card_visuals()
 
 
-## Finds the Card node that wraps [inst] by scanning all zones and hands.
-##
-## Complexity: O(total held cards).  For the current game size (~60 cards
-## distributed across ~12 zones + 2 hands) this is fast enough.
-## If card counts grow significantly, replace with a Dictionary keyed on
-## CardInstance (populated in _start_game when cards are spawned, updated
-## on every spawn / free).
+## Registers a Card node in the cache and wires up automatic cleanup when
+## the node exits the tree.
+func _register_card_node(card_node: Card) -> void:
+	if card_node.card_instance != null:
+		_card_node_cache[card_node.card_instance] = card_node
+		if not card_node.tree_exiting.is_connected(_on_card_node_exiting):
+			card_node.tree_exiting.connect(_on_card_node_exiting.bind(card_node))
+
+
+func _on_card_node_exiting(card_node: Card) -> void:
+	if card_node.card_instance != null:
+		_card_node_cache.erase(card_node.card_instance)
+
+
+## Returns the Card node for [inst] via O(1) dictionary lookup.
 func _find_card_node(inst: CardInstance) -> Card:
-	for zone in board.all_zones:
-		for card in zone.held_cards:
-			if (card as Card).card_instance == inst:
-				return card as Card
-	for card in player_hand.cards:
-		if (card as Card).card_instance == inst:
-			return card as Card
-	for card in opp_hand.cards:
-		if (card as Card).card_instance == inst:
-			return card as Card
-	for child in board.get_children():
-		if child is Card and (child as Card).card_instance == inst:
-			return child as Card
-	return null
+	return _card_node_cache.get(inst, null)
 
 
 # ===========================================================================
@@ -630,7 +633,7 @@ func _on_action_committed(action: GameAction) -> void:
 	_sync_visual_for_action(action)
 	_refresh_attack_panel()
 	_update_status_label()
-	_refresh_board_card_visuals()
+	_refresh_affected_card_visuals(action)
 
 
 func _on_action_rejected(action: GameAction, reason: String) -> void:
@@ -694,6 +697,7 @@ func _sync_discard_visuals(player_id: int) -> void:
 		## No visual node — spawn one for this attachment / prior-stage card.
 		var new_node: Card = card_scene.instantiate()
 		new_node.set_instance(inst)
+		_register_card_node(new_node)
 		new_node.face_down = false
 		if player_id == 0:
 			new_node.drag_started.connect(_on_card_drag_started)
@@ -710,6 +714,7 @@ func _on_prize_taken(player_id: int, card: CardInstance) -> void:
 
 	var card_node: Card = card_scene.instantiate()
 	card_node.set_instance(card)
+	_register_card_node(card_node)
 
 	if player_id == 0:
 		card_node.face_down = false
@@ -897,6 +902,58 @@ func _refresh_board_card_visuals() -> void:
 			var c := card as Card
 			c.update_damage_counter()
 			c.update_status_overlays()
+
+
+## Refreshes only the card(s) affected by [action] instead of every card on
+## the board.  Falls back to _refresh_board_card_visuals() for action types
+## whose side-effects can touch arbitrary cards (e.g. trainer items).
+func _refresh_affected_card_visuals(action: GameAction) -> void:
+	if board == null:
+		return
+
+	var targets: Array[CardInstance] = []
+
+	if action is ActionAttack:
+		var atk := action as ActionAttack
+		var attacker := game_state.board.get_active_card(atk.actor_id, atk.attacker_slot)
+		if attacker != null:
+			targets.append(attacker)
+		if atk.defender != null:
+			targets.append(atk.defender)
+		## Attacks may hit multiple active slots — refresh all opponent actives.
+		var opp_id := 1 - atk.actor_id
+		for s in range(game_state.board.num_active_slots):
+			var opp := game_state.board.get_active_card(opp_id, s)
+			if opp != null and not targets.has(opp):
+				targets.append(opp)
+	elif action is ActionAttachEnergy:
+		if (action as ActionAttachEnergy).target != null:
+			targets.append((action as ActionAttachEnergy).target)
+	elif action is ActionEvolvePokemon:
+		if (action as ActionEvolvePokemon).card != null:
+			targets.append((action as ActionEvolvePokemon).card)
+	elif action is ActionPlayBasicPokemon:
+		if (action as ActionPlayBasicPokemon).card != null:
+			targets.append((action as ActionPlayBasicPokemon).card)
+	elif action is ActionPromoteFromBench:
+		var promo := action as ActionPromoteFromBench
+		for s in range(game_state.board.num_active_slots):
+			var c := game_state.board.get_active_card(promo.player_id, s)
+			if c != null:
+				targets.append(c)
+	elif action is ActionPlayTrainerTool:
+		if (action as ActionPlayTrainerTool).target != null:
+			targets.append((action as ActionPlayTrainerTool).target)
+	else:
+		## Trainer items/supporters/stadiums can have wide side effects.
+		_refresh_board_card_visuals()
+		return
+
+	for inst in targets:
+		var card_node := _find_card_node(inst)
+		if card_node != null:
+			card_node.update_damage_counter()
+			card_node.update_status_overlays()
 
 
 # ===========================================================================
@@ -1364,7 +1421,7 @@ func _try_drop_card() -> void:
 		controlling_player, TurnPhase.phase_to_string(game_state.phase), action.description()
 	])
 	_refresh_attack_panel()
-	_refresh_board_card_visuals()
+	_refresh_affected_card_visuals(action)
 
 
 func _build_play_action(inst: CardInstance, drop_zone: DropZone) -> GameAction:
