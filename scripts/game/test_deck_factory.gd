@@ -4,6 +4,11 @@ class_name TestDeckFactory
 ## Each card is drawn at random from a pool of one representative per
 ## card type / sub-type.  display_name is written so the Label3D on each
 ## card face makes the type immediately readable in-game.
+## Cached full pool so startup/deck loading doesn't repeatedly parse every
+## card JSON + texture after mode selection.
+static var _cached_pool: Array[CardData] = []
+## Cached card_id → CardData index.
+static var _cached_pool_by_id: Dictionary = {}
 
 static func build_deck(size: int = 60) -> Array[CardData]:
 	var pool := _build_pool()
@@ -112,21 +117,25 @@ static func _load_folder(path: String, pool: Array[CardData]) -> void:
 
 
 static func _build_pool() -> Array[CardData]:
+	if not _cached_pool.is_empty():
+		return _cached_pool
 	var pool: Array[CardData] = []
 	_load_folder("res://data/cards/", pool)
 	if pool.is_empty():
 		push_error("_build_pool: pool is empty — are the JSON files imported in Godot?")
-	return pool
+		return pool
+	_cached_pool = pool
+	return _cached_pool
 
 
 ## Returns a Dictionary mapping card_id → CardData for every card in the pool.
 ## Used by DeckLoader to resolve card IDs from deck config files.
 static func _build_card_pool_by_id() -> Dictionary:
-	var pool := _build_pool()
-	var by_id: Dictionary = {}
-	for card in pool:
-		by_id[card.card_id] = card
-	return by_id
+	if not _cached_pool_by_id.is_empty():
+		return _cached_pool_by_id
+	for card in _build_pool():
+		_cached_pool_by_id[card.card_id] = card
+	return _cached_pool_by_id
 
 
 # ---------------------------------------------------------------------------

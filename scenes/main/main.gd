@@ -342,10 +342,7 @@ func _start_game() -> void:
 	var p1_from := board.get_zone_by_name("Opp Deck").global_position + Vector3(0, 0.1, 0) \
 		if board.get_zone_by_name("Opp Deck") else Vector3.ZERO
 	for inst in game_state.board.get_hand_cards(1):
-		var card: Card = card_scene.instantiate()
-		card.set_instance(inst)
-		_register_card_node(card)
-		card.face_down = true
+		var card := _make_card_node(inst, true)
 		opp_hand.add_card_animated(card, p1_from)
 
 	_spawn_deck_visual(0)
@@ -382,10 +379,7 @@ func _spawn_deck_visual(pid: int) -> void:
 	if deck_zone == null:
 		return
 	for inst in game_state.board.get_zone("p%d_deck" % pid):
-		var card: Card = card_scene.instantiate()
-		card.set_instance(inst as CardInstance)
-		_register_card_node(card)
-		card.face_down = true
+		var card := _make_card_node(inst as CardInstance, true)
 		board.add_child(card)
 		deck_zone.receive_card(card)
 
@@ -400,12 +394,20 @@ func _spawn_prize_visuals(pid: int) -> void:
 		var prize_zone := board.get_zone_by_name(zone_name)
 		if prize_zone == null:
 			continue
-		var card: Card = card_scene.instantiate()
-		card.set_instance(prize_cards[i] as CardInstance)
-		_register_card_node(card)
-		card.face_down = true
+		var card := _make_card_node(prize_cards[i] as CardInstance, true)
 		board.add_child(card)
 		prize_zone.receive_card(card)
+
+
+## Creates and binds a Card node while allowing the caller to set face-down
+## state before set_instance(). This avoids unnecessary SubViewport refreshes
+## for hidden cards during initial setup (opponent hand, deck, prizes).
+func _make_card_node(inst: CardInstance, start_face_down: bool = false) -> Card:
+	var card: Card = card_scene.instantiate()
+	card.face_down = start_face_down
+	card.set_instance(inst)
+	_register_card_node(card)
+	return card
 
 
 ## Removes the visual card node from the lowest-numbered occupied prize zone
