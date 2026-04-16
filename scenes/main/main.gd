@@ -675,6 +675,12 @@ func _on_phase_changed(phase: int) -> void:
 		turn_controller.request_action(
 			ActionDrawCard.new(game_state.current_player_id, 1)
 		)
+	## START phase stays intact for trigger processing, then advances itself.
+	if phase == TurnPhase.Phase.START:
+		turn_controller.next_phase(game_state.current_player_id)
+	## END phase stays intact for trigger processing, then advances itself.
+	elif phase == TurnPhase.Phase.END:
+		turn_controller.end_turn(game_state.current_player_id)
 
 
 func _on_action_committed(action: GameAction) -> void:
@@ -797,7 +803,10 @@ func _on_active_slot_emptied(player_id: int) -> void:
 
 	## Human player must choose.
 	_pending_promotion_player = player_id
-	_advance_after_promotion  = (game_state.phase == TurnPhase.Phase.ATTACK)
+	_advance_after_promotion  = (
+		game_state.phase == TurnPhase.Phase.MAIN
+		or game_state.phase == TurnPhase.Phase.ATTACK
+	)
 
 	if bench.size() == 1:
 		## Only one option: auto-promote immediately.
@@ -819,9 +828,10 @@ func _execute_forced_promotion(player_id: int, bench_index: int) -> void:
 
 func _try_advance_after_promotion() -> void:
 	if _advance_after_promotion and not _game_over:
-		if game_state.phase == TurnPhase.Phase.ATTACK:
+		if game_state.phase == TurnPhase.Phase.MAIN or game_state.phase == TurnPhase.Phase.ATTACK:
 			_advance_after_promotion = false
-			turn_controller.next_phase(game_state.current_player_id)
+			while game_state.phase != TurnPhase.Phase.END:
+				turn_controller.next_phase(game_state.current_player_id)
 
 
 func _on_game_over(winner_player_id: int) -> void:
@@ -1007,7 +1017,7 @@ func _refresh_affected_card_visuals(action: GameAction) -> void:
 
 # ===========================================================================
 # ATTACK PANEL
-# Shown during the ATTACK phase when it is the human player's turn.
+# Shown during the MAIN phase when it is the human player's turn.
 # Lists every attack on every active Pokemon with energy cost and damage.
 # ===========================================================================
 
@@ -1034,10 +1044,12 @@ func _refresh_attack_panel() -> void:
 	if _attack_panel == null or game_state == null:
 		return
 
-	## Only show during ATTACK phase when it is the human player's turn.
+	## MAIN and ATTACK are both attack-legal; panel is shown during MAIN so the
+	## player doesn't need to click through a separate ATTACK step.
 	var human_turn := (controlling_player == game_state.current_player_id)
-	var is_attack  := (game_state.phase == TurnPhase.Phase.ATTACK)
-	_attack_panel.visible = is_attack and human_turn and not _game_over
+	var attack_window := (game_state.phase == TurnPhase.Phase.MAIN \
+		or game_state.phase == TurnPhase.Phase.ATTACK)
+	_attack_panel.visible = attack_window and human_turn and not _game_over
 
 	## Rebuild the button list.
 	for child in _attack_panel.get_children():
