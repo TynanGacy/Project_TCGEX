@@ -593,11 +593,11 @@ func _register_card_node(card_node: Card) -> void:
 
 ## Returns the Card node for [inst] via O(1) dictionary lookup.
 func _find_card_node(inst: CardInstance) -> Card:
-	var card: Card = _card_node_cache.get(inst, null)
-	if card != null and not is_instance_valid(card):
+	var raw: Variant = _card_node_cache.get(inst, null)
+	if raw != null and not is_instance_valid(raw):
 		_card_node_cache.erase(inst)
 		return null
-	return card
+	return raw as Card
 
 
 # ===========================================================================
