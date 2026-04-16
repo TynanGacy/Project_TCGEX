@@ -293,6 +293,7 @@ func _start_game() -> void:
 	turn_controller.prize_taken.connect(_on_prize_taken)
 	turn_controller.active_slot_emptied.connect(_on_active_slot_emptied)
 	turn_controller.game_over.connect(_on_game_over)
+	turn_controller.effect_choice_required.connect(_on_effect_choice_required)
 	game_state.board.card_moved.connect(_on_board_card_moved)
 
 	player_hand.card_played.connect(_on_card_played)
@@ -1112,6 +1113,30 @@ func _refresh_attack_panel() -> void:
 		no_atk.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		vbox.add_child(no_atk)
 
+	var retreat_heading := Label.new()
+	retreat_heading.text = "Retreat"
+	retreat_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	retreat_heading.add_theme_font_size_override("font_size", 14)
+	vbox.add_child(retreat_heading)
+
+	for slot_idx in range(game_state.board.num_active_slots):
+		var active := game_state.board.get_active_card(pid, slot_idx)
+		if active == null:
+			continue
+		var bench := game_state.board.get_bench_cards(pid)
+		var retreat_btn := Button.new()
+		var retreat_cost := active.get_effective_retreat_cost(game_state)
+		retreat_btn.text = "Retreat Active %d (cost %d)" % [slot_idx + 1, retreat_cost]
+		retreat_btn.disabled = bench.is_empty() \
+			or game_state.has_attacked_this_turn \
+			or game_state.has_retreated_this_turn \
+			or active.attached_energy.size() < retreat_cost
+		var captured_slot := slot_idx
+		retreat_btn.pressed.connect(func() -> void:
+			_on_retreat_button_pressed(captured_slot)
+		)
+		vbox.add_child(retreat_btn)
+
 
 func _on_attack_button_pressed(slot_idx: int, atk_idx: int) -> void:
 	if _game_over:
@@ -1144,6 +1169,25 @@ func _fire_attack(slot_idx: int, atk_idx: int, target: CardInstance) -> void:
 	turn_controller.request_action(
 		ActionAttack.new(pid, slot_idx, target, atk_idx)
 	)
+	_refresh_attack_panel()
+
+
+func _on_retreat_button_pressed(slot_idx: int) -> void:
+	if _game_over:
+		return
+	var pid := game_state.current_player_id
+	var bench := game_state.board.get_bench_cards(pid)
+	if bench.is_empty():
+		return
+	if bench.size() == 1:
+		turn_controller.request_action(ActionRetreat.new(pid, slot_idx, 0))
+	else:
+		_show_bench_picker_for_choice(
+			"Choose a Pokemon to switch in for retreat:",
+			bench,
+			func(chosen_index: int) -> void:
+				turn_controller.request_action(ActionRetreat.new(pid, slot_idx, chosen_index))
+		)
 	_refresh_attack_panel()
 
 
@@ -1211,6 +1255,20 @@ func _show_target_picker(targets: Array[CardInstance]) -> void:
 # ===========================================================================
 
 func _show_bench_picker(player_id: int, bench: Array[CardInstance]) -> void:
+	_show_bench_picker_for_choice(
+		"P%d — Choose a Pokemon to promote:" % player_id,
+		bench,
+		func(chosen_index: int) -> void:
+			_execute_forced_promotion(player_id, chosen_index)
+			_try_advance_after_promotion()
+	)
+
+
+func _show_bench_picker_for_choice(
+	title: String,
+	bench: Array[CardInstance],
+	on_choose: Callable
+) -> void:
 	if _bench_picker:
 		_bench_picker.queue_free()
 
@@ -1231,8 +1289,7 @@ func _show_bench_picker(player_id: int, bench: Array[CardInstance]) -> void:
 	_bench_picker.add_child(vbox)
 
 	var lbl := Label.new()
-	var who := "P%d — " % player_id
-	lbl.text = "%sChoose a Pokemon to promote:" % who
+	lbl.text = title
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(lbl)
 
@@ -1246,8 +1303,8 @@ func _show_bench_picker(player_id: int, bench: Array[CardInstance]) -> void:
 		btn.pressed.connect(func() -> void:
 			_bench_picker.queue_free()
 			_bench_picker = null
-			_execute_forced_promotion(player_id, captured_idx)
-			_try_advance_after_promotion()
+			if on_choose.is_valid():
+				on_choose.call(captured_idx)
 		)
 		vbox.add_child(btn)
 
@@ -1875,6 +1932,9 @@ func _on_board_card_moved(inst: CardInstance, from_zone: String, to_zone: String
 		and not (to_zone.contains("_active") or to_zone.contains("_bench"))
 	if leaving_play:
 		inst.clear_in_play_state()
+	if from_zone.contains("_active") or from_zone.contains("_bench") \
+			or to_zone.contains("_active") or to_zone.contains("_bench"):
+		_sync_in_play_positions_from_logic()
 
 
 func _sync_deck_draw_visual(inst: CardInstance, pid: int) -> void:
@@ -1903,6 +1963,58 @@ func _sync_deck_draw_visual(inst: CardInstance, pid: int) -> void:
 			drawn_card.drag_started.connect(_on_card_drag_started)
 			drawn_card.drag_ended.connect(_on_card_drag_ended)
 		opp_hand.add_card_animated(drawn_card, from_global)
+
+
+func _sync_in_play_positions_from_logic() -> void:
+	for pid in range(2):
+		for slot_idx in range(game_state.board.num_active_slots):
+			var active := game_state.board.get_active_card(pid, slot_idx)
+			if active != null:
+				_place_instance_in_zone(active, _active_zone_name_for(pid, slot_idx))
+
+		var bench := game_state.board.get_bench_cards(pid)
+		for i in range(bench.size()):
+			var zone_name := ("Bench %d" % (i + 1)) if pid == 0 else ("Opp Bench %d" % (i + 1))
+			_place_instance_in_zone(bench[i], zone_name)
+
+
+func _place_instance_in_zone(inst: CardInstance, zone_name: String) -> void:
+	var card_node := _find_card_node(inst)
+	if card_node == null:
+		return
+	var target_zone := board.get_zone_by_name(zone_name)
+	if target_zone == null:
+		return
+	var old_zone := board.get_zone_containing(card_node)
+	if old_zone != null and old_zone != target_zone:
+		old_zone.remove_card(card_node)
+	if not target_zone.held_cards.has(card_node):
+		target_zone.receive_card(card_node)
+
+
+func _on_effect_choice_required(reason: String, player_id: int, choices: Array) -> void:
+	if choices.is_empty():
+		turn_controller.resolve_effect_choice(player_id, [])
+		return
+	if choices.size() == 1:
+		turn_controller.resolve_effect_choice(player_id, [choices[0]])
+		return
+	if controlling_player != player_id:
+		turn_controller.resolve_effect_choice(player_id, [choices[0]])
+		return
+	var bench_choices: Array[CardInstance] = []
+	for choice in choices:
+		if choice is CardInstance:
+			bench_choices.append(choice)
+	_show_bench_picker_for_choice(
+		reason,
+		bench_choices,
+		func(chosen_index: int) -> void:
+			if chosen_index < 0 or chosen_index >= bench_choices.size():
+				turn_controller.resolve_effect_choice(player_id, [])
+				return
+			turn_controller.resolve_effect_choice(player_id, [bench_choices[chosen_index]])
+	)
 
 
 # ===========================================================================
