@@ -98,6 +98,9 @@ var _pending_instance: CardInstance = null
 ## True while a _queue_face_refresh() coroutine is already awaiting render.
 ## Prevents multiple concurrent coroutines from all waiting on the same render.
 var _face_refresh_pending: bool = false
+## True when a face refresh was requested while the node was outside the tree.
+## Picked up by _enter_tree so the refresh runs once the node is back.
+var _face_refresh_deferred: bool = false
 
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var static_body: StaticBody3D = $StaticBody3D
@@ -133,6 +136,12 @@ func _ready() -> void:
 		_pending_instance = null
 	else:
 		_update_visuals()
+
+
+func _enter_tree() -> void:
+	if _face_refresh_deferred:
+		_face_refresh_deferred = false
+		_queue_face_refresh()
 
 
 func set_instance(inst: CardInstance) -> void:
@@ -197,7 +206,10 @@ func set_display_width(w: float) -> void:
 ## This prevents N concurrent coroutines when the card's state changes rapidly
 ## (e.g. set_board_mode() called right after set_instance()).
 func _queue_face_refresh() -> void:
-	if not is_node_ready() or card_instance == null or card_instance.data == null:
+	if card_instance == null or card_instance.data == null:
+		return
+	if not is_node_ready() or not is_inside_tree():
+		_face_refresh_deferred = true
 		return
 	## Face-down cards don't display the SubViewport texture, so skip the
 	## expensive render.  The face_down setter triggers a refresh when
