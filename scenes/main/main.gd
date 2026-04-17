@@ -477,28 +477,26 @@ func _pop_prize_visual(pid: int) -> Vector3:
 
 # ===========================================================================
 # PRE-GAME PLACEMENT PHASE
-# Each player chooses one Basic Pokemon from their opening hand to place
-# face-down as their starting Active.  Both are revealed simultaneously once
-# all players have placed.
+# Both players place any number of Basic Pokémon face-down before the game:
+#   • Active slot(s) must be filled before the bench is available.
+#   • Bench placement is optional once all active slots are filled.
+#   • Players click "Done" to confirm (requires active slot(s) filled).
 #
-# Dev Mode:  P0 picks first (perspective at P0), then perspective switches to
-#            P1 for their pick, then switches back to P0 for game start.
-# Player Mode: P0 picks via dialog; P1 (CPU) auto-selects its first Basic.
+# Dev Mode:  P0 places first (perspective at P0), then P1, then coin flip.
+# Player Mode: P0 picks via dialog; P1 (CPU) auto-fills active then bench.
 # ===========================================================================
 
 func _start_placement_phase() -> void:
 	_in_placement_phase = true
 	_placement_done     = [false, false]
-	_log_line("Pre-game: each player must place a Basic Pokemon face-down as their starting Active.")
+	_log_line("Pre-game: each player places Basic Pokémon face-down (active first, bench optional).")
 	_prompt_player_placement(0)
 
 
 func _prompt_player_placement(player_id: int) -> void:
-	## In Developer Mode switch the camera to whichever player is placing.
 	if is_developer_mode:
 		_switch_perspective_to(player_id)
 
-	## Gather Basic Pokemon from this player's hand.
 	var basics: Array[CardInstance] = []
 	for card in game_state.board.get_hand_cards(player_id):
 		if card.data is PokemonCardData \
@@ -506,25 +504,42 @@ func _prompt_player_placement(player_id: int) -> void:
 			basics.append(card)
 
 	if basics.is_empty():
-		## Should never happen after mulligan draw, but guard defensively.
 		push_error("_prompt_player_placement: P%d has no Basic Pokemon to place!" % player_id)
-		_on_player_placed(player_id, null)
+		_on_placement_done(player_id)
 		return
 
-	## In Player Mode the CPU auto-places without a dialog.
 	if not is_developer_mode and player_id == 1:
-		_on_player_placed(player_id, basics[0])
+		_cpu_auto_place(player_id, basics)
 		return
 
 	_show_placement_picker(player_id, basics)
+
+
+func _cpu_auto_place(player_id: int, basics: Array[CardInstance]) -> void:
+	for basic in basics:
+		if game_state.board.get_first_empty_active_slot(player_id) != -1 \
+				or game_state.board.can_play_card_to_bench(player_id):
+			_place_setup_card(player_id, basic)
+		else:
+			break
+	_on_placement_done(player_id)
 
 
 func _show_placement_picker(player_id: int, basics: Array[CardInstance]) -> void:
 	if _placement_picker:
 		_placement_picker.queue_free()
 
+	var num_active    := game_state.board.num_active_slots
+	var filled_active := 0
+	for s in range(num_active):
+		if game_state.board.get_active_card(player_id, s) != null:
+			filled_active += 1
+	var active_full := (filled_active == num_active)
+	var bench_count := game_state.board.get_bench_cards(player_id).size()
+	var bench_full  := not game_state.board.can_play_card_to_bench(player_id)
+
 	_placement_picker = PanelContainer.new()
-	_placement_picker.custom_minimum_size = Vector2(320, 0)
+	_placement_picker.custom_minimum_size = Vector2(340, 0)
 	_placement_picker.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 
 	var style := StyleBoxFlat.new()
@@ -539,55 +554,117 @@ func _show_placement_picker(player_id: int, basics: Array[CardInstance]) -> void
 	vbox.add_theme_constant_override("separation", 8)
 	_placement_picker.add_child(vbox)
 
-	var lbl := Label.new()
-	lbl.text = "P%d — Place your starting Active Pokemon\n(placed face-down until both players are ready)" % player_id
-	lbl.autowrap_mode          = TextServer.AUTOWRAP_WORD_SMART
-	lbl.horizontal_alignment   = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.6))
-	vbox.add_child(lbl)
+	var title_lbl := Label.new()
+	title_lbl.text = "P%d — Setup: Place Basic Pokémon (face-down)" % player_id
+	title_lbl.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.6))
+	vbox.add_child(title_lbl)
+
+	var status_color := Color(0.5, 0.9, 0.5) if active_full else Color(1.0, 0.85, 0.4)
+	var status_lbl := Label.new()
+	status_lbl.text = "Active: %d/%d %s  |  Bench: %d" % [
+		filled_active, num_active, "(done)" if active_full else "", bench_count
+	]
+	status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status_lbl.add_theme_color_override("font_color", status_color)
+	vbox.add_child(status_lbl)
 
 	vbox.add_child(HSeparator.new())
 
+	var hint_lbl := Label.new()
+	if not active_full:
+		hint_lbl.text = "Fill your Active slot(s) first."
+	elif not bench_full and not basics.is_empty():
+		hint_lbl.text = "Active filled! You may also place to the Bench."
+	else:
+		hint_lbl.text = "Click Done to confirm."
+	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint_lbl.add_theme_color_override("font_color", Color(0.72, 0.72, 0.82))
+	vbox.add_child(hint_lbl)
+
 	for basic in basics:
 		var pdata := basic.data as PokemonCardData
-		var btn   := Button.new()
-		btn.text  = "%s  [%d HP]" % [pdata.display_name, basic.hp_max()]
+		var empty_slot := game_state.board.get_first_empty_active_slot(player_id)
+		var can_bench  := game_state.board.can_play_card_to_bench(player_id)
+		var can_place  := (empty_slot != -1) or can_bench
+
+		var dest_text: String
+		if empty_slot != -1:
+			dest_text = ("-> Active Slot %d" % (empty_slot + 1)) if num_active > 1 else "-> Active"
+		elif can_bench:
+			dest_text = "-> Bench"
+		else:
+			dest_text = "(no space)"
+
+		var btn := Button.new()
+		btn.text     = "%s  [%d HP]  %s" % [pdata.display_name, basic.hp_max(), dest_text]
+		btn.disabled = not can_place
 		var captured_card := basic
 		var captured_pid  := player_id
 		btn.pressed.connect(func() -> void:
-			if _placement_picker:
-				_placement_picker.queue_free()
-				_placement_picker = null
-			_on_player_placed(captured_pid, captured_card)
+			_on_placement_card_picked(captured_pid, captured_card)
 		)
 		vbox.add_child(btn)
+
+	vbox.add_child(HSeparator.new())
+
+	var done_btn := Button.new()
+	done_btn.text     = "Done — Confirm Setup"
+	done_btn.disabled = (filled_active == 0)
+	var captured_pid2 := player_id
+	done_btn.pressed.connect(func() -> void:
+		if _placement_picker:
+			_placement_picker.queue_free()
+			_placement_picker = null
+		_on_placement_done(captured_pid2)
+	)
+	vbox.add_child(done_btn)
 
 	$HUD.add_child(_placement_picker)
 
 
-func _on_player_placed(player_id: int, card: CardInstance) -> void:
-	if card != null:
-		_place_starting_basic(player_id, card)
-		_log_line("P%d placed %s face-down as their starting Active." % [
-			player_id, card.data.display_name if card.data else "?"
-		])
+func _on_placement_card_picked(player_id: int, card: CardInstance) -> void:
+	_place_setup_card(player_id, card)
+	_log_line("P%d placed %s face-down." % [player_id, card.data.display_name if card.data else "?"])
 
-	_placement_done[player_id] = true
+	var remaining: Array[CardInstance] = []
+	for c in game_state.board.get_hand_cards(player_id):
+		if c.data is PokemonCardData \
+				and (c.data as PokemonCardData).stage == PokemonCardData.Stage.BASIC:
+			remaining.append(c)
 
-	if not (_placement_done[0] and _placement_done[1]):
-		## Prompt the player who hasn't placed yet.
-		var next_pid := 1 - player_id
-		_prompt_player_placement(next_pid)
+	var no_space := game_state.board.get_first_empty_active_slot(player_id) == -1 \
+		and not game_state.board.can_play_card_to_bench(player_id)
+
+	if remaining.is_empty() or no_space:
+		if _placement_picker:
+			_placement_picker.queue_free()
+			_placement_picker = null
+		var num_active := game_state.board.num_active_slots
+		var filled := 0
+		for s in range(num_active):
+			if game_state.board.get_active_card(player_id, s) != null:
+				filled += 1
+		if filled >= 1:
+			_on_placement_done(player_id)
+		else:
+			_show_placement_picker(player_id, remaining)
 	else:
-		_complete_placement_phase()
+		_show_placement_picker(player_id, remaining)
 
 
-func _place_starting_basic(player_id: int, card: CardInstance) -> void:
-	## Move the card logically to active slot 0.
-	game_state.board.move_card(card, "p%d_active_0" % player_id)
+func _place_setup_card(player_id: int, card: CardInstance) -> void:
+	var slot := game_state.board.get_first_empty_active_slot(player_id)
+	var zone_id: String
+	if slot != -1:
+		zone_id = "p%d_active_%d" % [player_id, slot]
+	else:
+		zone_id = "p%d_bench" % player_id
+
+	game_state.board.move_card(card, zone_id)
 	card.turn_entered_play = game_state.turn_number
 
-	## Sync the visual: remove from hand, add to board face-down.
 	var card_node := _find_card_node(card)
 	if card_node == null:
 		return
@@ -599,17 +676,20 @@ func _place_starting_basic(player_id: int, card: CardInstance) -> void:
 	board.add_child(card_node)
 	card_node.face_down = true
 
-	var zone_name  := "Active" if player_id == 0 else "Opp Active"
-	var active_zone := board.get_zone_by_name(zone_name)
-	if active_zone:
-		active_zone.receive_card(card_node)
+
+func _on_placement_done(player_id: int) -> void:
+	_placement_done[player_id] = true
+
+	if not (_placement_done[0] and _placement_done[1]):
+		_prompt_player_placement(1 - player_id)
+	else:
+		_complete_placement_phase()
 
 
 func _complete_placement_phase() -> void:
-	_in_placement_phase      = false
-	game_state.game_started  = true
+	_in_placement_phase = false
 
-	## Flip all starting Active Pokemon face-up simultaneously.
+	## Reveal all placed cards face-up simultaneously.
 	for pid in range(2):
 		for slot_idx in range(game_state.board.num_active_slots):
 			var inst := game_state.board.get_active_card(pid, slot_idx)
@@ -618,17 +698,137 @@ func _complete_placement_phase() -> void:
 			var card_node := _find_card_node(inst)
 			if card_node:
 				card_node.face_down = false
+		for bench_card in game_state.board.get_bench_cards(pid):
+			var card_node := _find_card_node(bench_card)
+			if card_node:
+				card_node.face_down = false
 
-	## In Developer Mode always start from P0's perspective (P0 goes first).
+	_log_line("All setup Pokémon revealed. Flipping coin for first player...")
+
+	var first_player := await _show_coin_flip_overlay()
+
+	game_state.game_started      = true
+	game_state.current_player_id = first_player
+
 	if is_developer_mode:
-		_switch_perspective_to(0)
+		_switch_perspective_to(first_player)
 
-	_log_line("Both players have placed their starting Active. Game begins!")
-
-	## Initialise the HUD for the first turn.
+	_log_line("P%d goes first!" % first_player)
 	_update_prize_label()
 	_on_phase_changed(game_state.phase)
 	_refresh_board_card_visuals()
+
+
+## Animated coin-flip overlay.  Returns winning player id: 0 = heads, 1 = tails.
+func _show_coin_flip_overlay() -> int:
+	var winner: int = randi() % 2
+
+	## Flip count parity encodes the result:
+	## starting from "H", after N flips: H if N even, T if N odd.
+	const MIN_FLIPS := 6
+	var flip_count := MIN_FLIPS + (randi() % 4) * 2 + winner
+
+	var overlay := CanvasLayer.new()
+	overlay.layer = 10
+	add_child(overlay)
+
+	var bg := ColorRect.new()
+	bg.color = Color(0.0, 0.0, 0.0, 0.78)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(bg)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(320, 0)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color               = Color(0.10, 0.12, 0.20, 0.97)
+	panel_style.corner_radius_top_left    = 10
+	panel_style.corner_radius_top_right   = 10
+	panel_style.corner_radius_bottom_left = 10
+	panel_style.corner_radius_bottom_right = 10
+	panel.add_theme_stylebox_override("panel", panel_style)
+	overlay.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+
+	var title_lbl := Label.new()
+	title_lbl.text               = "COIN FLIP"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_size_override("font_size", 26)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))
+	vbox.add_child(title_lbl)
+
+	var sub_lbl := Label.new()
+	sub_lbl.text               = "Determining who goes first..."
+	sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub_lbl.add_theme_color_override("font_color", Color(0.75, 0.75, 0.85))
+	vbox.add_child(sub_lbl)
+
+	var coin_center := CenterContainer.new()
+	coin_center.custom_minimum_size = Vector2(0, 150)
+	vbox.add_child(coin_center)
+
+	var coin := PanelContainer.new()
+	coin.custom_minimum_size = Vector2(120, 120)
+	coin.pivot_offset = Vector2(60, 60)
+	var coin_style := StyleBoxFlat.new()
+	coin_style.bg_color                   = Color(1.0, 0.82, 0.10)
+	coin_style.corner_radius_top_left     = 60
+	coin_style.corner_radius_top_right    = 60
+	coin_style.corner_radius_bottom_left  = 60
+	coin_style.corner_radius_bottom_right = 60
+	coin.add_theme_stylebox_override("panel", coin_style)
+	coin_center.add_child(coin)
+
+	var coin_lbl := Label.new()
+	coin_lbl.text               = "H"
+	coin_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	coin_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	coin_lbl.add_theme_font_size_override("font_size", 52)
+	coin_lbl.add_theme_color_override("font_color", Color(0.55, 0.38, 0.0))
+	coin_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	coin.add_child(coin_lbl)
+
+	var result_lbl := Label.new()
+	result_lbl.text               = ""
+	result_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_lbl.add_theme_font_size_override("font_size", 18)
+	result_lbl.add_theme_color_override("font_color", Color(0.95, 0.90, 0.40))
+	result_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(result_lbl)
+
+	var ok_btn := Button.new()
+	ok_btn.text    = "Begin Game"
+	ok_btn.visible = false
+	vbox.add_child(ok_btn)
+
+	await get_tree().process_frame
+
+	## Squeeze X axis back and forth, swapping face at each half-flip.
+	const HEADS_COLOR := Color(1.0, 0.82, 0.10)
+	const TAILS_COLOR := Color(0.62, 0.44, 0.05)
+	const FLIP_SPEED  := 0.10
+
+	var showing_heads := true
+
+	for _i in range(flip_count):
+		var t1 := create_tween()
+		t1.tween_property(coin, "scale", Vector2(0.06, 1.0), FLIP_SPEED)
+		await t1.finished
+		showing_heads = not showing_heads
+		coin_style.bg_color = HEADS_COLOR if showing_heads else TAILS_COLOR
+		coin_lbl.text       = "H" if showing_heads else "T"
+		var t2 := create_tween()
+		t2.tween_property(coin, "scale", Vector2(1.0, 1.0), FLIP_SPEED)
+		await t2.finished
+
+	result_lbl.text = "HEADS — P0 goes first!" if winner == 0 else "TAILS — P1 goes first!"
+	ok_btn.visible  = true
+	await ok_btn.pressed
+	overlay.queue_free()
+	return winner
 
 
 ## Registers a Card node in the cache.  Stale entries (freed nodes) are
