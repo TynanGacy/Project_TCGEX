@@ -222,7 +222,15 @@ func can_retreat_active(player_id: int, active_slot: int, bench_index: int) -> b
 	return active_card.attached_energy.size() >= active_card.get_effective_retreat_cost(self)
 
 
-func retreat_active_to_bench(player_id: int, active_slot: int, bench_index: int) -> bool:
+## [energy_to_discard] is an optional list of specific energy cards the player
+## chose to pay.  When empty the first N cards are discarded automatically
+## (fallback for zero-cost retreats and Balloon Berry).
+func retreat_active_to_bench(
+		player_id: int,
+		active_slot: int,
+		bench_index: int,
+		energy_to_discard: Array[CardInstance] = []
+) -> bool:
 	if not can_retreat_active(player_id, active_slot, bench_index):
 		return false
 
@@ -235,7 +243,15 @@ func retreat_active_to_bench(player_id: int, active_slot: int, bench_index: int)
 	if balloon != null and balloon.data != null and balloon.data.card_id == "DR_82_balloon_berry":
 		active_card.attached_tools.erase(balloon)
 		board.move_card(balloon, "p%d_discard" % player_id)
+	elif not energy_to_discard.is_empty():
+		## Use player-chosen energy.
+		for energy in energy_to_discard:
+			if not active_card.attached_energy.has(energy):
+				continue
+			active_card.attached_energy.erase(energy)
+			board.move_card(energy, "p%d_discard" % player_id)
 	else:
+		## Fallback: discard the first N energy cards automatically.
 		var retreat_cost := active_card.get_effective_retreat_cost(self)
 		for i in range(retreat_cost):
 			if active_card.attached_energy.is_empty():
@@ -382,7 +398,9 @@ func apply_end_of_turn_conditions(player_id: int) -> void:
 
 			if pokemon.has_condition(CardInstance.SpecialCondition.BURNED):
 				## Coin flip: heads = remove burn, tails = 20 damage.
-				if randi() % 2 == 0:  # heads
+				var burn_name := pokemon.data.display_name if pokemon.data else "Pokemon"
+				var burn_flip := TurnControllerSingleton.flip_coins(1, "Burn check for " + burn_name)
+				if burn_flip[0]:  # heads — remove burn
 					pokemon.remove_condition(CardInstance.SpecialCondition.BURNED)
 				else:
 					pokemon.apply_damage(20)
@@ -393,7 +411,9 @@ func apply_end_of_turn_conditions(player_id: int) -> void:
 
 			## Coin flip to wake up from Sleep.
 			if pokemon.has_condition(CardInstance.SpecialCondition.ASLEEP):
-				if randi() % 2 == 1:  # heads
+				var sleep_name := pokemon.data.display_name if pokemon.data else "Pokemon"
+				var sleep_flip := TurnControllerSingleton.flip_coins(1, "Sleep check for " + sleep_name)
+				if sleep_flip[0]:  # heads — wake up
 					pokemon.remove_condition(CardInstance.SpecialCondition.ASLEEP)
 
 			## --- Tool between-turns triggers --------------------------------

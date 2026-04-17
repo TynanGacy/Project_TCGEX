@@ -235,19 +235,30 @@ static func _auto_register(card_id: String, atk_idx: int, attack: AttackData) ->
 		var per_head: int = flip_info[1]
 		var flips:    int = flip_info[2]
 		if flips == -1:
-			# flip-until-tails variant
+			# flip-until-tails variant — accumulate results then record as one batch.
 			var fn := func(ctx: CardEffectContext) -> void:
 				var heads := 0
-				while randi() % 2 == 1:
-					heads += 1
+				var all_results: Array[bool] = []
+				while true:
+					var r: bool = randi() % 2 == 1
+					all_results.append(r)
+					if r:
+						heads += 1
+					else:
+						break
+				var aname := ctx.attacker.data.display_name \
+					if ctx.attacker and ctx.attacker.data else "?"
+				TurnControllerSingleton.record_flip_results(all_results,
+					"Flip until tails — " + aname)
 				ctx.damage_override = per_head * heads
 			CardEffectRegistry.register_attack_pre(card_id, atk_idx, fn)
 		else:
+			var flips_cap := flips
 			var fn := func(ctx: CardEffectContext) -> void:
-				var heads := 0
-				for _i in flips:
-					if randi() % 2 == 1:
-						heads += 1
+				var aname := ctx.attacker.data.display_name \
+					if ctx.attacker and ctx.attacker.data else "?"
+				var results := TurnControllerSingleton.flip_coins(flips_cap, aname + " — attack flip")
+				var heads := results.count(true)
 				if base >= 0:
 					ctx.damage_override = per_head * heads
 				else:
@@ -265,7 +276,11 @@ static func _auto_register(card_id: String, atk_idx: int, attack: AttackData) ->
 		if cond != CardInstance.SpecialCondition.NONE:
 			if has_coin:
 				var fn := func(ctx: CardEffectContext) -> void:
-					if randi() % 2 == 1 and ctx.defender != null:
+					var aname := ctx.attacker.data.display_name \
+						if ctx.attacker and ctx.attacker.data else "?"
+					var results := TurnControllerSingleton.flip_coins(1,
+						aname + " — condition flip")
+					if results[0] and ctx.defender != null:
 						ctx.defender.add_condition(cond)
 				CardEffectRegistry.register_attack_post(card_id, atk_idx, fn)
 			else:
@@ -324,7 +339,10 @@ static func _auto_register(card_id: String, atk_idx: int, attack: AttackData) ->
 	# --- Coin-flip: discard 1 energy from defender -------------------------
 	if "flip a coin. if heads, discard 1 energy card attached to the defending" in tl:
 		var fn := func(ctx: CardEffectContext) -> void:
-			if randi() % 2 == 0:
+			var aname := ctx.attacker.data.display_name \
+				if ctx.attacker and ctx.attacker.data else "?"
+			var results := TurnControllerSingleton.flip_coins(1, aname + " — discard Energy")
+			if not results[0]:
 				return
 			if ctx.defender == null or ctx.defender.attached_energy.is_empty():
 				return
@@ -413,7 +431,8 @@ static func _absol_prize_count_pre(ctx: CardEffectContext) -> void:
 # -- DR_100 Charizard: Collect Fire (atk 0) --------------------------------
 # "Flip a coin. If heads, attach 2 Fire Energy from discard to Charizard."
 static func _charizard_collect_fire(ctx: CardEffectContext) -> void:
-	if randi() % 2 == 0:  # tails
+	var results := TurnControllerSingleton.flip_coins(1, "Charizard — Collect Fire")
+	if not results[0]:  # tails
 		return
 	_attach_energy_from_discard(ctx.state, ctx.actor_id, ctx.attacker, 2,
 		PokemonCardData.EnergyType.FIRE)
@@ -471,7 +490,8 @@ static func _flaaffy_energy_recall(ctx: CardEffectContext) -> void:
 # -- DR_15 Flygon: Air Slash (atk 0) ---------------------------------------
 # "Flip a coin. If tails, discard 1 Energy from Flygon."
 static func _flygon_air_slash(ctx: CardEffectContext) -> void:
-	if randi() % 2 == 1:  # heads — keep energy
+	var results := TurnControllerSingleton.flip_coins(1, "Flygon — Air Slash")
+	if results[0]:  # heads — keep energy
 		return
 	if ctx.attacker.attached_energy.is_empty():
 		return
@@ -484,10 +504,8 @@ static func _flygon_air_slash(ctx: CardEffectContext) -> void:
 # "Flip a coin for each of your Pokemon in play. 20 damage * heads."
 static func _sneasel_beat_up_pre(ctx: CardEffectContext) -> void:
 	var all_mine := ctx.state.get_all_in_play(ctx.actor_id)
-	var heads := 0
-	for _p in all_mine:
-		if randi() % 2 == 1:
-			heads += 1
+	var results := TurnControllerSingleton.flip_coins(all_mine.size(), "Sneasel ex — Beat Up")
+	var heads := results.count(true)
 	ctx.damage_override = 20 * heads
 
 
