@@ -27,9 +27,11 @@ const DRAG_LIFT := 0.3
 const TWEEN_SPEED := 0.15
 const DRAW_SPEED := 0.5
 
-## Hand card hover: scale up and slide toward board to reveal the full face.
-const HAND_HOVER_SCALE   := 1.30
-const HAND_HOVER_Z_DELTA := -0.45  ## negative = toward board (lower Z)
+## Hand cards sit at 1.5× size; hover grows a further 30% (1.5 × 1.3 = 1.95)
+## and slides toward the board so the full face slides into view.
+const HAND_BASE_SCALE    := 1.50
+const HAND_HOVER_SCALE   := 1.95
+const HAND_HOVER_Z_DELTA := -0.75  ## negative = toward board (lower Z)
 
 ## Colour shown on the face mesh when the card is face-down (back design).
 const BACK_COLOR := Color(0.08, 0.12, 0.40)
@@ -463,8 +465,9 @@ func return_to_home() -> void:
 	var tween := _new_tween()
 	tween.tween_property(self, "position", home_position, TWEEN_SPEED)
 	tween.tween_property(self, "rotation", home_rotation, TWEEN_SPEED)
-	if scale != Vector3.ONE:
-		tween.tween_property(self, "scale", Vector3.ONE, TWEEN_SPEED)
+	var target_scale := Vector3.ONE * HAND_BASE_SCALE if _is_in_hand else Vector3.ONE
+	if scale != target_scale:
+		tween.tween_property(self, "scale", target_scale, TWEEN_SPEED)
 
 
 func animate_draw() -> void:
@@ -481,7 +484,7 @@ func snap_to_home() -> void:
 	_tween = null
 	position = home_position
 	rotation = home_rotation
-	scale = Vector3.ONE
+	scale = Vector3.ONE * HAND_BASE_SCALE if _is_in_hand else Vector3.ONE
 
 
 func set_home(pos: Vector3, rot: Vector3, index: int) -> void:

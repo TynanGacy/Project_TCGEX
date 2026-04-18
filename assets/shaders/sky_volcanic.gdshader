@@ -54,5 +54,5 @@ void sky() {
 	float vol = exp(-abs(h + 0.04) * 9.0) * exp(-d.x * d.x * 1.5);
 	col += vec3(1.0, 0.32, 0.00) * vol * 0.55;
 
-	COLOR = vec4(col, 1.0);
+	COLOR = col;
 }

@@ -45,5 +45,5 @@ void sky() {
 	col += vec3(1.00, 0.96, 0.72) * pow(max(s, 0.0), 80.0) * 1.4;
 	col += vec3(1.00, 0.88, 0.60) * pow(max(s, 0.0), 10.0) * 0.14;
 
-	COLOR = vec4(col, 1.0);
+	COLOR = col;
 }

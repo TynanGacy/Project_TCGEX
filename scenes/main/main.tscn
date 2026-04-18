@@ -32,7 +32,7 @@ light_energy = 0.3
 [node name="PlayerHand" parent="Board" unique_id=138625151 instance=ExtResource("3_hand")]
 
 [node name="OppHand" parent="Board" unique_id=672689239 instance=ExtResource("3_hand")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0.05, -3.0)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0.05, -3.5)
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=887922774]
 
