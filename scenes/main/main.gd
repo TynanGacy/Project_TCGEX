@@ -61,6 +61,13 @@ var _advance_after_promotion: bool = false
 ## ── Game-over flag ───────────────────────────────────────────────────────────
 var _game_over: bool = false
 
+## ── Card search popup ────────────────────────────────────────────────────────
+var _card_search_overlay: CanvasLayer = null
+var _see_board_btn: Button = null
+
+## ── Energy discard picker ────────────────────────────────────────────────────
+var _energy_discard_picker: Control = null
+
 ## CardInstance → Card node cache.  Populated when cards are spawned and
 ## cleaned up when they are freed, making _find_card_node() O(1).
 var _card_node_cache: Dictionary = {}
@@ -294,6 +301,9 @@ func _start_game() -> void:
 	turn_controller.active_slot_emptied.connect(_on_active_slot_emptied)
 	turn_controller.game_over.connect(_on_game_over)
 	turn_controller.effect_choice_required.connect(_on_effect_choice_required)
+	turn_controller.coin_flip_batch_ready.connect(_on_coin_flip_batch_ready)
+	turn_controller.card_search_requested.connect(_on_card_search_requested)
+	turn_controller.energy_discard_choice_requested.connect(_on_energy_discard_choice_requested)
 	game_state.board.card_moved.connect(_on_board_card_moved)
 
 	player_hand.card_played.connect(_on_card_played)
@@ -1379,16 +1389,47 @@ func _on_retreat_button_pressed(slot_idx: int) -> void:
 	var bench := game_state.board.get_bench_cards(pid)
 	if bench.is_empty():
 		return
+	var active := game_state.board.get_active_card(pid, slot_idx)
+	if active == null:
+		return
+	var retreat_cost := active.get_effective_retreat_cost(game_state)
+
+	## Inner helper: after the bench target is chosen, ask for energy if needed.
+	var _do_retreat := func(bench_index: int) -> void:
+		## Balloon Berry handles its own discard; no energy picker needed.
+		var balloon := active.get_tool()
+		var uses_balloon := balloon != null and balloon.data != null \
+			and balloon.data.card_id == "DR_82_balloon_berry"
+
+		if uses_balloon or retreat_cost == 0 \
+				or active.attached_energy.size() <= retreat_cost:
+			## No choice required — fire immediately.
+			turn_controller.request_action(ActionRetreat.new(pid, slot_idx, bench_index))
+			_refresh_attack_panel()
+		else:
+			## Player must choose which energy to discard.
+			var energies: Array = active.attached_energy.duplicate()
+			var pname := active.data.display_name if active.data else "Pokemon"
+			_show_energy_discard_picker(
+				energies,
+				retreat_cost,
+				pname,
+				func(chosen_energy: Array) -> void:
+					var action := ActionRetreat.new(pid, slot_idx, bench_index)
+					for e in chosen_energy:
+						action.energy_to_discard.append(e as CardInstance)
+					turn_controller.request_action(action)
+					_refresh_attack_panel()
+			)
+
 	if bench.size() == 1:
-		turn_controller.request_action(ActionRetreat.new(pid, slot_idx, 0))
+		_do_retreat.call(0)
 	else:
 		_show_bench_picker_for_choice(
 			"Choose a Pokemon to switch in for retreat:",
 			bench,
-			func(chosen_index: int) -> void:
-				turn_controller.request_action(ActionRetreat.new(pid, slot_idx, chosen_index))
+			_do_retreat
 		)
-	_refresh_attack_panel()
 
 
 # ===========================================================================
@@ -2443,3 +2484,546 @@ func _update_status_label() -> void:
 func _log_line(text: String) -> void:
 	if game_log:
 		game_log.append_text(text + "\n")
+
+
+# ===========================================================================
+# COIN FLIP OVERLAY — game effects
+# Uses the same animated coin visual as the "who goes first" flip.
+# ===========================================================================
+
+func _on_coin_flip_batch_ready(batch: Array) -> void:
+	for entry in batch:
+		await _show_coin_flip_visual(entry["results"] as Array, entry["reason"] as String)
+
+
+## Animated coin-flip result overlay used for all in-game coin-flip effects.
+## [results] — Array[bool], true = heads.  Shows one coin per result, sequentially.
+func _show_coin_flip_visual(results: Array, subtitle: String, btn_text: String = "OK") -> void:
+	const FLIP_SPEED_SINGLE := 0.10
+	const FLIP_SPEED_MULTI  := 0.05
+	const MIN_FLIPS_SINGLE  := 6
+	const MIN_FLIPS_MULTI   := 4
+	const HEADS_COLOR := Color(1.0, 0.82, 0.10)
+	const TAILS_COLOR := Color(0.62, 0.44, 0.05)
+
+	var flip_speed  := FLIP_SPEED_SINGLE if results.size() == 1 else FLIP_SPEED_MULTI
+	var min_flips   := MIN_FLIPS_SINGLE  if results.size() == 1 else MIN_FLIPS_MULTI
+
+	var overlay := CanvasLayer.new()
+	overlay.layer = 15
+	add_child(overlay)
+
+	## Full-rect input blocker.
+	var blocker := ColorRect.new()
+	blocker.color = Color(0.0, 0.0, 0.0, 0.78)
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(blocker)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(320, 0)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color               = Color(0.10, 0.12, 0.20, 0.97)
+	panel_style.corner_radius_top_left    = 10
+	panel_style.corner_radius_top_right   = 10
+	panel_style.corner_radius_bottom_left = 10
+	panel_style.corner_radius_bottom_right = 10
+	panel.add_theme_stylebox_override("panel", panel_style)
+	overlay.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+
+	var title_lbl := Label.new()
+	title_lbl.text               = "COIN FLIP"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_size_override("font_size", 26)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))
+	vbox.add_child(title_lbl)
+
+	var sub_lbl := Label.new()
+	sub_lbl.text               = subtitle
+	sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sub_lbl.add_theme_color_override("font_color", Color(0.75, 0.75, 0.85))
+	vbox.add_child(sub_lbl)
+
+	## Counter label (hidden for single flips).
+	var count_lbl := Label.new()
+	count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	count_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7))
+	count_lbl.visible = results.size() > 1
+	vbox.add_child(count_lbl)
+
+	var coin_center := CenterContainer.new()
+	coin_center.custom_minimum_size = Vector2(0, 150)
+	vbox.add_child(coin_center)
+
+	var coin := PanelContainer.new()
+	coin.custom_minimum_size = Vector2(120, 120)
+	coin.pivot_offset = Vector2(60, 60)
+	var coin_style := StyleBoxFlat.new()
+	coin_style.bg_color                   = HEADS_COLOR
+	coin_style.corner_radius_top_left     = 60
+	coin_style.corner_radius_top_right    = 60
+	coin_style.corner_radius_bottom_left  = 60
+	coin_style.corner_radius_bottom_right = 60
+	coin.add_theme_stylebox_override("panel", coin_style)
+	coin_center.add_child(coin)
+
+	var coin_lbl := Label.new()
+	coin_lbl.text               = "H"
+	coin_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	coin_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	coin_lbl.add_theme_font_size_override("font_size", 52)
+	coin_lbl.add_theme_color_override("font_color", Color(0.55, 0.38, 0.0))
+	coin_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	coin.add_child(coin_lbl)
+
+	var result_lbl := Label.new()
+	result_lbl.text               = ""
+	result_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_lbl.add_theme_font_size_override("font_size", 18)
+	result_lbl.add_theme_color_override("font_color", Color(0.95, 0.90, 0.40))
+	result_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(result_lbl)
+
+	var ok_btn := Button.new()
+	ok_btn.text    = btn_text
+	ok_btn.visible = false
+	vbox.add_child(ok_btn)
+
+	await get_tree().process_frame
+
+	for i in range(results.size()):
+		var is_heads: bool = results[i]
+
+		## Reset coin state for each flip.
+		coin.scale      = Vector2(1, 1)
+		coin_lbl.text   = "H"
+		coin_style.bg_color = HEADS_COLOR
+		result_lbl.text = ""
+		ok_btn.visible  = false
+		if results.size() > 1:
+			count_lbl.text = "Flip %d / %d" % [i + 1, results.size()]
+
+		## Compute flip count so the coin ends on the correct side.
+		## Starting at "H" (showing_heads = true after 0 flips).
+		## After N flips: heads if N even, tails if N odd.
+		var flip_count := min_flips + (randi() % 4) * 2
+		if is_heads:
+			if flip_count % 2 != 0:
+				flip_count += 1
+		else:
+			if flip_count % 2 != 1:
+				flip_count += 1
+
+		var showing_heads := true
+		for _f in range(flip_count):
+			var t1 := create_tween()
+			t1.tween_property(coin, "scale", Vector2(0.06, 1.0), flip_speed)
+			await t1.finished
+			showing_heads = not showing_heads
+			coin_style.bg_color = HEADS_COLOR if showing_heads else TAILS_COLOR
+			coin_lbl.text       = "H" if showing_heads else "T"
+			var t2 := create_tween()
+			t2.tween_property(coin, "scale", Vector2(1.0, 1.0), flip_speed)
+			await t2.finished
+
+		result_lbl.text = "HEADS" if is_heads else "TAILS"
+
+		if i < results.size() - 1:
+			## Brief pause before the next coin.
+			await get_tree().create_timer(0.35).timeout
+		else:
+			ok_btn.visible = true
+			await ok_btn.pressed
+
+	overlay.queue_free()
+
+
+# ===========================================================================
+# CARD SEARCH POPUP
+# Full-screen overlay for choosing cards from deck or discard pile.
+# ===========================================================================
+
+func _on_card_search_requested(
+		pile: Array,
+		max_count: int,
+		reason: String,
+		preceding_flips: Array,
+		actor_id: int
+) -> void:
+	## CPU: auto-select up to max_count cards, no UI shown.
+	if not is_developer_mode and controlling_player != actor_id:
+		var auto_chosen: Array = []
+		for card in pile:
+			if auto_chosen.size() >= max_count:
+				break
+			auto_chosen.append(card)
+		turn_controller.resolve_card_search(auto_chosen)
+		return
+
+	## Show preceding coin flip results first (e.g. Poké Ball heads before search).
+	for entry in preceding_flips:
+		await _show_coin_flip_visual(entry["results"] as Array, entry["reason"] as String)
+
+	## Then show the search popup.
+	await _show_card_search_popup(pile, max_count, reason)
+
+
+## Full-screen card-search popup.  Resolves via turn_controller.resolve_card_search().
+func _show_card_search_popup(pile: Array, max_count: int, reason: String) -> void:
+	const CARD_W := 120
+	const CARD_H := 168  ## same aspect ratio as the inspect popup art
+	const CARD_GAP := 8
+
+	## Close any existing popup.
+	if _card_search_overlay != null and is_instance_valid(_card_search_overlay):
+		_card_search_overlay.queue_free()
+
+	_card_search_overlay = CanvasLayer.new()
+	_card_search_overlay.layer = 12
+	add_child(_card_search_overlay)
+
+	## Input-blocking background.
+	var bg := ColorRect.new()
+	bg.color = Color(0.0, 0.0, 0.0, 0.86)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	_card_search_overlay.add_child(bg)
+
+	## Root container (fills screen, leaving margins).
+	var root := MarginContainer.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_theme_constant_override("margin_left",   24)
+	root.add_theme_constant_override("margin_right",  24)
+	root.add_theme_constant_override("margin_top",    20)
+	root.add_theme_constant_override("margin_bottom", 20)
+	_card_search_overlay.add_child(root)
+
+	var outer_vbox := VBoxContainer.new()
+	outer_vbox.add_theme_constant_override("separation", 10)
+	root.add_child(outer_vbox)
+
+	## ── Top bar ──────────────────────────────────────────────────────────
+	var top_bar := HBoxContainer.new()
+	outer_vbox.add_child(top_bar)
+
+	var title_lbl := Label.new()
+	title_lbl.text = reason
+	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title_lbl.add_theme_font_size_override("font_size", 16)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_bar.add_child(title_lbl)
+
+	var see_board_btn := Button.new()
+	see_board_btn.text = "See Board"
+	top_bar.add_child(see_board_btn)
+
+	## ── Instruction label ────────────────────────────────────────────────
+	var instr_lbl := Label.new()
+	instr_lbl.text = "Select up to %d card%s  (right-click to inspect)" % \
+		[max_count, "s" if max_count != 1 else ""]
+	instr_lbl.add_theme_color_override("font_color", Color(0.75, 0.75, 0.85))
+	outer_vbox.add_child(instr_lbl)
+
+	## ── Scrollable card grid ─────────────────────────────────────────────
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	outer_vbox.add_child(scroll)
+
+	var grid := HFlowContainer.new()
+	grid.add_theme_constant_override("h_separation", CARD_GAP)
+	grid.add_theme_constant_override("v_separation", CARD_GAP)
+	scroll.add_child(grid)
+
+	## ── Bottom bar ───────────────────────────────────────────────────────
+	var bottom_bar := HBoxContainer.new()
+	bottom_bar.add_theme_constant_override("separation", 12)
+	outer_vbox.add_child(bottom_bar)
+
+	var sel_lbl := Label.new()
+	sel_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sel_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.95))
+	sel_lbl.text = "No card selected."
+	bottom_bar.add_child(sel_lbl)
+
+	var confirm_btn := Button.new()
+	confirm_btn.text     = "Confirm Selection"
+	confirm_btn.disabled = true
+	bottom_bar.add_child(confirm_btn)
+
+	## ── Build card tiles ─────────────────────────────────────────────────
+	var selected: Array[CardInstance] = []
+
+	## Selected-border style (gold highlight).
+	var sel_style := StyleBoxFlat.new()
+	sel_style.bg_color                   = Color(0.10, 0.12, 0.18, 0.95)
+	sel_style.border_color               = Color(1.0, 0.82, 0.10)
+	sel_style.border_width_left   = 3
+	sel_style.border_width_right  = 3
+	sel_style.border_width_top    = 3
+	sel_style.border_width_bottom = 3
+	sel_style.corner_radius_top_left    = 4
+	sel_style.corner_radius_top_right   = 4
+	sel_style.corner_radius_bottom_left = 4
+	sel_style.corner_radius_bottom_right = 4
+
+	var unsel_style := StyleBoxFlat.new()
+	unsel_style.bg_color                   = Color(0.10, 0.12, 0.18, 0.95)
+	unsel_style.border_color               = Color(0.3, 0.3, 0.4)
+	unsel_style.border_width_left   = 2
+	unsel_style.border_width_right  = 2
+	unsel_style.border_width_top    = 2
+	unsel_style.border_width_bottom = 2
+	unsel_style.corner_radius_top_left    = 4
+	unsel_style.corner_radius_top_right   = 4
+	unsel_style.corner_radius_bottom_left = 4
+	unsel_style.corner_radius_bottom_right = 4
+
+	## Refresh confirm button and selection label.
+	var update_ui := func() -> void:
+		var names := []
+		for inst in selected:
+			names.append(inst.data.display_name if inst.data else "?")
+		if names.is_empty():
+			sel_lbl.text = "No card selected."
+		else:
+			sel_lbl.text = "Selected: " + ", ".join(names)
+		confirm_btn.disabled = selected.is_empty()
+
+	for raw in pile:
+		var inst := raw as CardInstance
+		if inst == null or inst.data == null:
+			continue
+
+		var tile := PanelContainer.new()
+		tile.custom_minimum_size = Vector2(CARD_W, CARD_H + 24)
+		tile.add_theme_stylebox_override("panel", unsel_style.duplicate())
+		tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		grid.add_child(tile)
+
+		var tile_vbox := VBoxContainer.new()
+		tile_vbox.add_theme_constant_override("separation", 2)
+		tile.add_child(tile_vbox)
+
+		var art := TextureRect.new()
+		art.texture        = inst.data.art
+		art.custom_minimum_size = Vector2(CARD_W, CARD_H)
+		art.expand_mode    = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode   = TextureRect.STRETCH_SCALE
+		art.mouse_filter   = Control.MOUSE_FILTER_PASS
+		tile_vbox.add_child(art)
+
+		var name_lbl := Label.new()
+		name_lbl.text = inst.data.display_name
+		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_lbl.add_theme_font_size_override("font_size", 11)
+		name_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.95))
+		name_lbl.clip_text = true
+		tile_vbox.add_child(name_lbl)
+
+		var captured_inst := inst
+		var captured_tile := tile
+
+		tile.gui_input.connect(func(event: InputEvent) -> void:
+			if not (event is InputEventMouseButton):
+				return
+			var mb := event as InputEventMouseButton
+			if not mb.pressed:
+				return
+			if mb.button_index == MOUSE_BUTTON_RIGHT:
+				## Open inspect popup.
+				_populate_card_popup(captured_inst)
+				_card_popup.visible = true
+				get_viewport().set_input_as_handled()
+			elif mb.button_index == MOUSE_BUTTON_LEFT:
+				## Toggle selection.
+				if selected.has(captured_inst):
+					selected.erase(captured_inst)
+					captured_tile.add_theme_stylebox_override(
+						"panel", unsel_style.duplicate())
+				else:
+					if selected.size() < max_count:
+						selected.append(captured_inst)
+						captured_tile.add_theme_stylebox_override(
+							"panel", sel_style.duplicate())
+				update_ui.call()
+				get_viewport().set_input_as_handled()
+		)
+
+	## ── See Board / See Selection toggle ─────────────────────────────────
+	see_board_btn.pressed.connect(func() -> void:
+		_card_search_overlay.visible = false
+		## Floating "See Selection" button added to HUD.
+		if _see_board_btn != null and is_instance_valid(_see_board_btn):
+			_see_board_btn.queue_free()
+		_see_board_btn = Button.new()
+		_see_board_btn.text = "See Selection"
+		_see_board_btn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		_see_board_btn.offset_left  = -180.0
+		_see_board_btn.offset_right =    0.0
+		_see_board_btn.offset_top   =   50.0
+		_see_board_btn.offset_bottom =  86.0
+		$HUD.add_child(_see_board_btn)
+		_see_board_btn.pressed.connect(func() -> void:
+			_card_search_overlay.visible = true
+			if _see_board_btn != null and is_instance_valid(_see_board_btn):
+				_see_board_btn.queue_free()
+			_see_board_btn = null
+		)
+	)
+
+	## ── Await confirmation ────────────────────────────────────────────────
+	await confirm_btn.pressed
+
+	## Clean up floating button if still visible.
+	if _see_board_btn != null and is_instance_valid(_see_board_btn):
+		_see_board_btn.queue_free()
+	_see_board_btn = null
+
+	_card_search_overlay.queue_free()
+	_card_search_overlay = null
+
+	turn_controller.resolve_card_search(selected)
+
+
+# ===========================================================================
+# ENERGY DISCARD PICKER
+# Small modal for choosing which attached energy to pay for retreat.
+# ===========================================================================
+
+func _on_energy_discard_choice_requested(
+		energies: Array,
+		count: int,
+		pokemon_name: String
+) -> void:
+	## This signal is only emitted by the UI layer itself (_on_retreat_button_pressed),
+	## so it always targets the controlling player.  No CPU check needed.
+	pass  ## Handled directly via _show_energy_discard_picker().
+
+
+## Shows a picker where the player selects [count] energy cards to discard.
+func _show_energy_discard_picker(
+		energies: Array,
+		count: int,
+		pokemon_name: String,
+		on_confirm: Callable
+) -> void:
+	if _energy_discard_picker != null and is_instance_valid(_energy_discard_picker):
+		_energy_discard_picker.queue_free()
+
+	_energy_discard_picker = PanelContainer.new()
+	_energy_discard_picker.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_energy_discard_picker.custom_minimum_size = Vector2(360, 0)
+
+	var pick_style := StyleBoxFlat.new()
+	pick_style.bg_color = Color(0.08, 0.10, 0.16, 0.97)
+	pick_style.corner_radius_top_left    = 8
+	pick_style.corner_radius_top_right   = 8
+	pick_style.corner_radius_bottom_left = 8
+	pick_style.corner_radius_bottom_right = 8
+	_energy_discard_picker.add_theme_stylebox_override("panel", pick_style)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	_energy_discard_picker.add_child(vbox)
+
+	var title_lbl := Label.new()
+	title_lbl.text = "Choose %d Energy to discard (%s)" % [count, pokemon_name]
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title_lbl.add_theme_font_size_override("font_size", 15)
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))
+	vbox.add_child(title_lbl)
+
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 8)
+	flow.add_theme_constant_override("v_separation", 8)
+	vbox.add_child(flow)
+
+	var sel_lbl := Label.new()
+	sel_lbl.text = "Selected: 0 / %d" % count
+	sel_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sel_lbl.add_theme_color_override("font_color", Color(0.75, 0.75, 0.85))
+	vbox.add_child(sel_lbl)
+
+	var confirm_btn := Button.new()
+	confirm_btn.text     = "Confirm"
+	confirm_btn.disabled = true
+	vbox.add_child(confirm_btn)
+
+	var selected_energy: Array[CardInstance] = []
+
+	for raw in energies:
+		var inst := raw as CardInstance
+		if inst == null or inst.data == null:
+			continue
+
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(64, 64)
+		btn.focus_mode = Control.FOCUS_NONE
+
+		var etype: PokemonCardData.EnergyType = PokemonCardData.EnergyType.NONE
+		if inst.data is EnergyCardData:
+			etype = (inst.data as EnergyCardData).energy_type
+		var btn_color := AttachmentDisplay.energy_color(inst)
+
+		var normal_style := StyleBoxFlat.new()
+		normal_style.bg_color = btn_color
+		normal_style.corner_radius_top_left    = 32
+		normal_style.corner_radius_top_right   = 32
+		normal_style.corner_radius_bottom_left = 32
+		normal_style.corner_radius_bottom_right = 32
+		var sel_energy_style := normal_style.duplicate() as StyleBoxFlat
+		sel_energy_style.border_color = Color.WHITE
+		sel_energy_style.border_width_left   = 3
+		sel_energy_style.border_width_right  = 3
+		sel_energy_style.border_width_top    = 3
+		sel_energy_style.border_width_bottom = 3
+		btn.add_theme_stylebox_override("normal",  normal_style)
+		btn.add_theme_stylebox_override("hover",   normal_style)
+		btn.add_theme_stylebox_override("pressed", sel_energy_style)
+
+		var lbl := Label.new()
+		lbl.text = AttachmentDisplay.energy_label(inst)
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 16)
+		lbl.add_theme_color_override("font_color", Color.WHITE)
+		lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		btn.add_child(lbl)
+
+		if inst.data != null:
+			btn.tooltip_text = inst.data.display_name
+
+		flow.add_child(btn)
+
+		var captured_inst := inst
+		var captured_btn  := btn
+		btn.pressed.connect(func() -> void:
+			if selected_energy.has(captured_inst):
+				selected_energy.erase(captured_inst)
+				captured_btn.add_theme_stylebox_override("normal", normal_style)
+				captured_btn.add_theme_stylebox_override("hover",  normal_style)
+			else:
+				if selected_energy.size() < count:
+					selected_energy.append(captured_inst)
+					captured_btn.add_theme_stylebox_override("normal", sel_energy_style)
+					captured_btn.add_theme_stylebox_override("hover",  sel_energy_style)
+			sel_lbl.text = "Selected: %d / %d" % [selected_energy.size(), count]
+			confirm_btn.disabled = selected_energy.size() != count
+		)
+
+	$HUD.add_child(_energy_discard_picker)
+
+	await confirm_btn.pressed
+
+	_energy_discard_picker.queue_free()
+	_energy_discard_picker = null
+	on_confirm.call(selected_energy)

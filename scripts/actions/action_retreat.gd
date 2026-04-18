@@ -5,6 +5,8 @@ extends GameAction
 
 var active_slot: int = 0
 var bench_index: int = -1
+## Specific energy cards the player chose to discard.  Empty = auto-discard first N.
+var energy_to_discard: Array[CardInstance] = []
 
 
 func _init(pid: int, slot: int = 0, bench_i: int = -1) -> void:
@@ -47,11 +49,11 @@ func apply(state: GameState) -> void:
 		return
 
 	if bench_index >= 0:
-		state.retreat_active_to_bench(actor_id, active_slot, bench_index)
+		state.retreat_active_to_bench(actor_id, active_slot, bench_index, energy_to_discard)
 		return
 
 	if bench.size() == 1:
-		state.retreat_active_to_bench(actor_id, active_slot, 0)
+		state.retreat_active_to_bench(actor_id, active_slot, 0, energy_to_discard)
 		return
 
 	var choices: Array = []
@@ -67,7 +69,7 @@ func apply(state: GameState) -> void:
 			var selected := chosen[0] as CardInstance
 			var idx := state.board.get_bench_cards(actor_id).find(selected)
 			if idx >= 0:
-				state.retreat_active_to_bench(actor_id, active_slot, idx)
+				state.retreat_active_to_bench(actor_id, active_slot, idx, energy_to_discard)
 	)
 
 

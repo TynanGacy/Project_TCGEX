@@ -79,7 +79,9 @@ func apply(state: GameState) -> void:
 	## Confusion self-hit: tails (50 % chance) deals 30 damage to the attacker
 	## instead of the normal attack.
 	if attacker.has_condition(CardInstance.SpecialCondition.CONFUSED):
-		if randi() % 2 == 0:  # tails
+		var conf_name := pdata.display_name if pdata else "Pokemon"
+		var conf_flip := TurnControllerSingleton.flip_coins(1, conf_name + " is Confused!")
+		if not conf_flip[0]:  # tails — hits itself
 			attacker.apply_damage(30)
 			state.has_attacked_this_turn = true
 			return

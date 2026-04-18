@@ -50,7 +50,8 @@ static func register_all() -> void:
 
 ## RS_80: Flip a coin. If heads, discard 1 Energy from an opponent's Pokémon.
 static func _energy_removal_2(ctx: CardEffectContext) -> void:
-	if randi() % 2 == 0:  # tails — no effect
+	var results := TurnControllerSingleton.flip_coins(1, "Energy Removal 2")
+	if not results[0]:  # tails — no effect
 		return
 	var opp_id := 1 - ctx.actor_id
 	# Auto-target: opponent's Active Pokémon first, then bench.
@@ -65,23 +66,32 @@ static func _energy_removal_2(ctx: CardEffectContext) -> void:
 
 ## RS_81: Flip 3 coins. For each heads, retrieve one Basic Energy from discard.
 static func _energy_restore(ctx: CardEffectContext) -> void:
-	var heads := 0
-	for _i in 3:
-		if randi() % 2 == 1:
-			heads += 1
+	var flip_results := TurnControllerSingleton.flip_coins(3, "Energy Restore")
+	var heads := flip_results.count(true)
 	if heads == 0:
 		return
 
-	var restored := 0
 	var discard := ctx.state.board.get_zone("p%d_discard" % ctx.actor_id).duplicate()
+	var basic_energy: Array = []
 	for card in discard:
-		if restored >= heads:
-			break
 		if card is CardInstance and (card as CardInstance).data is EnergyCardData:
 			var edata := (card as CardInstance).data as EnergyCardData
 			if _is_basic_energy(edata.energy_type):
-				ctx.state.board.move_card(card, "p%d_hand" % ctx.actor_id)
-				restored += 1
+				basic_energy.append(card)
+
+	if basic_energy.is_empty():
+		return
+
+	var actor_id := ctx.actor_id
+	var state := ctx.state
+	TurnControllerSingleton.request_card_search(
+		basic_energy,
+		heads,
+		"Energy Restore: Choose up to %d Basic Energy from your discard" % heads,
+		func(chosen: Array) -> void:
+			for card in chosen:
+				state.board.move_card(card, "p%d_hand" % actor_id)
+	)
 
 
 ## RS_82: Move one Basic Energy from one of your Pokémon to another.
@@ -102,16 +112,34 @@ static func _energy_switch(ctx: CardEffectContext) -> void:
 
 ## RS_86: Flip a coin. If heads, search deck for any Pokémon card.
 static func _poke_ball(ctx: CardEffectContext) -> void:
-	if randi() % 2 == 0:  # tails
+	var results := TurnControllerSingleton.flip_coins(1, "Poké Ball")
+	if not results[0]:  # tails
 		return
-	var filter := func(c: CardInstance) -> bool:
-		return c.data is PokemonCardData
-	CardEffects.search_deck(ctx.state, ctx.actor_id, 1, filter)
+	var deck := ctx.state.board.get_zone("p%d_deck" % ctx.actor_id).duplicate()
+	var pokemon_cards: Array = []
+	for card in deck:
+		if card is CardInstance and (card as CardInstance).data is PokemonCardData:
+			pokemon_cards.append(card)
+	if pokemon_cards.is_empty():
+		return
+	var actor_id := ctx.actor_id
+	var state := ctx.state
+	TurnControllerSingleton.request_card_search(
+		pokemon_cards,
+		1,
+		"Poké Ball: Search your deck for a Pokémon",
+		func(chosen: Array) -> void:
+			for card in chosen:
+				state.board.move_card(card, "p%d_hand" % actor_id)
+			var p := state.get_player(actor_id)
+			if p: p.shuffle_deck_zone(state.board)
+	)
 
 
 ## RS_87: Flip a coin. If heads, opponent switches their Active with a Bench Pokémon.
 static func _pokemon_reversal(ctx: CardEffectContext) -> void:
-	if randi() % 2 == 0:  # tails
+	var results := TurnControllerSingleton.flip_coins(1, "Pokémon Reversal")
+	if not results[0]:  # tails
 		return
 	var opp_id := 1 - ctx.actor_id
 	var bench := ctx.state.board.get_bench_cards(opp_id)
@@ -166,10 +194,26 @@ static func _pokenav(ctx: CardEffectContext) -> void:
 
 ## RS_90: Search deck for 1 Basic Energy card, put in hand.
 static func _energy_search(ctx: CardEffectContext) -> void:
-	var filter := func(c: CardInstance) -> bool:
-		return (c.data is EnergyCardData) \
-			and TrainerEffects._is_basic_energy((c.data as EnergyCardData).energy_type)
-	CardEffects.search_deck(ctx.state, ctx.actor_id, 1, filter)
+	var deck := ctx.state.board.get_zone("p%d_deck" % ctx.actor_id).duplicate()
+	var basic_energy: Array = []
+	for card in deck:
+		if card is CardInstance and (card as CardInstance).data is EnergyCardData:
+			if _is_basic_energy((card as CardInstance).data.energy_type):
+				basic_energy.append(card)
+	if basic_energy.is_empty():
+		return
+	var actor_id := ctx.actor_id
+	var state := ctx.state
+	TurnControllerSingleton.request_card_search(
+		basic_energy,
+		1,
+		"Energy Search: Choose a Basic Energy from your deck",
+		func(chosen: Array) -> void:
+			for card in chosen:
+				state.board.move_card(card, "p%d_hand" % actor_id)
+			var p := state.get_player(actor_id)
+			if p: p.shuffle_deck_zone(state.board)
+	)
 
 
 ## RS_91: Remove 2 damage counters (20 HP) from one of your Pokémon.
@@ -278,13 +322,11 @@ static func _play_as_fossil(ctx: CardEffectContext) -> void:
 
 ## RS_83: Search deck for up to 3 different types of Basic Energy; put in hand.
 static func _lady_outing(ctx: CardEffectContext) -> void:
-	var found_types: Array[int] = []
 	var deck := ctx.state.board.get_zone("p%d_deck" % ctx.actor_id).duplicate()
-	var to_take: Array[CardInstance] = []
-
+	## One representative card per energy type (unique types only).
+	var found_types: Array[int] = []
+	var eligible: Array = []
 	for card in deck:
-		if to_take.size() >= 3:
-			break
 		if not (card is CardInstance) or not (card as CardInstance).data is EnergyCardData:
 			continue
 		var edata := (card as CardInstance).data as EnergyCardData
@@ -293,13 +335,21 @@ static func _lady_outing(ctx: CardEffectContext) -> void:
 		if found_types.has(edata.energy_type):
 			continue
 		found_types.append(edata.energy_type)
-		to_take.append(card)
-
-	for card in to_take:
-		ctx.state.board.move_card(card, "p%d_hand" % ctx.actor_id)
-	var p := ctx.state.get_player(ctx.actor_id)
-	if p:
-		p.shuffle_deck_zone(ctx.state.board)
+		eligible.append(card)
+	if eligible.is_empty():
+		return
+	var actor_id := ctx.actor_id
+	var state := ctx.state
+	TurnControllerSingleton.request_card_search(
+		eligible,
+		3,
+		"Lady's Outing: Choose up to 3 different Basic Energy types",
+		func(chosen: Array) -> void:
+			for card in chosen:
+				state.board.move_card(card, "p%d_hand" % actor_id)
+			var p := state.get_player(actor_id)
+			if p: p.shuffle_deck_zone(state.board)
+	)
 
 
 ## RS_89: Draw cards until you have 6 in hand.
@@ -312,13 +362,11 @@ static func _professor_birch(ctx: CardEffectContext) -> void:
 
 ## SS_87: Search deck for up to 3 different types of Basic Pokémon; put in hand.
 static func _lanette_net_search(ctx: CardEffectContext) -> void:
-	var found_types: Array[int] = []
 	var deck := ctx.state.board.get_zone("p%d_deck" % ctx.actor_id).duplicate()
-	var to_take: Array[CardInstance] = []
-
+	## One representative per Pokémon type (unique types only).
+	var found_types: Array[int] = []
+	var eligible: Array = []
 	for card in deck:
-		if to_take.size() >= 3:
-			break
 		if not (card is CardInstance) or not (card as CardInstance).data is PokemonCardData:
 			continue
 		var pdata := (card as CardInstance).data as PokemonCardData
@@ -327,13 +375,21 @@ static func _lanette_net_search(ctx: CardEffectContext) -> void:
 		if found_types.has(pdata.pokemon_type):
 			continue
 		found_types.append(pdata.pokemon_type)
-		to_take.append(card)
-
-	for card in to_take:
-		ctx.state.board.move_card(card, "p%d_hand" % ctx.actor_id)
-	var p := ctx.state.get_player(ctx.actor_id)
-	if p:
-		p.shuffle_deck_zone(ctx.state.board)
+		eligible.append(card)
+	if eligible.is_empty():
+		return
+	var actor_id := ctx.actor_id
+	var state := ctx.state
+	TurnControllerSingleton.request_card_search(
+		eligible,
+		3,
+		"Lanette's Net Search: Choose up to 3 different Basic Pokémon types",
+		func(chosen: Array) -> void:
+			for card in chosen:
+				state.board.move_card(card, "p%d_hand" % actor_id)
+			var p := state.get_player(actor_id)
+			if p: p.shuffle_deck_zone(state.board)
+	)
 
 
 ## SS_89: Search deck for a Stage 1 that evolves from your Active; evolve it now.
@@ -346,28 +402,40 @@ static func _wally_training(ctx: CardEffectContext) -> void:
 	var active_slug := (active.data as PokemonCardData).name_slug
 	var deck := ctx.state.board.get_zone("p%d_deck" % actor_id).duplicate()
 
+	var eligible: Array = []
 	for card in deck:
 		if not (card is CardInstance) or not (card as CardInstance).data is PokemonCardData:
 			continue
 		var pdata := (card as CardInstance).data as PokemonCardData
 		if pdata.evolves_from != active_slug or pdata.stage != PokemonCardData.Stage.STAGE1:
 			continue
-		# Perform evolution (mirrors ActionEvolvePokemon.apply).
-		var evo_card := card as CardInstance
-		var target_zone := ctx.state.board.find_card_location(active)
-		evo_card.damage           = active.damage
-		evo_card.attached_energy  = active.attached_energy.duplicate()
-		evo_card.attached_tools   = active.attached_tools.duplicate()
-		active.attached_energy.clear()
-		active.attached_tools.clear()
-		evo_card.prior_stage      = active
-		evo_card.turn_entered_play = ctx.state.turn_number
-		ctx.state.board.remove_card(active)
-		ctx.state.board.move_card(evo_card, target_zone)
-		var p := ctx.state.get_player(actor_id)
-		if p:
-			p.shuffle_deck_zone(ctx.state.board)
+		eligible.append(card)
+	if eligible.is_empty():
 		return
+
+	var state := ctx.state
+	var active_ref := active
+	TurnControllerSingleton.request_card_search(
+		eligible,
+		1,
+		"Wally's Training: Choose a Stage 1 to evolve your Active",
+		func(chosen: Array) -> void:
+			if chosen.is_empty():
+				return
+			var evo_card := chosen[0] as CardInstance
+			var target_zone := state.board.find_card_location(active_ref)
+			evo_card.damage           = active_ref.damage
+			evo_card.attached_energy  = active_ref.attached_energy.duplicate()
+			evo_card.attached_tools   = active_ref.attached_tools.duplicate()
+			active_ref.attached_energy.clear()
+			active_ref.attached_tools.clear()
+			evo_card.prior_stage      = active_ref
+			evo_card.turn_entered_play = state.turn_number
+			state.board.remove_card(active_ref)
+			state.board.move_card(evo_card, target_zone)
+			var p := state.get_player(actor_id)
+			if p: p.shuffle_deck_zone(state.board)
+	)
 
 
 ## DR_88: Draw 3 cards, then discard 1 from hand.

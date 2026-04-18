@@ -40,11 +40,41 @@ signal effect_choice_required(reason: String, player_id: int, choices: Array)
 ## Emitted after resolve_effect_choice() completes.
 signal effect_choice_resolved(player_id: int, chosen: Array)
 
+## Emitted when one or more coin flips need to be shown (after action resolves).
+## batch: Array[Dictionary{results: Array[bool], reason: String}]
+signal coin_flip_batch_ready(batch: Array)
+
+## Emitted when a card search/retrieve effect needs player input.
+## pile:            Array[CardInstance] already filtered to valid choices.
+## max_count:       how many cards the player may select.
+## reason:          human-readable description.
+## preceding_flips: any pending coin-flip results to show first.
+## actor_id:        the player making the choice.
+signal card_search_requested(pile: Array, max_count: int, reason: String, preceding_flips: Array, actor_id: int)
+
+## Emitted when the player must choose which energy to pay for a retreat.
+## energies:     Array[CardInstance] currently attached to the retreating Pokemon.
+## count:        exact number to discard.
+## pokemon_name: for display.
+signal energy_discard_choice_requested(energies: Array, count: int, pokemon_name: String)
+
 var state: GameState
 
 ## Pending choice context set by an effect that needs player input.
 ## Cleared after resolve_effect_choice() is called.
 var _pending_choice: Dictionary = {}
+
+## Coin-flip results queued for display (flushed after the outermost
+## request_action() call completes so nested calls don't fire prematurely).
+var _pending_flip_display: Array[Dictionary] = []
+
+## Stored callbacks for card-search and energy-discard interactions.
+var _pending_search_callback: Callable
+var _pending_energy_discard_callback: Callable
+
+## Nesting depth of request_action() calls.  Coin-flip display is only
+## flushed when the depth returns to zero (outermost call).
+var _request_depth: int = 0
 
 
 func _ready() -> void:
@@ -73,6 +103,91 @@ func set_state_with_library(gs: GameState, library: CardLibrary) -> void:
 	# double-registration; reset the flag so AttackEffects.register_all() runs.
 	CardEffectRegistry._initialized = false
 	CardEffectRegistry.setup(library)
+
+
+## ============================================================
+## Coin-flip helpers
+## ============================================================
+
+## Rolls [count] coins, queues the results for display, and returns them.
+## true = heads, false = tails.  Call this instead of randi() % 2 so the
+## visual layer can show an animated coin-flip overlay.
+func flip_coins(count: int, reason: String) -> Array[bool]:
+	var results: Array[bool] = []
+	for _i in count:
+		results.append(randi() % 2 == 1)
+	_pending_flip_display.append({"results": results, "reason": reason})
+	return results
+
+
+## Records a pre-computed set of results (used by flip-until-tails patterns
+## where the caller accumulates individual randi() rolls).
+func record_flip_results(results: Array[bool], reason: String) -> void:
+	_pending_flip_display.append({"results": results, "reason": reason})
+
+
+## ============================================================
+## Card-search helpers
+## ============================================================
+
+## Requests a card-search interaction from the UI layer.
+## [pile] must already be filtered to eligible cards.
+## Any pending coin-flip results are forwarded so the UI can show them
+## before the search popup.
+func request_card_search(
+		pile: Array,
+		max_count: int,
+		reason: String,
+		callback: Callable
+) -> void:
+	_pending_search_callback = callback
+	var flips := _pending_flip_display.duplicate(true)
+	_pending_flip_display.clear()
+	var actor_id := state.current_player_id if state else 0
+	card_search_requested.emit(pile, max_count, reason, flips, actor_id)
+
+
+## Called by the UI layer when the player confirms their card selection.
+func resolve_card_search(chosen: Array) -> void:
+	var cb := _pending_search_callback
+	_pending_search_callback = Callable()
+	if cb.is_valid():
+		cb.call(chosen)
+
+
+## ============================================================
+## Energy-discard helpers
+## ============================================================
+
+## Requests a choice of which attached energy to pay for retreat.
+func request_energy_discard_choice(
+		energies: Array,
+		count: int,
+		pokemon_name: String,
+		callback: Callable
+) -> void:
+	_pending_energy_discard_callback = callback
+	energy_discard_choice_requested.emit(energies, count, pokemon_name)
+
+
+## Called by the UI layer when the player confirms their energy selection.
+func resolve_energy_discard_choice(chosen: Array) -> void:
+	var cb := _pending_energy_discard_callback
+	_pending_energy_discard_callback = Callable()
+	if cb.is_valid():
+		cb.call(chosen)
+
+
+## ============================================================
+## Internal flush
+## ============================================================
+
+func _flush_pending_flips() -> void:
+	if _pending_flip_display.is_empty():
+		return
+	var batch := _pending_flip_display.duplicate(true)
+	_pending_flip_display.clear()
+	coin_flip_batch_ready.emit(batch)
 
 
 ## Called by the UI layer in response to effect_choice_required.
@@ -105,8 +220,11 @@ func request_effect_choice(
 ## ============================================================
 
 func request_action(action: GameAction) -> void:
+	_request_depth += 1
+
 	if state == null:
 		_emit_reject(action, "No GameState assigned.")
+		_request_depth -= 1
 		return
 
 	## Forced promotions bypass the turn-ownership gate so the opponent's board
@@ -121,11 +239,13 @@ func request_action(action: GameAction) -> void:
 		var gate := _gate_action(action)
 		if not gate.ok:
 			_emit_reject(action, gate.reason)
+			_request_depth -= 1
 			return
 
 	var res := action.validate(state)
 	if not res.ok:
 		_emit_reject(action, res.reason)
+		_request_depth -= 1
 		return
 
 	action.apply(state)
@@ -150,6 +270,10 @@ func request_action(action: GameAction) -> void:
 		TurnPhase.phase_to_string(state.phase),
 		action.description()
 	])
+
+	_request_depth -= 1
+	if _request_depth == 0:
+		_flush_pending_flips()
 
 
 func next_phase(actor_id: int) -> void:
