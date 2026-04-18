@@ -68,6 +68,12 @@ var _see_board_btn: Button = null
 ## ── Energy discard picker ────────────────────────────────────────────────────
 var _energy_discard_picker: Control = null
 
+## ── Prize picker ──────────────────────────────────────────────────────────────
+## Set when the human must interactively choose prize card(s) to take.
+var _prize_picker_player:    int     = -1
+var _prize_picker_remaining: int     = 0
+var _prize_picker_panel:     Control = null
+
 ## CardInstance → Card node cache.  Populated when cards are spawned and
 ## cleaned up when they are freed, making _find_card_node() O(1).
 var _card_node_cache: Dictionary = {}
@@ -304,6 +310,7 @@ func _start_game() -> void:
 	turn_controller.coin_flip_batch_ready.connect(_on_coin_flip_batch_ready)
 	turn_controller.card_search_requested.connect(_on_card_search_requested)
 	turn_controller.energy_discard_choice_requested.connect(_on_energy_discard_choice_requested)
+	turn_controller.prizes_needed.connect(_on_prizes_needed)
 	game_state.board.card_moved.connect(_on_board_card_moved)
 
 	player_hand.card_played.connect(_on_card_played)
@@ -468,16 +475,27 @@ func _spawn_hidden_startup_visuals() -> void:
 				await get_tree().process_frame
 
 
-## Removes the visual card node from the lowest-numbered occupied prize zone
-## for [pid] (Prize 1 first = top of stack) and returns its world position.
-func _pop_prize_visual(pid: int) -> Vector3:
+## Removes the visual card node for [target_card] from its prize zone for [pid]
+## and returns its world position.  When [target_card] is null, falls back to
+## removing the first card from the lowest-numbered occupied zone (auto-take path).
+func _pop_prize_visual(pid: int, target_card: CardInstance = null) -> Vector3:
 	var prefix := "Prize " if pid == 0 else "Opp Prize "
 	for i in range(1, 7):
 		var prize_zone := board.get_zone_by_name(prefix + str(i))
 		if prize_zone == null or prize_zone.held_cards.is_empty():
 			continue
+		## Find the specific card node when a target is given.
+		var card_node: Card = null
+		if target_card != null:
+			for held in prize_zone.held_cards:
+				if (held as Card).card_instance == target_card:
+					card_node = held as Card
+					break
+			if card_node == null:
+				continue  ## target not in this zone — keep searching
+		else:
+			card_node = prize_zone.held_cards[0] as Card
 		var pos := prize_zone.global_position + Vector3(0, 0.1, 0)
-		var card_node := prize_zone.held_cards[0] as Card
 		prize_zone.remove_card(card_node)
 		card_node.queue_free()
 		return pos
@@ -984,7 +1002,7 @@ func _on_prize_taken(player_id: int, card: CardInstance) -> void:
 	## The prize card was moved to hand by ActionTakePrize.apply().
 	## Remove the visual prize card from its zone and use that position as the
 	## fly-in origin for the new hand card.
-	var from_pos := _pop_prize_visual(player_id)
+	var from_pos := _pop_prize_visual(player_id, card)
 
 	var card_node: Card = card_scene.instantiate()
 	card_node.set_instance(card)
@@ -1004,6 +1022,107 @@ func _on_prize_taken(player_id: int, card: CardInstance) -> void:
 
 	_update_prize_label()
 	_log_line("P%d takes a prize card (%s)." % [player_id, card.data.display_name if card.data else "?"])
+
+
+## ── Prize picker ──────────────────────────────────────────────────────────────
+
+func _on_prizes_needed(player_id: int, count: int) -> void:
+	## Auto-pick when this player is not the one we're currently controlling.
+	if controlling_player != player_id:
+		for _i in range(count):
+			var prizes := game_state.board.get_zone("p%d_prizes" % player_id)
+			if prizes.is_empty():
+				break
+			turn_controller.notify_prize_selected(player_id, prizes[0] as CardInstance)
+		return
+	## Human picks interactively.
+	_prize_picker_player    = player_id
+	_prize_picker_remaining = count
+	_open_prize_picker(count)
+
+
+func _open_prize_picker(count: int) -> void:
+	_close_prize_picker()
+
+	_prize_picker_panel = PanelContainer.new()
+	_prize_picker_panel.custom_minimum_size = Vector2(320, 0)
+	_prize_picker_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_prize_picker_panel.offset_top    = 50
+	_prize_picker_panel.offset_bottom = 130
+	_prize_picker_panel.offset_left   = -160
+	_prize_picker_panel.offset_right  = 160
+
+	var style := StyleBoxFlat.new()
+	style.bg_color                   = Color(0.10, 0.14, 0.22, 0.95)
+	style.corner_radius_top_left     = 6
+	style.corner_radius_top_right    = 6
+	style.corner_radius_bottom_left  = 6
+	style.corner_radius_bottom_right = 6
+	_prize_picker_panel.add_theme_stylebox_override("panel", style)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	_prize_picker_panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Take %d Prize Card%s" % [count, "s" if count > 1 else ""]
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))
+	vbox.add_child(title)
+
+	var sub := Label.new()
+	sub.text = "Click a prize card on the board to take it."
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_color_override("font_color", Color(0.75, 0.75, 0.85))
+	vbox.add_child(sub)
+
+	$HUD.add_child(_prize_picker_panel)
+
+	## Highlight occupied prize zones for the picking player.
+	var prefix := "Prize " if _prize_picker_player == 0 else "Opp Prize "
+	for i in range(1, 7):
+		var pz := board.get_zone_by_name(prefix + str(i))
+		if pz != null and not pz.held_cards.is_empty():
+			pz.set_highlighted(true)
+
+
+func _close_prize_picker() -> void:
+	if _prize_picker_panel != null and is_instance_valid(_prize_picker_panel):
+		_prize_picker_panel.queue_free()
+	_prize_picker_panel = null
+	## Un-highlight all prize zones.
+	for pid2 in range(2):
+		var prefix2 := "Prize " if pid2 == 0 else "Opp Prize "
+		for i in range(1, 7):
+			var pz := board.get_zone_by_name(prefix2 + str(i))
+			if pz != null:
+				pz.set_highlighted(false)
+
+
+func _try_pick_prize(screen_pos: Vector2) -> void:
+	var card := _raycast_card(screen_pos)
+	if card == null:
+		return
+	var inst := card.card_instance
+	if inst == null:
+		return
+	## Verify the card is in one of the prize picker player's prize zones.
+	var prefix := "Prize " if _prize_picker_player == 0 else "Opp Prize "
+	var in_prize := false
+	for i in range(1, 7):
+		var pz := board.get_zone_by_name(prefix + str(i))
+		if pz != null and pz.held_cards.has(card):
+			in_prize = true
+			break
+	if not in_prize:
+		return
+	_prize_picker_remaining -= 1
+	var pid := _prize_picker_player
+	if _prize_picker_remaining <= 0:
+		_prize_picker_player = -1
+		_close_prize_picker()
+	turn_controller.notify_prize_selected(pid, inst)
 
 
 func _on_active_slot_emptied(player_id: int) -> void:
@@ -1733,6 +1852,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _try_pick_card(screen_pos: Vector2) -> void:
+	## While the prize picker is open, clicks select prizes instead of dragging.
+	if _prize_picker_player >= 0:
+		_try_pick_prize(screen_pos)
+		return
 	## Only let the controlling player drag their own face-up cards, and only
 	## during their own turn (relevant in Player Mode when the CPU is active).
 	if game_state == null:

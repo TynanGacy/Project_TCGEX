@@ -27,11 +27,13 @@ const DRAG_LIFT := 0.3
 const TWEEN_SPEED := 0.15
 const DRAW_SPEED := 0.5
 
-## Hand cards sit at 1.5× size; hover grows a further 30% (1.5 × 1.3 = 1.95)
-## and slides toward the board so the full face slides into view.
+## Hand cards sit at 1.5× size; hover grows a further 30% (1.5 × 1.3 = 1.95),
+## slides toward the board so the full face slides into view, and rises on Y
+## so it clears neighboring cards in the fan.
 const HAND_BASE_SCALE    := 1.50
 const HAND_HOVER_SCALE   := 1.95
 const HAND_HOVER_Z_DELTA := -0.75  ## negative = toward board (lower Z)
+const HAND_HOVER_LIFT    := 0.50   ## Y rise while hovered — floats above neighbours
 
 ## Colour shown on the face mesh when the card is face-down (back design).
 const BACK_COLOR := Color(0.08, 0.12, 0.40)
@@ -449,9 +451,11 @@ func move_to_drag_position(world_pos: Vector3) -> void:
 func _on_hover_start() -> void:
 	var tween := _new_tween()
 	if _is_in_hand:
-		## Scale up and slide toward the board centre to reveal the full card face.
-		tween.tween_property(self, "scale",      Vector3.ONE * HAND_HOVER_SCALE,             TWEEN_SPEED)
-		tween.tween_property(self, "position:z", home_position.z + HAND_HOVER_Z_DELTA,       TWEEN_SPEED)
+		## Scale up, slide toward the board to reveal the full face, and rise on Y
+		## so the card floats above its neighbours in the fan.
+		tween.tween_property(self, "scale",      Vector3.ONE * HAND_HOVER_SCALE,       TWEEN_SPEED)
+		tween.tween_property(self, "position:z", home_position.z + HAND_HOVER_Z_DELTA, TWEEN_SPEED)
+		tween.tween_property(self, "position:y", home_position.y + HAND_HOVER_LIFT,    TWEEN_SPEED)
 	else:
 		tween.tween_property(self, "position:y", home_position.y + HOVER_LIFT,               TWEEN_SPEED)
 		tween.tween_property(self, "rotation",   Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)

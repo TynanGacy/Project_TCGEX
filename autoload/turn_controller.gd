@@ -20,6 +20,9 @@ signal log_message(text: String)
 ## Combat outcome signals — main.gd connects to these for visual feedback.
 signal pokemon_knocked_out(victim: CardInstance, scoring_player_id: int)
 signal prize_taken(player_id: int, card: CardInstance)
+## Emitted when prizes must be chosen interactively.  [count] is how many the
+## player must take.  Call notify_prize_selected() for each chosen card.
+signal prizes_needed(player_id: int, count: int)
 
 ## Emitted when an active slot becomes empty and needs a bench Pokemon.
 ## [player_id] is the player who must promote, not necessarily the current player.
@@ -75,6 +78,12 @@ var _pending_energy_discard_callback: Callable
 ## Nesting depth of request_action() calls.  Coin-flip display is only
 ## flushed when the depth returns to zero (outermost call).
 var _request_depth: int = 0
+
+## Pending prize-pick state.  Set when the player must interactively choose
+## which prize card(s) to take; cleared when all picks are received.
+var _pp_actor: int = -1
+var _pp_opp: int = -1
+var _pp_remaining: int = 0
 
 
 func _ready() -> void:
@@ -289,7 +298,6 @@ func end_turn(actor_id: int) -> void:
 ## ============================================================
 
 func _resolve_post_attack(action: ActionAttack) -> void:
-	## 1. Detect and discard any knocked-out opponent Pokemon.
 	var opp_id := 1 - action.actor_id
 	var knocked_out := state.resolve_knockouts(opp_id)
 
@@ -297,19 +305,60 @@ func _resolve_post_attack(action: ActionAttack) -> void:
 		var victim := ko_info["victim"] as CardInstance
 		pokemon_knocked_out.emit(victim, action.actor_id)
 
-		## 2. Auto-take one prize card for each knockout.
-		var prizes_zone := state.board.get_zone("p%d_prizes" % action.actor_id)
-		if not prizes_zone.is_empty():
-			## Capture front() BEFORE apply() removes it — ActionTakePrize always
-			## takes prizes.front() (Prize 1 = visual top of the stack), so the
-			## signal must reference that same card for the visual layer to show
-			## the correct card face in the hand.
-			var prize_card := prizes_zone.front() as CardInstance
-			var take := ActionTakePrize.new(action.actor_id)
-			take.apply(state)  ## validate() not needed — system-only path.
-			prize_taken.emit(action.actor_id, prize_card)
+	var total_needed: int = knocked_out.size()
+	## Future: increase total_needed for EX/GX/VMAX victims here.
 
-	## 3. Check whether any opponent active slot is now empty.
+	if total_needed > 0:
+		var prizes_zone := state.board.get_zone("p%d_prizes" % action.actor_id)
+		var available := prizes_zone.size()
+		if available == 0:
+			## No prizes left — skip straight to resolution (win check will fire).
+			_complete_post_attack(action.actor_id, opp_id)
+		elif available <= total_needed:
+			## Fewer (or equal) prizes remain than must be taken — take all automatically
+			## so the game is never stuck waiting for a picker that has no choices.
+			for _i in range(available):
+				var pz := state.board.get_zone("p%d_prizes" % action.actor_id)
+				if pz.is_empty():
+					break
+				var pc := pz.front() as CardInstance
+				ActionTakePrize.new(action.actor_id).apply(state)
+				prize_taken.emit(action.actor_id, pc)
+			_complete_post_attack(action.actor_id, opp_id)
+		else:
+			## Player must interactively choose which prize(s) to take.
+			_pp_actor = action.actor_id
+			_pp_opp   = opp_id
+			_pp_remaining = total_needed
+			prizes_needed.emit(action.actor_id, total_needed)
+			## _complete_post_attack will be called by notify_prize_selected()
+			## once all picks are received.
+	else:
+		_complete_post_attack(action.actor_id, opp_id)
+
+
+## Called by main.gd (or the CPU handler) for each prize the player picks.
+## [card_inst] must be a CardInstance currently in the player's prizes zone.
+func notify_prize_selected(player_id: int, card_inst: CardInstance) -> void:
+	if _pp_actor != player_id or _pp_remaining <= 0:
+		return
+	var prizes := state.board.get_zone("p%d_prizes" % player_id)
+	if not prizes.has(card_inst):
+		return
+	var take := ActionTakePrize.new(player_id, card_inst)
+	take.apply(state)
+	prize_taken.emit(player_id, card_inst)
+	_pp_remaining -= 1
+	if _pp_remaining <= 0:
+		var opp := _pp_opp
+		_pp_actor = -1
+		_pp_opp   = -1
+		_complete_post_attack(player_id, opp)
+
+
+## Shared continuation after all prizes have been resolved (auto or interactive).
+func _complete_post_attack(actor_id: int, opp_id: int) -> void:
+	## Check whether any opponent active slot is now empty.
 	var needs_promotion := false
 	for slot_idx in range(state.board.num_active_slots):
 		if state.board.get_active_card(opp_id, slot_idx) == null \
@@ -318,12 +367,7 @@ func _resolve_post_attack(action: ActionAttack) -> void:
 			break
 
 	if needs_promotion:
-		## Emit the signal — handlers may resolve the promotion synchronously
-		## (CPU auto-promotes) or asynchronously (human dialog).
 		active_slot_emptied.emit(opp_id)
-
-		## Re-check: if a synchronous handler (e.g. CPU) already filled the slot,
-		## we can proceed without waiting.
 		needs_promotion = false
 		for slot_idx in range(state.board.num_active_slots):
 			if state.board.get_active_card(opp_id, slot_idx) == null \
@@ -331,19 +375,14 @@ func _resolve_post_attack(action: ActionAttack) -> void:
 				needs_promotion = true
 				break
 
-	## 4. Check win conditions.
 	var winner := state.check_win_condition()
 	if winner >= 0:
 		game_over.emit(winner)
 		return
 
-	## 5. Auto-advance to END phase.  Skip if a human promotion dialog is still
-	##    open — main.gd will call next_phase() after the player chooses.
-	##    Attacks happen from MAIN; one advance step reaches END (ATTACK phase
-	##    is no longer part of the normal flow).
 	if not needs_promotion:
 		if state.phase == TurnPhase.Phase.MAIN:
-			next_phase(action.actor_id)   ## MAIN -> END
+			next_phase(actor_id)
 
 
 ## ============================================================

@@ -2,17 +2,15 @@ class_name ActionTakePrize
 extends GameAction
 ## Moves one prize card from a player's prize zone into their hand.
 ##
-## This action is triggered automatically by TurnController after a knockout —
-## it is never submitted directly by the player.  The actor_id here is the
-## player who SCORED the knockout (and therefore earns the prize), not the
-## player who lost the Pokemon.
-##
-## Because it is system-generated mid-turn, the normal _gate_action check is
-## bypassed in TurnController for this action type.
+## Pass a specific CardInstance as [target] to let the player choose which
+## prize to take.  Omit [target] (null) to fall back to prizes.front().
+
+var target_card: CardInstance = null
 
 
-func _init(pid: int) -> void:
+func _init(pid: int, card: CardInstance = null) -> void:
 	actor_id = pid
+	target_card = card
 
 
 func validate(state: GameState) -> ActionResult:
@@ -28,11 +26,16 @@ func apply(state: GameState) -> void:
 	if prizes.is_empty():
 		return
 
-	## Move the top prize card (front of the array = Prize 1 = visual top of stack).
-	var card := prizes.front() as CardInstance
+	## Take the chosen card if it is still in the prizes zone; otherwise fall
+	## back to the front of the array (legacy / auto-take path).
+	var card: CardInstance
+	if target_card != null and prizes.has(target_card):
+		card = target_card
+	else:
+		card = prizes.front() as CardInstance
+
 	state.board.move_card(card, "p%d_hand" % actor_id)
 
-	## Keep the player's prize tracker in sync with the actual zone count.
 	var player := state.get_player(actor_id)
 	if player:
 		player.prizes_remaining = state.board.get_zone(prizes_zone_id).size()
