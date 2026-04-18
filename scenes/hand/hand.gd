@@ -19,6 +19,7 @@ var cards: Array[Card] = []
 func add_card(card: Card) -> void:
 	cards.append(card)
 	add_child(card)
+	card._is_in_hand = true
 	card.card_dropped.connect(_on_card_dropped)
 	_layout_cards()
 
@@ -26,6 +27,7 @@ func add_card(card: Card) -> void:
 func add_card_animated(card: Card, from_global: Vector3) -> void:
 	cards.append(card)
 	add_child(card)
+	card._is_in_hand = true
 	card.card_dropped.connect(_on_card_dropped)
 	## Flag as dragging so _layout_cards sets home positions without
 	## immediately calling return_to_home on this card.
@@ -39,6 +41,7 @@ func add_card_animated(card: Card, from_global: Vector3) -> void:
 
 func remove_card(card: Card) -> void:
 	cards.erase(card)
+	card._is_in_hand = false
 	if card.card_dropped.is_connected(_on_card_dropped):
 		card.card_dropped.disconnect(_on_card_dropped)
 	if card.get_parent() == self:

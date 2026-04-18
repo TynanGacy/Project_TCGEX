@@ -4,12 +4,18 @@
 [ext_resource type="PackedScene" path="res://scenes/board/board.tscn" id="2_board"]
 [ext_resource type="PackedScene" path="res://scenes/hand/hand.tscn" id="3_hand"]
 [ext_resource type="PackedScene" path="res://scenes/card/card_zoom_popup.tscn" id="4_czp"]
+[ext_resource type="Script" path="res://scenes/main/background_manager.gd" id="5_bgmgr"]
 
 [node name="Main" type="Node3D" unique_id=1389932364]
 script = ExtResource("1_main")
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2011845321]
+
+[node name="BackgroundManager" type="Node" parent="." unique_id=2011845322]
+script = ExtResource("5_bgmgr")
+
 [node name="Camera3D" type="Camera3D" parent="." unique_id=1599660667]
-transform = Transform3D(1, 0, 0, 0, 0.374609, 0.927182, 0, -0.927182, 0.374609, 0, 5.349999, 2.7)
+transform = Transform3D(1, 0, 0, 0, 0.374609, 0.927182, 0, -0.927182, 0.374609, 0, 6.5, 3.15)
 fov = 50.0
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=970805497]
@@ -26,7 +32,7 @@ light_energy = 0.3
 [node name="PlayerHand" parent="Board" unique_id=138625151 instance=ExtResource("3_hand")]
 
 [node name="OppHand" parent="Board" unique_id=672689239 instance=ExtResource("3_hand")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0.05, -2.5)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0.05, -3.0)
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=887922774]
 

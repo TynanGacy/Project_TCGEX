@@ -27,6 +27,10 @@ const DRAG_LIFT := 0.3
 const TWEEN_SPEED := 0.15
 const DRAW_SPEED := 0.5
 
+## Hand card hover: scale up and slide toward board to reveal the full face.
+const HAND_HOVER_SCALE   := 1.30
+const HAND_HOVER_Z_DELTA := -0.45  ## negative = toward board (lower Z)
+
 ## Colour shown on the face mesh when the card is face-down (back design).
 const BACK_COLOR := Color(0.08, 0.12, 0.40)
 
@@ -62,6 +66,8 @@ const FACE_ROUNDED_SHADER := preload("res://scenes/card/card_face_rounded.gdshad
 ## State
 var is_dragging := false
 var is_hovered := false
+## Set by Hand when a card is added to / removed from the hand.
+var _is_in_hand := false
 
 ## True when the card is placed on an active or bench zone.
 var _board_mode: bool = false
@@ -421,6 +427,8 @@ func start_drag() -> void:
 	var tween := _new_tween()
 	tween.tween_property(self, "position:y", home_position.y + DRAG_LIFT, TWEEN_SPEED)
 	tween.tween_property(self, "rotation", Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)
+	if scale != Vector3.ONE:
+		tween.tween_property(self, "scale", Vector3.ONE, TWEEN_SPEED)
 	drag_started.emit(self)
 
 
@@ -438,8 +446,13 @@ func move_to_drag_position(world_pos: Vector3) -> void:
 
 func _on_hover_start() -> void:
 	var tween := _new_tween()
-	tween.tween_property(self, "position:y", home_position.y + HOVER_LIFT, TWEEN_SPEED)
-	tween.tween_property(self, "rotation", Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)
+	if _is_in_hand:
+		## Scale up and slide toward the board centre to reveal the full card face.
+		tween.tween_property(self, "scale",      Vector3.ONE * HAND_HOVER_SCALE,             TWEEN_SPEED)
+		tween.tween_property(self, "position:z", home_position.z + HAND_HOVER_Z_DELTA,       TWEEN_SPEED)
+	else:
+		tween.tween_property(self, "position:y", home_position.y + HOVER_LIFT,               TWEEN_SPEED)
+		tween.tween_property(self, "rotation",   Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)
 
 
 func _on_hover_end() -> void:
@@ -450,6 +463,8 @@ func return_to_home() -> void:
 	var tween := _new_tween()
 	tween.tween_property(self, "position", home_position, TWEEN_SPEED)
 	tween.tween_property(self, "rotation", home_rotation, TWEEN_SPEED)
+	if scale != Vector3.ONE:
+		tween.tween_property(self, "scale", Vector3.ONE, TWEEN_SPEED)
 
 
 func animate_draw() -> void:
@@ -466,6 +481,7 @@ func snap_to_home() -> void:
 	_tween = null
 	position = home_position
 	rotation = home_rotation
+	scale = Vector3.ONE
 
 
 func set_home(pos: Vector3, rot: Vector3, index: int) -> void:

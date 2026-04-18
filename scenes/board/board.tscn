@@ -55,27 +55,27 @@ zone_name = "Bench 5"
 use_board_display = true
 
 [node name="PlayerPrize1" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0.05, 1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0.0, 0.55)
 zone_name = "Prize 1"
 
 [node name="PlayerPrize2" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0.05, 1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0.0, 0.55)
 zone_name = "Prize 2"
 
 [node name="PlayerPrize3" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0.04, 1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0.005, 1.2)
 zone_name = "Prize 3"
 
 [node name="PlayerPrize4" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0.04, 1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0.005, 1.2)
 zone_name = "Prize 4"
 
 [node name="PlayerPrize5" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0.03, 1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0.01, 1.85)
 zone_name = "Prize 5"
 
 [node name="PlayerPrize6" parent="PlayerZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0.03, 1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0.01, 1.85)
 zone_name = "Prize 6"
 
 [node name="PlayerDeck" parent="PlayerZones" instance=ExtResource("2_dropzone")]
@@ -127,27 +127,27 @@ zone_name = "Opp Bench 5"
 use_board_display = true
 
 [node name="OppPrize1" parent="OpponentZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 0.05, -1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 0.0, -0.55)
 zone_name = "Opp Prize 1"
 
 [node name="OppPrize2" parent="OpponentZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 0.05, -1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 0.0, -0.55)
 zone_name = "Opp Prize 2"
 
 [node name="OppPrize3" parent="OpponentZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 0.04, -1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 0.005, -1.2)
 zone_name = "Opp Prize 3"
 
 [node name="OppPrize4" parent="OpponentZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 0.04, -1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 0.005, -1.2)
 zone_name = "Opp Prize 4"
 
 [node name="OppPrize5" parent="OpponentZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 0.03, -1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 0.01, -1.85)
 zone_name = "Opp Prize 5"
 
 [node name="OppPrize6" parent="OpponentZones" instance=ExtResource("2_dropzone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 0.03, -1.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 0.01, -1.85)
 zone_name = "Opp Prize 6"
 
 [node name="OppDeck" parent="OpponentZones" instance=ExtResource("2_dropzone")]

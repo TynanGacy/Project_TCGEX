@@ -5,8 +5,8 @@ extends Node3D
 signal card_received(card: Card)
 
 @export var zone_name: String = "Zone"
-@export var zone_color: Color = Color(0.2, 0.4, 0.2, 0.5)
-@export var highlight_color: Color = Color(0.3, 0.7, 0.3, 0.7)
+@export var zone_color: Color = Color(0.55, 0.55, 0.60, 0.30)
+@export var highlight_color: Color = Color(0.75, 0.78, 0.90, 0.52)
 @export var max_cards: int = 1
 ## When true, cards placed here switch to board-display mode (landscape art + nameplate).
 ## Enable only for Active and Bench zones; leave false for Deck, Prize, Discard.
