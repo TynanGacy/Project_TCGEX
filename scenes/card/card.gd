@@ -27,6 +27,14 @@ const DRAG_LIFT := 0.3
 const TWEEN_SPEED := 0.15
 const DRAW_SPEED := 0.5
 
+## Hand cards sit at 1.5× size; hover grows a further 30% (1.5 × 1.3 = 1.95),
+## slides toward the board so the full face slides into view, and rises on Y
+## so it clears neighboring cards in the fan.
+const HAND_BASE_SCALE    := 1.50
+const HAND_HOVER_SCALE   := 1.95
+const HAND_HOVER_Z_DELTA := -0.75  ## negative = toward board (lower Z)
+const HAND_HOVER_LIFT    := 0.50   ## Y rise while hovered — floats above neighbours
+
 ## Colour shown on the face mesh when the card is face-down (back design).
 const BACK_COLOR := Color(0.08, 0.12, 0.40)
 
@@ -62,6 +70,8 @@ const FACE_ROUNDED_SHADER := preload("res://scenes/card/card_face_rounded.gdshad
 ## State
 var is_dragging := false
 var is_hovered := false
+## Set by Hand when a card is added to / removed from the hand.
+var _is_in_hand := false
 
 ## True when the card is placed on an active or bench zone.
 var _board_mode: bool = false
@@ -421,6 +431,8 @@ func start_drag() -> void:
 	var tween := _new_tween()
 	tween.tween_property(self, "position:y", home_position.y + DRAG_LIFT, TWEEN_SPEED)
 	tween.tween_property(self, "rotation", Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)
+	if scale != Vector3.ONE:
+		tween.tween_property(self, "scale", Vector3.ONE, TWEEN_SPEED)
 	drag_started.emit(self)
 
 
@@ -438,8 +450,15 @@ func move_to_drag_position(world_pos: Vector3) -> void:
 
 func _on_hover_start() -> void:
 	var tween := _new_tween()
-	tween.tween_property(self, "position:y", home_position.y + HOVER_LIFT, TWEEN_SPEED)
-	tween.tween_property(self, "rotation", Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)
+	if _is_in_hand:
+		## Scale up, slide toward the board to reveal the full face, and rise on Y
+		## so the card floats above its neighbours in the fan.
+		tween.tween_property(self, "scale",      Vector3.ONE * HAND_HOVER_SCALE,       TWEEN_SPEED)
+		tween.tween_property(self, "position:z", home_position.z + HAND_HOVER_Z_DELTA, TWEEN_SPEED)
+		tween.tween_property(self, "position:y", home_position.y + HAND_HOVER_LIFT,    TWEEN_SPEED)
+	else:
+		tween.tween_property(self, "position:y", home_position.y + HOVER_LIFT,               TWEEN_SPEED)
+		tween.tween_property(self, "rotation",   Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)
 
 
 func _on_hover_end() -> void:
@@ -450,6 +469,9 @@ func return_to_home() -> void:
 	var tween := _new_tween()
 	tween.tween_property(self, "position", home_position, TWEEN_SPEED)
 	tween.tween_property(self, "rotation", home_rotation, TWEEN_SPEED)
+	var target_scale := Vector3.ONE * HAND_BASE_SCALE if _is_in_hand else Vector3.ONE
+	if scale != target_scale:
+		tween.tween_property(self, "scale", target_scale, TWEEN_SPEED)
 
 
 func animate_draw() -> void:
@@ -466,6 +488,7 @@ func snap_to_home() -> void:
 	_tween = null
 	position = home_position
 	rotation = home_rotation
+	scale = Vector3.ONE * HAND_BASE_SCALE if _is_in_hand else Vector3.ONE
 
 
 func set_home(pos: Vector3, rot: Vector3, index: int) -> void:
