@@ -17,6 +17,5 @@ class_name AttackData
 
 @export var hits_each_defending: bool = false
 
-## Optional key into CardEffectRegistry.  When set it takes priority over
-## text-based auto-detection so new cards can declare their effect in JSON.
+## Optional effect identifier used by future attack-effect dispatch.
 @export var effect_key: String = ""

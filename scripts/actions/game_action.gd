@@ -1,12 +1,21 @@
 class_name GameAction
 extends RefCounted
+## Base class for all Game_Actions.
+##
+## A Game_Action is a DECLARATIVE description of something that should happen
+## (play a Pokemon, attach energy, attack, etc.).  It has no executive power:
+##   - validate(manager) checks legality against current state.
+##   - apply(manager)    performs the mutation via the Manager's subsystems.
+##   - description()     returns a human-readable log line.
+##
+## Actions never mutate state directly.  They call into manager.game_position
+## and manager.board_position so the Manager remains the single point of
+## dispatch.
 
-var actor_id: int = -1
-
-func validate(_state: GameState) -> ActionResult:
+func validate(_manager) -> ActionResult:
 	return ActionResult.success()
 
-func apply(_state: GameState) -> void:
+func apply(_manager) -> void:
 	pass
 
 func description() -> String:

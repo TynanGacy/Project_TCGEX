@@ -8,11 +8,10 @@ extends PanelContainer
 
 
 func show_card(card: Card) -> void:
-	if card.card_instance and card.card_instance.data:
-		var data: CardData = card.card_instance.data
-		card_art.texture = data.art
-		card_name_label.text = data.display_name
-		rules_label.text = data.rules_text
+	if card.data != null:
+		card_art.texture = card.data.art
+		card_name_label.text = card.data.display_name
+		rules_label.text = card.data.rules_text
 	else:
 		card_art.texture = null
 		card_name_label.text = card.card_name

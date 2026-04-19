@@ -1,55 +1,56 @@
 class_name Board
 extends Node3D
-## The 3D game board — a table surface with drop zones.
+## The 3D game board — a table surface with DropZone anchors.
+##
+## In the refactored architecture, DropZones are PURELY visual anchors used
+## by BoardPosition to position PokemonInstances.  All logical slot state
+## (which Pokemon is in which slot, overflow handling, etc.) lives in
+## BoardPosition — the DropZones here just provide world positions.
+##
+## The named DropZones map 1:1 to BoardPosition slot_ids:
+##   "Active"         -> p0_active1        "Opp Active"   -> p1_active1
+##   "Active 2"       -> p0_active2        "Opp Active 2" -> p1_active2
+##   "Bench N"        -> p0_benchN (1..5)  "Opp Bench N"  -> p1_benchN
+##
+## Overflow slots (p0_overflow1/2, p1_overflow1/2) are logical only — they
+## are not rendered; BoardPosition auto-drains them to empty benches.
+## If auto-drain fails it emits overflow_escalation for the Manager.
 
-## Playmat textures loaded onto the table surface.
-## Add entries (PNG/JPG, 1920×1080 px recommended for the 16:9 board ratio) as
-## new playmats are unlocked.  Index 0 is the default; falls back to plain brown
-## when the file is missing so the game always launches without assets.
 const PLAYMAT_PATHS: Array[String] = [
 	"res://assets/images/playmats/playmat_default.png",
 ]
 
 var _active_playmat_index: int = 0
 
-var all_zones: Array[DropZone] = []
+const BENCH_CARD_W   := 1.32
+const BENCH_CARD_H   := 0.88
+const ACTIVE_CARD_W  := 1.98
+const ACTIVE_CARD_H  := 1.32
 
-## Bench zone dimensions: 2× the base card size.
-const BENCH_CARD_W   := 1.32   ## landscape width  (0.66 × 2)
-const BENCH_CARD_H   := 0.88   ## landscape height (0.44 × 2)
-const BENCH_SPACING  := 1.35   ## centre-to-centre slot spacing
-const BENCH_Z        := 2.4
-
-## Active zone dimensions: 3× the base card size.
-const ACTIVE_CARD_W  := 1.98   ## landscape width  (0.66 × 3)
-const ACTIVE_CARD_H  := 1.32   ## landscape height (0.44 × 3)
-const ACTIVE_SPACING := 2.1    ## spacing between dual-active slots
-const ACTIVE_Z       := 1.1
-
-## Prize zone layout: two columns × up to three rows visible from above.
-## Cards are spread along Z so all prizes are individually visible.
-## 66% overlap: step = PRIZE_CARD_H * (1 - 0.66) ≈ 0.20
-const PRIZE_CARD_W       := 0.5    ## portrait width
-const PRIZE_CARD_H       := 0.6    ## portrait height
-const PRIZE_AREA_X       := 2.9    ## abs x of prize-area centre
-const PRIZE_COL_HALF     := 0.3    ## x offset per column from PRIZE_AREA_X
-const PRIZE_ROW_Z_START  := 0.80   ## Z of row 0 (nearest board centre)
-const PRIZE_ROW_Z_STEP   := 0.20   ## Z between rows — 66% overlap
-const PRIZE_STACK_Y_STEP := 0.005  ## tiny Y offset per row for visual depth
-
+## Maps Board_Position slot_id -> DropZone name in the scene tree.
+const SLOT_TO_ZONE_NAME := {
+	"p0_active1": "Active",
+	"p0_active2": "Active 2",
+	"p0_bench1":  "Bench 1",
+	"p0_bench2":  "Bench 2",
+	"p0_bench3":  "Bench 3",
+	"p0_bench4":  "Bench 4",
+	"p0_bench5":  "Bench 5",
+	"p1_active1": "Opp Active",
+	"p1_active2": "Opp Active 2",
+	"p1_bench1":  "Opp Bench 1",
+	"p1_bench2":  "Opp Bench 2",
+	"p1_bench3":  "Opp Bench 3",
+	"p1_bench4":  "Opp Bench 4",
+	"p1_bench5":  "Opp Bench 5",
+}
 
 @onready var _table_surface: MeshInstance3D = $TableSurface
 
 
 func _ready() -> void:
-	_collect_zones()
 	_load_playmat()
-
-
-## Switch to a different playmat by index (0-based).
-func set_playmat(index: int) -> void:
-	_active_playmat_index = clampi(index, 0, PLAYMAT_PATHS.size() - 1)
-	_load_playmat()
+	_initialise_zones()
 
 
 func _load_playmat() -> void:
@@ -66,106 +67,58 @@ func _load_playmat() -> void:
 		mat.albedo_color = Color(0.22, 0.16, 0.1)
 
 
-## Rebuild the active zone list, skipping invisible zones so they are never
-## treated as valid drop targets.
-func _collect_zones() -> void:
-	all_zones.clear()
-	for child in get_children():
-		if child is DropZone and child.visible:
-			all_zones.append(child as DropZone)
-		for grandchild in child.get_children():
-			if grandchild is DropZone and grandchild.visible:
-				all_zones.append(grandchild as DropZone)
-
-
-## Reposition and show/hide active and bench zones to match the configured
-## counts. Call once after creating GameState, before dealing cards.
-func configure_slots(num_active: int, num_bench: int) -> void:
-	for i in range(2):
-		var aname := "Active" if i == 0 else "Active 2"
-		var zone := _find_zone_in_tree(aname)
+## Size the 2-player × 7-slot visible drop zones appropriately.  Called once
+## on _ready.  Prize / deck / discard zones retain their scene transforms.
+func _initialise_zones() -> void:
+	for sid in SLOT_TO_ZONE_NAME.keys():
+		var zone := get_zone_for_slot(sid)
 		if zone == null:
 			continue
-		zone.visible = i < num_active
-		zone.set_zone_size(ACTIVE_CARD_W, ACTIVE_CARD_H)
-		if i < num_active:
-			zone.position = Vector3(_active_x(i, num_active, false), 0.0, ACTIVE_Z)
-
-	for i in range(1, 6):
-		var zone := _find_zone_in_tree("Bench %d" % i)
-		if zone == null:
-			continue
-		var si := i - 1
-		zone.visible = si < num_bench
-		zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
-		if si < num_bench:
-			zone.position = Vector3(_bench_x(si, num_bench, false), 0.0, BENCH_Z)
-
-	for i in range(2):
-		var aname := "Opp Active" if i == 0 else "Opp Active 2"
-		var zone := _find_zone_in_tree(aname)
-		if zone == null:
-			continue
-		zone.visible = i < num_active
-		zone.set_zone_size(ACTIVE_CARD_W, ACTIVE_CARD_H)
-		if i < num_active:
-			zone.position = Vector3(_active_x(i, num_active, true), 0.0, -ACTIVE_Z)
-
-	for i in range(1, 6):
-		var zone := _find_zone_in_tree("Opp Bench %d" % i)
-		if zone == null:
-			continue
-		var si := i - 1
-		zone.visible = si < num_bench
-		zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
-		if si < num_bench:
-			zone.position = Vector3(_bench_x(si, num_bench, true), 0.0, -BENCH_Z)
-
-	_collect_zones()
+		if "active" in sid:
+			zone.set_zone_size(ACTIVE_CARD_W, ACTIVE_CARD_H)
+		else:
+			zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
 
 
-## Position and show/hide prize zones to match [num_prizes] (2-6).
-## Layout: two columns per side, each column with up to 3 rows spread along Z
-## so all prizes are individually visible from above.
-## Odd prize count puts one extra card in the left column.
-## Player-0 prizes sit to the left (negative X); player-1 mirror to the right.
-func configure_prizes(num_prizes: int) -> void:
-	## left_col = ceil(num_prizes/2), right_col = floor(num_prizes/2)
-	var left_col: int  = (num_prizes + 1) / 2
-	var right_col: int = num_prizes / 2
-
-	for i in range(6):
-		var p0 := _find_zone_in_tree("Prize %d"     % (i + 1))
-		var p1 := _find_zone_in_tree("Opp Prize %d" % (i + 1))
-
-		var used := (i < num_prizes)
-		if p0: p0.visible = used
-		if p1: p1.visible = used
-		if not used:
-			continue
-
-		if p0: p0.set_zone_size(PRIZE_CARD_W, PRIZE_CARD_H)
-		if p1: p1.set_zone_size(PRIZE_CARD_W, PRIZE_CARD_H)
-
-		## Prizes 0..(left_col-1) go in the left column; the rest in the right.
-		## Row 0 is closest to the board centre (smallest Z); higher rows extend outward.
-		## If a row has only one card (odd count, final row), centre it at PRIZE_AREA_X.
-		var in_left := (i < left_col)
-		var row := i if in_left else (i - left_col)
-		var is_lone_card := in_left and (row >= right_col)
-		var x_off := 0.0 if is_lone_card else (-PRIZE_COL_HALF if in_left else PRIZE_COL_HALF)
-		var z_pos := PRIZE_ROW_Z_START + row * PRIZE_ROW_Z_STEP
-		var y_pos := float(row) * PRIZE_STACK_Y_STEP
-
-		## Player 0: left side (negative x), positive z.
-		if p0: p0.position = Vector3(-PRIZE_AREA_X + x_off,  y_pos,  z_pos)
-		## Player 1: right side (positive x), negative z (mirrored).
-		if p1: p1.position = Vector3( PRIZE_AREA_X - x_off,  y_pos, -z_pos)
-
-	_collect_zones()
+## Returns the DropZone for a given BoardPosition slot_id, or null.
+func get_zone_for_slot(slot_id: String) -> DropZone:
+	var zone_name: String = SLOT_TO_ZONE_NAME.get(slot_id, "")
+	if zone_name == "":
+		return null
+	return _find_zone_in_tree(zone_name)
 
 
-## Searches the full scene tree (visible or not) for a zone by name.
+## Builds the { slot_id: DropZone } dictionary BoardPosition uses as its
+## anchors for visually placing PokemonInstance nodes.
+func collect_slot_anchors() -> Dictionary:
+	var anchors: Dictionary = {}
+	for sid in SLOT_TO_ZONE_NAME.keys():
+		var zone := get_zone_for_slot(sid)
+		if zone != null:
+			anchors[sid] = zone
+	return anchors
+
+
+## Returns the DropZone at the given world position (used for drag-to-drop).
+## Iterates only over the Pokemon-slot zones we care about.
+func get_slot_zone_at(world_pos: Vector3) -> DropZone:
+	for sid in SLOT_TO_ZONE_NAME.keys():
+		var zone := get_zone_for_slot(sid)
+		if zone != null and zone.visible and zone.contains_point(world_pos):
+			return zone
+	return null
+
+
+## Returns the slot_id for a given DropZone (reverse lookup), or "".
+func slot_id_for_zone(zone: DropZone) -> String:
+	if zone == null:
+		return ""
+	for sid in SLOT_TO_ZONE_NAME.keys():
+		if get_zone_for_slot(sid) == zone:
+			return sid
+	return ""
+
+
 func _find_zone_in_tree(zname: String) -> DropZone:
 	for child in get_children():
 		if child is DropZone and (child as DropZone).zone_name == zname:
@@ -176,40 +129,8 @@ func _find_zone_in_tree(zname: String) -> DropZone:
 	return null
 
 
-func _active_x(slot: int, total: int, mirror: bool) -> float:
-	var x := 0.0 if total == 1 else (-ACTIVE_SPACING * 0.5 + slot * ACTIVE_SPACING)
-	return -x if mirror else x
-
-
-func _bench_x(slot: int, total: int, mirror: bool) -> float:
-	var half_span := (total - 1) * BENCH_SPACING * 0.5
-	var x := -half_span + slot * BENCH_SPACING
-	return -x if mirror else x
-
-
-func get_zone_by_name(zone_name: String) -> DropZone:
-	for zone in all_zones:
-		if zone.zone_name == zone_name:
-			return zone
-	return null
-
-
-func get_zone_containing(card: Card) -> DropZone:
-	for zone in all_zones:
-		if card in zone.held_cards:
-			return zone
-	return null
-
-
-func get_zone_at_position(world_pos: Vector3) -> DropZone:
-	for zone in all_zones:
-		if zone.contains_point(world_pos):
-			return zone
-	return null
-
-
 func clear_highlights() -> void:
-	for zone in all_zones:
-		zone.set_highlighted(false)
-
-
+	for sid in SLOT_TO_ZONE_NAME.keys():
+		var zone := get_zone_for_slot(sid)
+		if zone != null:
+			zone.set_highlighted(false)

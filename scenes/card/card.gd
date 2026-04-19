@@ -1,188 +1,131 @@
 class_name Card
 extends Node3D
-## A 3D draggable card. Picked via raycast on its StaticBody3D.
-## The visible face is rendered into a SubViewport and displayed on a PlaneMesh
-## that sits just above the card body.
+## A 3D draggable card face.  Picked via raycast on its StaticBody3D.
+##
+## In the current bare-bones refactor, Card is used ONLY for off-board
+## rendering (cards in hand, deck, discard pile).  Any card that is in play
+## as a Pokemon is shown by a PokemonInstance instead — PokemonInstance owns
+## its own visual including HP / conditions / attachments.
 
 signal drag_started(card: Card)
 signal drag_ended(card: Card)
 signal card_dropped(card: Card)
 
 @export var card_name: String = "Card"
-## Texture shown on the card face mesh when the card is face-down.
-## Falls back to BACK_COLOR if not set.
 @export var back_texture: Texture2D = null
 
-## Runtime card data binding
-var card_instance: CardInstance = null
+## The CardData shown on this card.  The card face only reads display_name
+## and art — no dynamic state lives here.
+var data: CardData = null
 
-## Card dimensions (roughly standard playing card proportions)
-const CARD_WIDTH := 0.63
-const CARD_HEIGHT := 0.88
+## Card dimensions (portrait; board mode overrides via set_board_mode).
+const CARD_WIDTH     := 0.63
+const CARD_HEIGHT    := 0.88
 const CARD_THICKNESS := 0.01
 
-## Visual settings
 const HOVER_LIFT := 0.15
-const DRAG_LIFT := 0.3
+const DRAG_LIFT  := 0.30
 const TWEEN_SPEED := 0.15
-const DRAW_SPEED := 0.5
+const DRAW_SPEED  := 0.5
 
-## Hand cards sit at 1.5× size; hover grows a further 30% (1.5 × 1.3 = 1.95),
-## slides toward the board so the full face slides into view, and rises on Y
-## so it clears neighboring cards in the fan.
 const HAND_BASE_SCALE    := 1.50
 const HAND_HOVER_SCALE   := 1.95
-const HAND_HOVER_Z_DELTA := -0.75  ## negative = toward board (lower Z)
-const HAND_HOVER_LIFT    := 0.50   ## Y rise while hovered — floats above neighbours
+const HAND_HOVER_Z_DELTA := -0.75
+const HAND_HOVER_LIFT    := 0.50
 
-## Colour shown on the face mesh when the card is face-down (back design).
 const BACK_COLOR := Color(0.08, 0.12, 0.40)
 
-## Tool icon layout (left edge of card).
-const ICON_RADIUS := 0.08
-const ICON_HEIGHT := 0.004
-const ICON_Y := 0.012
-const ICON_START_Z := -0.25
-const ICON_SPACING := 0.20
-
-## Energy icon layout (bottom edge of card, smaller than tool icons).
-const ENERGY_ICON_RADIUS := 0.039   # ~half of ICON_RADIUS
-const ENERGY_ICON_HEIGHT := 0.004
-const ENERGY_ICON_MAX := 5          # max circles shown before overflow "+" indicator
-
-## Overlay icon layout (right edge of card, for status badges).
-const DAMAGE_CTR_RADIUS := 0.200
-const STATUS_BADGE_RADIUS := 0.055
-const OVERLAY_HEIGHT := 0.004
-const OVERLAY_Y := 0.014
-
-## Board mode: card shows only the painted art at landscape proportions.
-## Art aspect ratio matches CardFace.BOARD_ART_RATIO (1.52 : 1).
+## Board mode (landscape art) is used by PokemonInstance's internal Card only.
 const BOARD_ART_RATIO := 1.52
-const BOARD_CARD_H    := 0.414   ## CARD_WIDTH / BOARD_ART_RATIO ≈ 0.414
-
-## Nameplate strip shown above the card in board mode.
-const NAMEPLATE_H := 0.13    ## strip height (world units)
-const NAMEPLATE_Y := 0.014   ## Y lift above the card surface
 
 const FACE_ROUNDED_SHADER := preload("res://scenes/card/card_face_rounded.gdshader")
 
 ## State
 var is_dragging := false
-var is_hovered := false
-## Set by Hand when a card is added to / removed from the hand.
+var is_hovered  := false
 var _is_in_hand := false
+var _board_mode := false
 
-## True when the card is placed on an active or bench zone.
-var _board_mode: bool = false
-var _nameplate_node: Node3D = null
-
-## Width (world units) the zone wants in board mode; set via set_display_width().
-var _display_width: float = CARD_WIDTH
-## Current effective card dimensions (updated by _resize_meshes).
-var _card_w: float = CARD_WIDTH
-var _card_h: float = CARD_HEIGHT
-
-## Overlay nodes managed by update_status_overlays().
-var _damage_ctr_node: Node3D = null
-var _status_badge_nodes: Array[Node3D] = []
 var face_down: bool = false:
 	set(value):
-		var was_down := face_down
 		face_down = value
 		_update_visuals()
-		## When a face-down card is revealed, the SubViewport hasn't been
-		## rendered yet (skipped for performance).  Trigger it now.
-		if was_down and not value:
-			_queue_face_refresh()
+
 var home_position := Vector3.ZERO
 var home_rotation := Vector3.ZERO
 var hand_index := 0
+
+var _display_width: float = CARD_WIDTH
+var _card_w: float = CARD_WIDTH
+var _card_h: float = CARD_HEIGHT
 
 var _tween: Tween = null
 var _face_material: StandardMaterial3D = null
 var _body_material: StandardMaterial3D = null
 var _face_shader_material: ShaderMaterial = null
-## Holds an instance assigned before _ready() runs (nodes not yet available).
-var _pending_instance: CardInstance = null
-## True while a _queue_face_refresh() coroutine is already awaiting render.
-## Prevents multiple concurrent coroutines from all waiting on the same render.
-var _face_refresh_pending: bool = false
-## True when a face refresh was requested while the node was outside the tree.
-## Picked up by _enter_tree so the refresh runs once the node is back.
-var _face_refresh_deferred: bool = false
+var _pending_data: CardData = null
 
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
-@onready var static_body: StaticBody3D = $StaticBody3D
-@onready var face_viewport: SubViewport = $FaceViewport
-@onready var card_face: CardFace = $FaceViewport/CardFace
-@onready var face_mesh: MeshInstance3D = $FaceMesh
+@onready var static_body: StaticBody3D     = $StaticBody3D
+@onready var face_viewport: SubViewport    = $FaceViewport
+@onready var card_face: CardFace           = $FaceViewport/CardFace
+@onready var face_mesh: MeshInstance3D     = $FaceMesh
 @onready var _collision_shape: CollisionShape3D = $StaticBody3D/CollisionShape3D
 
 
 func _ready() -> void:
-	## Build the face material once and keep a reference to swap textures on.
 	_face_material = StandardMaterial3D.new()
 	_face_material.albedo_color = BACK_COLOR
 	_face_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	face_mesh.set_surface_override_material(0, _face_material)
-	## Build the shader material used for face-up cards with art (rounded corners).
+
 	_face_shader_material = ShaderMaterial.new()
 	_face_shader_material.shader = FACE_ROUNDED_SHADER
 	_face_shader_material.set_shader_parameter("corner_radius", 0.023)
 	_face_shader_material.set_shader_parameter("card_size", Vector2(CARD_WIDTH, CARD_HEIGHT))
-	## Duplicate the body material so each card owns its instance (for alpha toggling).
+
 	var src := mesh_instance.get_surface_override_material(0) as StandardMaterial3D
 	_body_material = src.duplicate() as StandardMaterial3D
 	mesh_instance.set_surface_override_material(0, _body_material)
-	## Duplicate meshes and collision shape so set_board_mode() can resize them
-	## without affecting the shared .tscn resource (which all cards reference).
+
+	## Duplicate meshes so set_board_mode can resize per-instance.
 	face_mesh.mesh = face_mesh.mesh.duplicate()
 	mesh_instance.mesh = mesh_instance.mesh.duplicate()
 	_collision_shape.shape = _collision_shape.shape.duplicate()
-	## Apply any instance that was set before the node was in the tree.
-	if _pending_instance != null:
-		set_instance(_pending_instance)
-		_pending_instance = null
+
+	if _pending_data != null:
+		set_data(_pending_data)
+		_pending_data = null
 	else:
 		_update_visuals()
 
 
-func _enter_tree() -> void:
-	if _face_refresh_deferred:
-		_face_refresh_deferred = false
-		_queue_face_refresh()
-
-
-func set_instance(inst: CardInstance) -> void:
+func set_data(card_data: CardData) -> void:
 	if not is_node_ready():
-		_pending_instance = inst
-		card_instance = inst
-		if inst and inst.data:
-			card_name = inst.data.display_name
+		_pending_data = card_data
+		data = card_data
+		if card_data != null:
+			card_name = card_data.display_name
 		return
-	card_instance = inst
-	if inst and inst.data:
-		card_name = inst.data.display_name
-		_queue_face_refresh()
+	data = card_data
+	if card_data != null:
+		card_name = card_data.display_name
+		_refresh_face()
 	_update_visuals()
 
 
-## Switches the card between board mode (landscape art + nameplate) and hand mode.
-## Call with true when the card enters an active or bench zone; false when it leaves.
 func set_board_mode(on: bool) -> void:
 	_board_mode = on
 	_resize_meshes(on)
-	if on:
-		_ensure_nameplate()
-	else:
-		_hide_nameplate()
-	if card_instance != null and card_instance.data != null:
-		_queue_face_refresh()
+	if data != null:
+		_refresh_face()
 
 
-## Resizes the face PlaneMesh, body BoxMesh, and collision shape for board mode
-## (landscape art at zone scale) or restores portrait dimensions when leaving.
+func set_display_width(w: float) -> void:
+	_display_width = w
+	_resize_meshes(_board_mode)
+
+
 func _resize_meshes(board: bool) -> void:
 	if board:
 		_card_w = _display_width
@@ -200,213 +143,54 @@ func _resize_meshes(board: bool) -> void:
 		cshape.size = Vector3(_card_w, 0.02, _card_h)
 
 
-## Sets the display width the zone wants for this card in board mode.
-## Immediately resizes the card if it is already in board mode.
-func set_display_width(w: float) -> void:
-	_display_width = w
-	_resize_meshes(_board_mode)
-
-
-## Queues an async face refresh (fire-and-forget — do not await).
-## Uses board mode (art crop) or hand mode (full image) based on _board_mode.
-##
-## Multiple calls in the same frame are coalesced: every call updates the
-## SubViewport content synchronously (so the final call's state is always
-## rendered), but only one coroutine waits for the two-frame render cycle.
-## This prevents N concurrent coroutines when the card's state changes rapidly
-## (e.g. set_board_mode() called right after set_instance()).
-func _queue_face_refresh() -> void:
-	if card_instance == null or card_instance.data == null:
+func _refresh_face() -> void:
+	if data == null or not is_node_ready() or not is_inside_tree():
 		return
-	if not is_node_ready() or not is_inside_tree():
-		_face_refresh_deferred = true
-		return
-	## Face-down cards don't display the SubViewport texture, so skip the
-	## expensive render.  The face_down setter triggers a refresh when
-	## the card is later revealed.
 	if face_down:
 		return
-	## Always sync the SubViewport content immediately so the latest state
-	## is ready before the renderer fires — even if a coroutine is already waiting.
 	if _board_mode:
-		card_face.setup_board(card_instance)
+		card_face.setup_board(data)
 	else:
-		card_face.setup(card_instance.data)
-	if _face_refresh_pending:
-		return  ## An existing coroutine will pick up the updated content.
-	_face_refresh_pending = true
-	## Wait two frames — one for layout, one for the SubViewport to render.
-	## Guard each await: the card node may be freed (e.g. deck teardown).
+		card_face.setup(data)
 	await get_tree().process_frame
 	if not is_inside_tree():
-		_face_refresh_pending = false
 		return
 	face_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await get_tree().process_frame
 	if not is_inside_tree():
-		_face_refresh_pending = false
 		return
-	_face_refresh_pending = false
 	_update_visuals()
 
 
-## Lazily builds the nameplate if it doesn't exist, then shows and repositions it.
-func _ensure_nameplate() -> void:
-	if card_instance == null or card_instance.data == null:
-		_hide_nameplate()
-		return
-	if _nameplate_node == null or not is_instance_valid(_nameplate_node):
-		_build_nameplate()
-	else:
-		_reposition_nameplate()
-	if _nameplate_node != null:
-		_nameplate_node.visible = true
-
-
-## Builds and attaches the 3D nameplate strip above the card's top edge.
-## Shows name on the left and HP fraction on the right (Pokemon only).
-func _build_nameplate() -> void:
-	_hide_nameplate()
-	if card_instance == null or card_instance.data == null:
-		return
-
-	_nameplate_node = Node3D.new()
-	_nameplate_node.name = "Nameplate"
-
-	var sc := _card_w / CARD_WIDTH
-	var np_h := NAMEPLATE_H * sc
-
-	## Dark background plane lying flat on the table.
-	var bg := MeshInstance3D.new()
-	bg.name = "NameplateBG"
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(_card_w, np_h)
-	bg.mesh = plane
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.05, 0.05, 0.05, 0.90)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	bg.set_surface_override_material(0, mat)
-	_nameplate_node.add_child(bg)
-
-	## Name label — left side.
-	var name_lbl := Label3D.new()
-	name_lbl.name = "NameplateName"
-	name_lbl.text = card_instance.data.display_name
-	name_lbl.pixel_size = 0.00085 * sc
-	name_lbl.font_size = 52
-	name_lbl.modulate = Color.WHITE
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	## Rotate -90° around X so the label lies flat and reads from above.
-	name_lbl.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
-	name_lbl.position = Vector3(-_card_w * 0.5 + 0.035 * sc, 0.002, 0.0)
-	_nameplate_node.add_child(name_lbl)
-
-	## HP label — right side (Pokemon only).
-	if card_instance.is_pokemon():
-		var hp_lbl := Label3D.new()
-		hp_lbl.name = "NameplateHP"
-		hp_lbl.text = "%d/%d HP" % [card_instance.hp_remaining(), card_instance.hp_max()]
-		hp_lbl.pixel_size = 0.00085 * sc
-		hp_lbl.font_size = 42
-		hp_lbl.modulate = Color.WHITE
-		hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		hp_lbl.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
-		hp_lbl.position = Vector3(_card_w * 0.5 - 0.035 * sc, 0.002, 0.0)
-		_nameplate_node.add_child(hp_lbl)
-
-	## Position just past the top edge of the board-mode (landscape) card.
-	_nameplate_node.position = Vector3(
-		0.0, NAMEPLATE_Y, -(_card_h * 0.5 + np_h * 0.5)
-	)
-	add_child(_nameplate_node)
-
-
-## Repositions the existing nameplate to match the current card dimensions
-## and updates text content without allocating new nodes.
-func _reposition_nameplate() -> void:
-	if _nameplate_node == null or card_instance == null:
-		return
-	var sc := _card_w / CARD_WIDTH
-	var np_h := NAMEPLATE_H * sc
-
-	var bg := _nameplate_node.get_node_or_null("NameplateBG") as MeshInstance3D
-	if bg != null:
-		(bg.mesh as PlaneMesh).size = Vector2(_card_w, np_h)
-
-	var name_lbl := _nameplate_node.get_node_or_null("NameplateName") as Label3D
-	if name_lbl != null:
-		name_lbl.text = card_instance.data.display_name if card_instance.data else ""
-		name_lbl.pixel_size = 0.00085 * sc
-		name_lbl.position = Vector3(-_card_w * 0.5 + 0.035 * sc, 0.002, 0.0)
-
-	var hp_lbl := _nameplate_node.get_node_or_null("NameplateHP") as Label3D
-	if hp_lbl != null:
-		hp_lbl.text = "%d/%d HP" % [card_instance.hp_remaining(), card_instance.hp_max()]
-		hp_lbl.pixel_size = 0.00085 * sc
-		hp_lbl.position = Vector3(_card_w * 0.5 - 0.035 * sc, 0.002, 0.0)
-
-	_nameplate_node.position = Vector3(
-		0.0, NAMEPLATE_Y, -(_card_h * 0.5 + np_h * 0.5)
-	)
-
-
-func _hide_nameplate() -> void:
-	if _nameplate_node != null and is_instance_valid(_nameplate_node):
-		_nameplate_node.visible = false
-
-
-## Updates just the HP text on the nameplate without re-rendering the face.
-func _update_nameplate_hp() -> void:
-	if _nameplate_node == null or not _nameplate_node.visible or card_instance == null:
-		return
-	var hp_lbl := _nameplate_node.get_node_or_null("NameplateHP") as Label3D
-	if hp_lbl != null:
-		hp_lbl.text = "%d/%d HP" % [card_instance.hp_remaining(), card_instance.hp_max()]
-
-
 func _update_visuals() -> void:
-	if not _face_material:
+	if _face_material == null:
 		return
-	if face_down or card_instance == null:
-		## SleevesManager takes priority; fall back to back_texture export, then BACK_COLOR.
-		var owner_id: int = card_instance.owner_id if card_instance != null else 0
-		var back_tex: Texture2D = SleevesManager.get_sleeve(owner_id)
-		if back_tex == null:
-			back_tex = back_texture
-		## Ensure the standard material is active on the face mesh (may have been
-		## replaced by the shader material while the card was face-up).
+	if face_down or data == null:
 		face_mesh.set_surface_override_material(0, _face_material)
-		if back_tex != null:
-			## Texture-based back: honour the image's alpha channel for rounded corners.
-			## ALPHA_SCISSOR clips pixels cleanly without depth-sort issues on stacked cards.
-			_face_material.albedo_texture = back_tex
+		if back_texture != null:
+			_face_material.albedo_texture = back_texture
 			_face_material.albedo_color = Color.WHITE
 			_face_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 			_face_material.alpha_scissor_threshold = 0.5
-			## Hide the body mesh so its opaque top face doesn't bleed through the clipped corners.
-			if _body_material:
+			if _body_material != null:
 				_body_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 				_body_material.albedo_color.a = 0.0
 		else:
-			## Solid-colour fallback — keep everything opaque (rectangular card shape).
 			_face_material.albedo_texture = null
 			_face_material.albedo_color = BACK_COLOR
 			_face_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-			if _body_material:
+			if _body_material != null:
 				_body_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 				_body_material.albedo_color.a = 1.0
 	else:
-		## Face-up: use the rounded-corner shader material so the card silhouette
-		## matches the card_back.  Corner regions sample mirrored edge content
-		## rather than cutting off the card border abruptly.
 		_face_shader_material.set_shader_parameter("face_texture", face_viewport.get_texture())
 		face_mesh.set_surface_override_material(0, _face_shader_material)
-		## Hide the body mesh so its rectangular corners don't show through the
-		## clipped face, mirroring the card-back treatment.
-		if _body_material:
+		if _body_material != null:
 			_body_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			_body_material.albedo_color.a = 0.0
 
+
+## --- Drag / hover -----------------------------------------------------------
 
 func set_hovered(value: bool) -> void:
 	if value == is_hovered or is_dragging:
@@ -415,7 +199,7 @@ func set_hovered(value: bool) -> void:
 	if value:
 		_on_hover_start()
 	else:
-		_on_hover_end()
+		return_to_home()
 
 
 func _new_tween() -> Tween:
@@ -451,18 +235,12 @@ func move_to_drag_position(world_pos: Vector3) -> void:
 func _on_hover_start() -> void:
 	var tween := _new_tween()
 	if _is_in_hand:
-		## Scale up, slide toward the board to reveal the full face, and rise on Y
-		## so the card floats above its neighbours in the fan.
 		tween.tween_property(self, "scale",      Vector3.ONE * HAND_HOVER_SCALE,       TWEEN_SPEED)
 		tween.tween_property(self, "position:z", home_position.z + HAND_HOVER_Z_DELTA, TWEEN_SPEED)
 		tween.tween_property(self, "position:y", home_position.y + HAND_HOVER_LIFT,    TWEEN_SPEED)
 	else:
-		tween.tween_property(self, "position:y", home_position.y + HOVER_LIFT,               TWEEN_SPEED)
+		tween.tween_property(self, "position:y", home_position.y + HOVER_LIFT, TWEEN_SPEED)
 		tween.tween_property(self, "rotation",   Vector3(0, home_rotation.y, home_rotation.z), TWEEN_SPEED)
-
-
-func _on_hover_end() -> void:
-	return_to_home()
 
 
 func return_to_home() -> void:
@@ -474,12 +252,10 @@ func return_to_home() -> void:
 		tween.tween_property(self, "scale", target_scale, TWEEN_SPEED)
 
 
-func animate_draw() -> void:
-	var tween := _new_tween()
-	tween.tween_property(self, "position", home_position, DRAW_SPEED) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(self, "rotation", home_rotation, DRAW_SPEED) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+func set_home(pos: Vector3, rot: Vector3, index: int) -> void:
+	home_position = pos
+	home_rotation = rot
+	hand_index = index
 
 
 func snap_to_home() -> void:
@@ -489,211 +265,3 @@ func snap_to_home() -> void:
 	position = home_position
 	rotation = home_rotation
 	scale = Vector3.ONE * HAND_BASE_SCALE if _is_in_hand else Vector3.ONE
-
-
-func set_home(pos: Vector3, rot: Vector3, index: int) -> void:
-	home_position = pos
-	home_rotation = rot
-	hand_index = index
-
-
-## Rebuilds the small overlay circles showing attached energy and tools.
-## Call this whenever the card's attached_energy or attached_tools change.
-func update_attachment_icons() -> void:
-	## remove_child() + queue_free() removes the node from the scene tree
-	## immediately so the new icons appear clean on the very next frame.
-	## Using queue_free() alone defers destruction to the next idle frame,
-	## leaving old and new icons visible simultaneously for one frame.
-	for child in get_children():
-		if child.name.begins_with("AttachIcon_"):
-			remove_child(child)
-			child.queue_free()
-	if card_instance == null:
-		return
-
-	# Energy circles along the bottom edge in canonical order, left-justified.
-	var sorted_energy := AttachmentDisplay.sort_energy(card_instance.attached_energy)
-	var energy_count := sorted_energy.size()
-	var visible_count: int = min(energy_count, ENERGY_ICON_MAX)
-
-	for i in range(visible_count):
-		_spawn_energy_icon(sorted_energy[i], _energy_pos_x(i), i)
-	if energy_count > ENERGY_ICON_MAX:
-		_spawn_energy_overflow(_energy_pos_x(ENERGY_ICON_MAX))
-
-	# Tool circles on the left edge (unchanged layout).
-	for i in range(card_instance.attached_tools.size()):
-		_spawn_tool_icon(card_instance.attached_tools[i], i)
-
-
-## Returns the 3D x coordinate for energy icon at [slot], left-justified from
-## the weakness-symbol area using the shared normalised fractions.
-func _energy_pos_x(slot: int) -> float:
-	var frac := AttachmentDisplay.ENERGY_NORM_START_X + slot * AttachmentDisplay.ENERGY_NORM_STEP_X
-	return -_card_w * 0.5 + _card_w * frac
-
-
-func _spawn_energy_icon(inst: CardInstance, x: float, index: int) -> void:
-	var icon := Node3D.new()
-	icon.name = "AttachIcon_E%d" % index
-
-	var disc := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = ENERGY_ICON_RADIUS
-	cyl.bottom_radius = ENERGY_ICON_RADIUS
-	cyl.height = ENERGY_ICON_HEIGHT
-	disc.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = AttachmentDisplay.energy_color(inst)
-	disc.set_surface_override_material(0, mat)
-	icon.add_child(disc)
-
-	var lbl := Label3D.new()
-	lbl.text = AttachmentDisplay.energy_label(inst)
-	lbl.pixel_size = 0.0006
-	lbl.font_size = 22
-	lbl.modulate = Color.WHITE
-	lbl.position = Vector3(0.0, ENERGY_ICON_HEIGHT * 0.5 + 0.001, 0.0)
-	icon.add_child(lbl)
-
-	# Centre the disc on the bottom edge — 50% overlap.
-	icon.position = Vector3(x, ICON_Y, _card_h * 0.5)
-	add_child(icon)
-
-
-## Spawns a "+" text indicator after the fifth energy circle when 6+ are attached.
-func _spawn_energy_overflow(x: float) -> void:
-	var icon := Node3D.new()
-	icon.name = "AttachIcon_EOverflow"
-
-	var lbl := Label3D.new()
-	lbl.text = "+"
-	lbl.pixel_size = 0.0008
-	lbl.font_size = 28
-	lbl.modulate = Color.WHITE
-	icon.add_child(lbl)
-
-	icon.position = Vector3(x, ICON_Y, _card_h * 0.5)
-	add_child(icon)
-
-
-## Strips all in-play visual overlays so the card looks like it has never been
-## played (no energy/tool icons, no HP counter, no status badges).
-## Call whenever a card leaves an active or bench zone for any off-board zone
-## (discard, hand, deck).  The card_instance's logical state should already be
-## reset by game_state before this is called.
-func clear_play_state() -> void:
-	update_attachment_icons()
-	update_damage_counter()
-	update_status_overlays()
-
-
-## Updates the HP display in the nameplate (board mode only).
-## HP is shown as a "X/Y HP" label strip above the card art; there is no
-## separate 3D disc overlay.
-func update_damage_counter() -> void:
-	if _damage_ctr_node != null and is_instance_valid(_damage_ctr_node):
-		_damage_ctr_node.queue_free()
-	_damage_ctr_node = null
-	_update_nameplate_hp()
-
-
-## Updates the status condition badges (PSN, BRN, etc.) on the right edge.
-## Call whenever special_conditions change or the card becomes face-up/down.
-func update_status_overlays() -> void:
-	for node in _status_badge_nodes:
-		if is_instance_valid(node):
-			node.queue_free()
-	_status_badge_nodes.clear()
-
-	if card_instance == null or face_down:
-		return
-
-	var badges: Array[Dictionary] = []
-	if card_instance.has_condition(CardInstance.SpecialCondition.POISONED):
-		badges.append({"label": "PSN", "color": Color(0.62, 0.08, 0.82, 0.92)})
-	if card_instance.has_condition(CardInstance.SpecialCondition.BURNED):
-		badges.append({"label": "BRN", "color": Color(0.95, 0.38, 0.04, 0.92)})
-	if card_instance.has_condition(CardInstance.SpecialCondition.PARALYZED):
-		badges.append({"label": "PAR", "color": Color(0.90, 0.85, 0.08, 0.92)})
-	if card_instance.has_condition(CardInstance.SpecialCondition.ASLEEP):
-		badges.append({"label": "SLP", "color": Color(0.28, 0.28, 0.68, 0.92)})
-	if card_instance.has_condition(CardInstance.SpecialCondition.CONFUSED):
-		badges.append({"label": "CNF", "color": Color(0.78, 0.38, 0.68, 0.92)})
-
-	## Stack badges down the right edge, starting just below the damage counter.
-	## Scale radii and offsets proportionally with card width.
-	var sc := _card_w / CARD_WIDTH
-	var badge_r := STATUS_BADGE_RADIUS * sc
-	var badge_start_z := -(_card_h * 0.5 - DAMAGE_CTR_RADIUS * 2.0 * sc - badge_r)
-	for i in range(badges.size()):
-		var badge: Dictionary = badges[i]
-		var node := _spawn_status_badge(
-			badge["label"] as String,
-			badge["color"] as Color,
-			badge_start_z + i * (badge_r * 2.2 + 0.008 * sc),
-			badge_r
-		)
-		add_child(node)
-		_status_badge_nodes.append(node)
-
-
-func _spawn_status_badge(lbl_text: String, color: Color, z_pos: float, radius: float = STATUS_BADGE_RADIUS) -> Node3D:
-	var node := Node3D.new()
-	node.name = "StatusBadge_%s" % lbl_text
-
-	var disc := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = radius
-	cyl.bottom_radius = radius
-	cyl.height = OVERLAY_HEIGHT
-	disc.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	disc.set_surface_override_material(0, mat)
-	node.add_child(disc)
-
-	var lbl := Label3D.new()
-	lbl.text = lbl_text
-	lbl.pixel_size = 0.00060 * (_card_w / CARD_WIDTH)
-	lbl.font_size = 18
-	lbl.modulate = Color.WHITE
-	lbl.position = Vector3(0.0, OVERLAY_HEIGHT * 0.5 + 0.001, 0.0)
-	node.add_child(lbl)
-
-	node.position = Vector3(_card_w * 0.5 - radius, OVERLAY_Y, z_pos)
-	return node
-
-
-func _spawn_tool_icon(inst: CardInstance, index: int) -> void:
-	var sc := _card_w / CARD_WIDTH
-	var sc_h := _card_h / CARD_HEIGHT
-	var icon := Node3D.new()
-	icon.name = "AttachIcon_T%d" % index
-
-	var disc := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = ICON_RADIUS * sc
-	cyl.bottom_radius = ICON_RADIUS * sc
-	cyl.height = ICON_HEIGHT
-	disc.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = AttachmentDisplay.TOOL_ICON_COLOR
-	disc.set_surface_override_material(0, mat)
-	icon.add_child(disc)
-
-	var lbl := Label3D.new()
-	lbl.text = "T"
-	lbl.pixel_size = 0.0018 * sc
-	lbl.font_size = 22
-	lbl.modulate = Color.WHITE
-	lbl.position = Vector3(0.0, ICON_HEIGHT * 0.5 + 0.001, 0.0)
-	icon.add_child(lbl)
-
-	icon.position = Vector3(
-		-(_card_w * 0.5),
-		ICON_Y,
-		ICON_START_Z * sc_h + index * ICON_SPACING * sc_h
-	)
-	add_child(icon)
