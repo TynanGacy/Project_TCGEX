@@ -94,6 +94,7 @@ func _rebuild_hand_visual(player_id: int) -> void:
 	if player_id != 0:
 		return  ## Only player 0 hand is rendered in bare-bones mode.
 
+	player_hand.clear_cards()
 	for card in _hand_cards.values():
 		if is_instance_valid(card):
 			card.queue_free()
