@@ -104,6 +104,12 @@ func set_state(gs: GameState) -> void:
 	state = gs
 
 
+## Called by main.gd after placement is complete to kick off the very first turn.
+## Emits turn_started so the CPU player and UI both react correctly.
+func start_game(first_player_id: int) -> void:
+	_start_turn(first_player_id)
+
+
 ## Extended set_state that also finishes CardEffectRegistry setup with the
 ## CardLibrary so AttackEffects auto-detection can run.
 func set_state_with_library(gs: GameState, library: CardLibrary) -> void:
