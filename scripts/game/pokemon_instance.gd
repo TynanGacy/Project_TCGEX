@@ -63,11 +63,10 @@ func _ready() -> void:
 
 func _build_visual() -> void:
 	_card_visual = _CARD_SCENE.instantiate() as Card
+	add_child(_card_visual)  ## add_child first so @onready nodes are live
 	_card_visual.set_display_width(display_width)
-	add_child(_card_visual)
 	_card_visual.set_board_mode(true)
-	if card != null:
-		_card_visual.card_name = card.display_name
+	_card_visual.set_data(card)
 
 	_hp_label = Label3D.new()
 	_hp_label.name = "HPLabel"
@@ -106,8 +105,7 @@ func _build_visual() -> void:
 ## Pushes current state to the visual.  Call after any mutation.
 func refresh_visual() -> void:
 	if _card_visual != null:
-		if card != null:
-			_card_visual.card_name = card.display_name
+		_card_visual.set_data(card)
 		_card_visual.face_down = false
 	if _hp_label != null:
 		_hp_label.text = "%d/%d HP" % [current_hp, max_hp]
