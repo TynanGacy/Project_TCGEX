@@ -87,6 +87,8 @@ var _placement_picker: Control = null
 ## ── UI panels (built in code) ────────────────────────────────────────────────
 var _setup_dialog:   Control = null
 var _setup_selected_mode: String = ""
+var _player_deck_path:   String = ""
+var _opponent_deck_path: String = ""
 var _attack_panel:   Control = null
 var _target_picker:  Control = null
 var _bench_picker:   Control = null
@@ -235,6 +237,37 @@ func _show_setup_dialog() -> void:
 
 	vbox.add_child(HSeparator.new())
 
+	## Deck selection — scanned from data/decks/ at startup.
+	var deck_options := DeckLoader.get_valid_decks()
+
+	var p1_deck_row := HBoxContainer.new()
+	var p1_deck_lbl := Label.new()
+	p1_deck_lbl.text = "Player Deck:"
+	p1_deck_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var p1_deck_opt := OptionButton.new()
+	p1_deck_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	p1_deck_opt.add_item("Random Deck")
+	for deck_entry: Dictionary in deck_options:
+		p1_deck_opt.add_item(deck_entry["label"] as String)
+	p1_deck_row.add_child(p1_deck_lbl)
+	p1_deck_row.add_child(p1_deck_opt)
+	vbox.add_child(p1_deck_row)
+
+	var p2_deck_row := HBoxContainer.new()
+	var p2_deck_lbl := Label.new()
+	p2_deck_lbl.text = "Opponent Deck:"
+	p2_deck_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var p2_deck_opt := OptionButton.new()
+	p2_deck_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	p2_deck_opt.add_item("Random Deck")
+	for deck_entry: Dictionary in deck_options:
+		p2_deck_opt.add_item(deck_entry["label"] as String)
+	p2_deck_row.add_child(p2_deck_lbl)
+	p2_deck_row.add_child(p2_deck_opt)
+	vbox.add_child(p2_deck_row)
+
+	vbox.add_child(HSeparator.new())
+
 	var start_btn := Button.new()
 	start_btn.text     = "Start Game"
 	start_btn.disabled = true
@@ -260,11 +293,17 @@ func _show_setup_dialog() -> void:
 	start_btn.pressed.connect(func() -> void:
 		_setup_dialog.queue_free()
 		_setup_dialog = null
+		var p_sel := p1_deck_opt.selected
+		var o_sel := p2_deck_opt.selected
+		var p_path := "" if p_sel <= 0 else deck_options[p_sel - 1]["path"] as String
+		var o_path := "" if o_sel <= 0 else deck_options[o_sel - 1]["path"] as String
 		_on_setup_confirmed(
 			_setup_selected_mode,
 			int(prize_spin.value),
 			int(active_spin.value),
-			int(bench_spin.value)
+			int(bench_spin.value),
+			p_path,
+			o_path
 		)
 	)
 
@@ -279,12 +318,16 @@ func _on_setup_confirmed(
 	mode: String,
 	prizes: int,
 	active_slots: int,
-	bench_slots: int
+	bench_slots: int,
+	player_deck_path: String = "",
+	opponent_deck_path: String = ""
 ) -> void:
-	is_developer_mode = (mode == "developer")
-	_prize_count      = prizes
-	_active_slots     = active_slots
-	_bench_slots      = bench_slots
+	is_developer_mode     = (mode == "developer")
+	_prize_count          = prizes
+	_active_slots         = active_slots
+	_bench_slots          = bench_slots
+	_player_deck_path     = player_deck_path
+	_opponent_deck_path   = opponent_deck_path
 	_start_game()
 
 
@@ -336,8 +379,8 @@ func _start_game() -> void:
 	## ── Deal decks and starting hands (prizes placed after mulligan draw) ──
 	## Decks are loaded from data/decks/*.json; fall back to random if missing.
 	var deck_load_t0 := Time.get_ticks_msec()
-	game_state.setup_player_deck(0, DeckLoader.load_deck(0))
-	game_state.setup_player_deck(1, DeckLoader.load_deck(1))
+	game_state.setup_player_deck(0, DeckLoader.load_deck(0, _player_deck_path))
+	game_state.setup_player_deck(1, DeckLoader.load_deck(1, _opponent_deck_path))
 	var deck_load_ms := Time.get_ticks_msec() - deck_load_t0
 
 	## Draw starting hands with mulligan rule (reshuffle if no Basic found).
@@ -893,6 +936,10 @@ func _find_card_node(inst: CardInstance) -> Card:
 func _on_turn_started(_turn_number: int, current_player_id: int) -> void:
 	_update_prize_label()
 	_update_status_label()
+	## End-of-turn conditions (Burn, Poison, Sleep, Paralysis) are applied just
+	## before this signal fires, so we need a fresh visual pass to show the
+	## updated HP counters and condition badges.
+	_refresh_board_card_visuals()
 
 	## In Developer Mode the perspective flips automatically on turn change.
 	if is_developer_mode and current_player_id != controlling_player:

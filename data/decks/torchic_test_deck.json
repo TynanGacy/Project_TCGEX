@@ -1,0 +1,26 @@
+{
+  "_comment": "Player 1 (opponent) deck — edit card_id values and counts to customise. Total should be 60.",
+  "_comment2": "Find valid card_id values by browsing data/cards/**/*.json",
+  "cards": [
+    { "card_id": "RS_3_blaziken",   "count": 1 },
+    { "card_id": "RS_15_blaziken",   "count": 2 },
+    { "card_id": "RS_27_combusken",  "count": 2 },
+    { "card_id": "RS_28_combusken",  "count": 2 },
+    { "card_id": "RS_73_torchic",     "count": 2 },
+    { "card_id": "RS_74_torchic",     "count": 2 },
+    { "card_id": "SS_15_arcanine",   "count": 1 },
+    { "card_id": "SS_65_growlithe",    "count": 3 },
+    { "card_id": "DR_32_gyarados",    "count": 2 },
+    { "card_id": "DR_60_magikarp",   "count": 3 },
+    { "card_id": "DR_50_bagon",   "count": 2 },
+    { "card_id": "SS_83_wailmer",   "count": 2 },
+    { "card_id": "RS_86_pok_ball",   "count": 3 },
+    { "card_id": "RS_91_potion",     "count": 3 },
+    { "card_id": "RS_89_professor_birch", "count": 3 },
+    { "card_id": "RS_92_switch",     "count": 3 },
+    { "card_id": "RS_90_energy_search",     "count": 3 },
+    { "card_id": "RS_81_energy_restore", "count": 2 },
+    { "card_id": "RS_108_fire_energy",    "count": 13 },
+    { "card_id": "RS_106_water_energy",  "count": 6 }
+  ]
+}

@@ -19,12 +19,44 @@ class_name DeckLoader
 
 const PLAYER_DECK_PATH   := "res://data/decks/player_deck.json"
 const OPPONENT_DECK_PATH := "res://data/decks/opponent_deck.json"
+const DECKS_DIR          := "res://data/decks/"
 
 
 ## Returns the CardData array for [player_id] (0 = player, 1 = opponent).
-static func load_deck(player_id: int) -> Array[CardData]:
+## If [override_path] is non-empty it is used instead of the default file.
+static func load_deck(player_id: int, override_path: String = "") -> Array[CardData]:
+	if not override_path.is_empty():
+		return _load_from_file(override_path)
 	var path := PLAYER_DECK_PATH if player_id == 0 else OPPONENT_DECK_PATH
 	return _load_from_file(path)
+
+
+## Returns every .json file in DECKS_DIR whose card entries sum to exactly 60.
+## Each element is a Dictionary with "path" (res:// path) and "label" (display name).
+static func get_valid_decks() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var files := DirAccess.get_files_at(DECKS_DIR)
+	for fname in files:
+		if not fname.ends_with(".json"):
+			continue
+		var path := DECKS_DIR + fname
+		var raw := FileAccess.get_file_as_string(path)
+		if raw.is_empty():
+			continue
+		var parsed = JSON.parse_string(raw)
+		if parsed == null or not (parsed is Dictionary):
+			continue
+		var entries = (parsed as Dictionary).get("cards", null)
+		if entries == null or not (entries is Array):
+			continue
+		var total := 0
+		for entry in entries as Array:
+			if entry is Dictionary:
+				total += int((entry as Dictionary).get("count", 0))
+		if total == 60:
+			var label := fname.trim_suffix(".json").replace("_", " ")
+			result.append({"path": path, "label": label})
+	return result
 
 
 static func _load_from_file(path: String) -> Array[CardData]:

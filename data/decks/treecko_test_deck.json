@@ -1,0 +1,26 @@
+{
+  "_comment": "Player 1 (opponent) deck — edit card_id values and counts to customise. Total should be 60.",
+  "_comment2": "Find valid card_id values by browsing data/cards/**/*.json",
+  "cards": [
+    { "card_id": "RS_11_sceptile",   "count": 1 },
+    { "card_id": "RS_20_sceptile",   "count": 2 },
+    { "card_id": "RS_31_grovyle",  "count": 2 },
+    { "card_id": "RS_32_grovyle",  "count": 2 },
+    { "card_id": "RS_75_treecko",     "count": 2 },
+    { "card_id": "RS_76_treecko",     "count": 2 },
+    { "card_id": "SS_22_sandslash",   "count": 1 },
+    { "card_id": "SS_75_sandshrew",    "count": 3 },
+    { "card_id": "DR_38_ninjask",    "count": 2 },
+    { "card_id": "DR_66_nincada",   "count": 3 },
+    { "card_id": "SS_85_zigzagoon",   "count": 2 },
+    { "card_id": "DR_55_geodude",   "count": 2 },
+    { "card_id": "RS_86_pok_ball",   "count": 3 },
+    { "card_id": "RS_91_potion",     "count": 3 },
+    { "card_id": "RS_89_professor_birch", "count": 3 },
+    { "card_id": "RS_92_switch",     "count": 3 },
+    { "card_id": "RS_90_energy_search",     "count": 3 },
+    { "card_id": "RS_81_energy_restore", "count": 2 },
+    { "card_id": "RS_104_grass_energy",    "count": 13 },
+    { "card_id": "RS_105_fighting_energy",  "count": 6 }
+  ]
+}
