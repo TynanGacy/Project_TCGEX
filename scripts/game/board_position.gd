@@ -163,6 +163,8 @@ func _apply_visual(slot_id: String, instance: PokemonInstance) -> void:
 		anchor.add_child(instance)
 	instance.position = Vector3.ZERO
 	instance.rotation = Vector3.ZERO
+	if anchor is DropZone:
+		instance.set_display_width((anchor as DropZone).get_effective_width())
 
 
 func _refresh_all_visuals() -> void:

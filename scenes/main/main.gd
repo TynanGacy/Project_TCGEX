@@ -151,19 +151,19 @@ func _try_drop_card() -> void:
 	dragged_card = null
 
 	var zone := board.get_slot_zone_at(card.global_position)
-	if zone == null:
-		card.end_drag()
-		return
+	var slot_id := board.slot_id_for_zone(zone) if zone != null else ""
 
-	var slot_id := board.slot_id_for_zone(zone)
-	if slot_id == "":
+	if slot_id == "" or card.data == null or not (card.data is PokemonCardData):
+		card.return_to_home()
 		card.end_drag()
 		return
 
 	var action := ActionPlayPokemon.new(0, card.data as PokemonCardData, slot_id)
-	manager.request_action(action)
-	## If the action was committed the Card will be freed in _rebuild_hand_visual
-	## via the hand_changed signal; if rejected, it stays in hand.
+	var result := manager.request_action(action)
+	## If committed the Card is freed by _rebuild_hand_visual; if rejected we
+	## snap it back to its previous position.
+	if not result.ok:
+		card.return_to_home()
 	card.end_drag()
 
 

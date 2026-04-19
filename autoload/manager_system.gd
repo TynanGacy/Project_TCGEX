@@ -53,19 +53,22 @@ func attach_board_anchors(anchors: Dictionary) -> void:
 ## --- Public API -------------------------------------------------------------
 
 ## The single entry point for Game_Actions.  Validates, applies, emits.
-func request_action(action: GameAction) -> void:
+## Returns the ActionResult so callers can react synchronously (e.g. to
+## snap a dragged card back on rejection).
+func request_action(action: GameAction) -> ActionResult:
 	if action == null:
 		_reject(null, "Null action.")
-		return
+		return ActionResult.fail("Null action.")
 
 	var result: ActionResult = action.validate(self)
 	if not result.ok:
 		_reject(action, result.reason)
-		return
+		return result
 
 	action.apply(self)
 	log_message.emit(action.description())
 	action_committed.emit(action)
+	return ActionResult.success()
 
 
 ## Convenience helpers the scene layer uses for startup — NOT actions, since

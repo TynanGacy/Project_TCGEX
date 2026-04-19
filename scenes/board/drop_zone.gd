@@ -60,6 +60,14 @@ func set_zone_size(w: float, h: float) -> void:
 	_resize_zone(w, h)
 
 
+func get_effective_width() -> float:
+	return _effective_width
+
+
+func get_effective_height() -> float:
+	return _effective_height
+
+
 func set_highlighted(value: bool) -> void:
 	is_highlighted = value
 	if mesh_instance:
