@@ -194,7 +194,9 @@ func _screen_to_table(screen_pos: Vector2) -> Vector3:
 	var from := camera.project_ray_origin(screen_pos)
 	var dir  := camera.project_ray_normal(screen_pos)
 	var hit: Variant = DRAG_PLANE.intersects_ray(from, dir)
-	return hit as Vector3 if hit != null else from
+	if hit == null:
+		return from
+	return hit as Vector3
 
 
 ## ---------------------------------------------------------------------------
