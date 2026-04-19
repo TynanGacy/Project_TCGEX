@@ -159,7 +159,7 @@ func _try_drop_card() -> void:
 		return
 
 	var action := ActionPlayPokemon.new(0, card.data as PokemonCardData, slot_id)
-	var result := manager.request_action(action)
+	var result: ActionResult = manager.request_action(action)
 	## If committed the Card is freed by _rebuild_hand_visual; if rejected we
 	## snap it back to its previous position.
 	if not result.ok:
