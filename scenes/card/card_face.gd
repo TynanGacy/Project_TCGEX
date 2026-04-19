@@ -72,9 +72,10 @@ func setup(data: CardData) -> void:
 ## Board mode: display only the painted art cropped from the card image.
 ## Viewport is resized to BOARD_FACE_SIZE (landscape); the Card node's face
 ## mesh is expected to match these proportions.
-func setup_board(inst: CardInstance) -> void:
+func setup_board(data: CardData) -> void:
 	_clear_to(BOARD_FACE_SIZE)
-	var data := inst.data
+	if data == null:
+		return
 	if data.art != null:
 		var atlas := AtlasTexture.new()
 		atlas.atlas = data.art
