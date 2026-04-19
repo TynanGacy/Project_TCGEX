@@ -11,22 +11,28 @@ class_name CardLibrary
 var _cards: Dictionary = {}  # card_id (String) -> CardData
 
 
-## Loads every *.json file in folder_path and returns a CardLibrary.
-## Non-JSON files are silently ignored.
+## Loads every *.json file in folder_path (recursively) and returns a CardLibrary.
+## Non-JSON files and subdirectories are traversed automatically.
 static func load_from_folder(folder_path: String) -> CardLibrary:
 	var lib := CardLibrary.new()
+	lib._load_folder(folder_path)
+	return lib
+
+
+func _load_folder(folder_path: String) -> void:
 	var dir := DirAccess.open(folder_path)
 	if dir == null:
 		push_error("CardLibrary: could not open folder '%s'" % folder_path)
-		return lib
+		return
 	dir.list_dir_begin()
 	var file_name := dir.get_next()
 	while file_name != "":
-		if not dir.current_is_dir() and file_name.ends_with(".json"):
-			lib._load(folder_path.path_join(file_name))
+		if dir.current_is_dir():
+			_load_folder(folder_path.path_join(file_name))
+		elif file_name.ends_with(".json"):
+			_load(folder_path.path_join(file_name))
 		file_name = dir.get_next()
 	dir.list_dir_end()
-	return lib
 
 
 ## Returns the CardData for card_id, or null if not found.
