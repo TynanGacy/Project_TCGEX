@@ -295,8 +295,12 @@ func _show_setup_dialog() -> void:
 		_setup_dialog = null
 		var p_sel := p1_deck_opt.selected
 		var o_sel := p2_deck_opt.selected
-		var p_path := "" if p_sel <= 0 else deck_options[p_sel - 1]["path"] as String
-		var o_path := "" if o_sel <= 0 else deck_options[o_sel - 1]["path"] as String
+		var p_path: String = deck_options[randi() % deck_options.size()]["path"] \
+			if p_sel <= 0 and not deck_options.is_empty() \
+			else ("" if p_sel <= 0 else deck_options[p_sel - 1]["path"] as String)
+		var o_path: String = deck_options[randi() % deck_options.size()]["path"] \
+			if o_sel <= 0 and not deck_options.is_empty() \
+			else ("" if o_sel <= 0 else deck_options[o_sel - 1]["path"] as String)
 		_on_setup_confirmed(
 			_setup_selected_mode,
 			int(prize_spin.value),
@@ -778,16 +782,9 @@ func _complete_placement_phase() -> void:
 
 	var first_player := await _show_coin_flip_overlay()
 
-	game_state.game_started      = true
-	game_state.current_player_id = first_player
-
-	if is_developer_mode:
-		_switch_perspective_to(first_player)
-
+	game_state.game_started = true
 	_log_line("P%d goes first!" % first_player)
-	_update_prize_label()
-	_on_phase_changed(game_state.phase)
-	_refresh_board_card_visuals()
+	turn_controller.start_game(first_player)
 
 
 ## Animated coin-flip overlay.  Returns winning player id: 0 = heads, 1 = tails.
