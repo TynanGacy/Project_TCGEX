@@ -193,8 +193,10 @@ func _raycast_card(screen_pos: Vector2) -> Card:
 func _screen_to_table(screen_pos: Vector2) -> Vector3:
 	var from := camera.project_ray_origin(screen_pos)
 	var dir  := camera.project_ray_normal(screen_pos)
-	var hit  := DRAG_PLANE.intersects_ray(from, dir)
-	return hit if hit != null else from
+	var hit: Variant = DRAG_PLANE.intersects_ray(from, dir)
+	if hit == null:
+		return from
+	return hit as Vector3
 
 
 ## ---------------------------------------------------------------------------
