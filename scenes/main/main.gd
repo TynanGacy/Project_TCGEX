@@ -1234,24 +1234,28 @@ func _sync_visual_for_action(action: GameAction) -> void:
 	elif action is ActionPromoteFromBench:
 		_sync_promotion(action as ActionPromoteFromBench)
 
+	elif action is ActionRetreat:
+		_sync_retreat(action as ActionRetreat)
+
 	elif action is ActionDrawCard:
 		## _on_board_card_moved handles deck→hand already.
 		pass
 
 
 func _sync_play_pokemon(action: ActionPlayBasicPokemon) -> void:
-	## If the card is already shown in a board zone (human drag-and-drop), skip.
 	var card_node := _find_card_node(action.card)
 	if card_node == null:
 		return
-	## If the card node is still in a hand, it was a CPU play: move it to board.
-	if player_hand.cards.has(card_node) or opp_hand.cards.has(card_node):
-		if player_hand.cards.has(card_node):
-			player_hand.remove_card(card_node)
-		else:
-			opp_hand.remove_card(card_node)
-		board.add_child(card_node)
-		card_node.face_down = false
+	## Human drag-and-drop already placed the card via _apply_card_visual.
+	## Only proceed if the card is still in a hand (CPU play).
+	if not (player_hand.cards.has(card_node) or opp_hand.cards.has(card_node)):
+		return
+	if player_hand.cards.has(card_node):
+		player_hand.remove_card(card_node)
+	else:
+		opp_hand.remove_card(card_node)
+	board.add_child(card_node)
+	card_node.face_down = false
 
 	var logic_loc := game_state.board.find_card_location(action.card)
 	var target_zone := _logic_zone_to_visual_zone(logic_loc)
@@ -1321,6 +1325,45 @@ func _sync_promotion(action: ActionPromoteFromBench) -> void:
 		if active_zone:
 			active_zone.receive_card(card_node)
 		break
+
+
+func _sync_retreat(action: ActionRetreat) -> void:
+	## After swap_cards, the chosen bench card is now active and the old active
+	## card is at the end of the bench array.  Move the visual nodes to match.
+	var pid      := action.actor_id
+	var slot_idx := action.active_slot
+
+	var new_active_inst := game_state.board.get_active_card(pid, slot_idx)
+	var bench_cards     := game_state.board.get_bench_cards(pid)
+	if new_active_inst == null or bench_cards.is_empty():
+		return
+	var new_bench_inst := bench_cards.back() as CardInstance
+
+	var promoted_node := _find_card_node(new_active_inst)  ## was on bench
+	var retreated_node := _find_card_node(new_bench_inst)  ## was in active
+
+	## The bench visual zone where the promoted card was sitting.
+	var vacated_bench_zone := board.get_zone_containing(promoted_node) if promoted_node else null
+	var active_zone_name   := _active_zone_name_for(pid, slot_idx)
+	var active_zone        := board.get_zone_by_name(active_zone_name)
+
+	## Move promoted card: bench zone → active zone.
+	if promoted_node != null:
+		if vacated_bench_zone:
+			vacated_bench_zone.remove_card(promoted_node)
+		if active_zone:
+			active_zone.receive_card(promoted_node)
+		promoted_node.face_down = false
+
+	## Move retreated card: active zone → the slot the promoted card just left.
+	if retreated_node != null:
+		if active_zone:
+			active_zone.remove_card(retreated_node)
+		var target_bench := vacated_bench_zone if vacated_bench_zone \
+			else _find_first_empty_bench_zone(pid)
+		if target_bench:
+			target_bench.receive_card(retreated_node)
+		retreated_node.update_attachment_icons()
 
 
 ## Refreshes damage counters and status overlays on every face-up card in a
@@ -2013,11 +2056,20 @@ func _apply_card_visual(
 		## For evolution: remove the prior-stage node from whatever zone it was in.
 		if inst.prior_stage != null and target_drop_zone != null:
 			_remove_prior_stage_visual(target_drop_zone, inst.prior_stage)
-		## Resolve the ACTUAL destination zone — the bench→active redirect may have
-		## placed the card somewhere other than where the player dropped it.
-		var actual_zone := _logic_zone_to_visual_zone(logic_location)
-		if actual_zone == null:
-			actual_zone = target_drop_zone  ## Fallback: use the drop zone.
+		## For bench plays, honour the exact zone the player dropped on rather
+		## than redirecting to the first-empty slot.  Redirecting causes the
+		## card to land in two held_cards arrays simultaneously (the drop zone
+		## AND the first-empty zone), creating phantom occupied-slot entries
+		## that silently block future drops.
+		## Active plays (including bench→active redirects) still use the logical zone.
+		var actual_zone: DropZone
+		if "bench" in logic_location and target_drop_zone != null \
+				and _zone_name_to_pokemon_slot(target_drop_zone) == "bench":
+			actual_zone = target_drop_zone
+		else:
+			actual_zone = _logic_zone_to_visual_zone(logic_location)
+			if actual_zone == null:
+				actual_zone = target_drop_zone
 		if actual_zone != null:
 			actual_zone.receive_card(card)
 			if inst.prior_stage != null:
