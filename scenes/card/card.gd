@@ -92,6 +92,7 @@ func _ready() -> void:
 	face_mesh.mesh = face_mesh.mesh.duplicate()
 	mesh_instance.mesh = mesh_instance.mesh.duplicate()
 	_collision_shape.shape = _collision_shape.shape.duplicate()
+	_resize_meshes(_board_mode)
 
 	if _pending_data != null:
 		set_data(_pending_data)
@@ -116,14 +117,16 @@ func set_data(card_data: CardData) -> void:
 
 func set_board_mode(on: bool) -> void:
 	_board_mode = on
-	_resize_meshes(on)
+	if is_node_ready():
+		_resize_meshes(on)
 	if data != null:
 		_refresh_face()
 
 
 func set_display_width(w: float) -> void:
 	_display_width = w
-	_resize_meshes(_board_mode)
+	if is_node_ready():
+		_resize_meshes(_board_mode)
 
 
 func _resize_meshes(board: bool) -> void:
@@ -133,6 +136,8 @@ func _resize_meshes(board: bool) -> void:
 	else:
 		_card_w = CARD_WIDTH
 		_card_h = CARD_HEIGHT
+	if face_mesh == null or mesh_instance == null:
+		return
 	var plane := face_mesh.mesh as PlaneMesh
 	plane.size = Vector2(_card_w, _card_h)
 	var box := mesh_instance.mesh as BoxMesh
