@@ -1,0 +1,26 @@
+{
+  "_comment": "Player 1 (opponent) deck — edit card_id values and counts to customise. Total should be 60.",
+  "_comment2": "Find valid card_id values by browsing data/cards/**/*.json",
+  "cards": [
+    { "card_id": "RS_13_swampert",   "count": 1 },
+    { "card_id": "RS_23_swampert",   "count": 2 },
+    { "card_id": "RS_40_marshtomp",  "count": 2 },
+    { "card_id": "RS_41_marshtomp",  "count": 2 },
+    { "card_id": "RS_59_mudkip",     "count": 2 },
+    { "card_id": "RS_60_mudkip",     "count": 2 },
+    { "card_id": "DR_13_crawdaunt",   "count": 1 },
+    { "card_id": "DR_54_corphish",    "count": 3 },
+    { "card_id": "SS_29_arbok",    "count": 2 },
+    { "card_id": "SS_64_ekans",   "count": 3 },
+    { "card_id": "SS_85_zigzagoon",   "count": 2 },
+    { "card_id": "DR_57_grimer",   "count": 2 },
+    { "card_id": "RS_86_pok_ball",   "count": 3 },
+    { "card_id": "RS_91_potion",     "count": 3 },
+    { "card_id": "RS_89_professor_birch", "count": 3 },
+    { "card_id": "RS_92_switch",     "count": 3 },
+    { "card_id": "RS_90_energy_search",     "count": 3 },
+    { "card_id": "RS_81_energy_restore", "count": 2 },
+    { "card_id": "RS_106_water_energy",    "count": 13 },
+    { "card_id": "RS_104_grass_energy",  "count": 6 }
+  ]
+}
