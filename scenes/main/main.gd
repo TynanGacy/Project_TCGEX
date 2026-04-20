@@ -30,6 +30,9 @@ var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 ## CardData -> Card node cache for the hand.
 var _hand_cards: Dictionary = {}
 
+## zone_name -> Card node for deck / discard / prize pile visuals.
+var _pile_nodes: Dictionary = {}
+
 ## Drag state
 var dragged_card: Card = null
 const DRAG_PLANE := Plane(Vector3.UP, 0.0)
@@ -57,6 +60,9 @@ func _ready() -> void:
 	manager.hand_changed.connect(_on_hand_changed)
 	manager.board_slot_changed.connect(_on_board_slot_changed)
 	manager.overflow_escalation.connect(_on_overflow_escalation)
+	manager.deck_changed.connect(_on_deck_changed)
+	manager.discard_changed.connect(_on_discard_changed)
+	manager.prizes_changed.connect(_on_prizes_changed)
 
 	## Wait a frame so Board._ready has run and DropZones are positioned.
 	await get_tree().process_frame
@@ -256,7 +262,7 @@ func _on_setup_confirmed(
 ## ---------------------------------------------------------------------------
 
 func _start_game() -> void:
-	board.configure_slots(_active_slots, _bench_slots)
+	board.configure_slots(_active_slots, _bench_slots, _prize_count)
 
 	var p0_deck: Array[CardData] = DeckLoader.load_deck(0, _player_deck_path)
 	var p1_deck: Array[CardData] = DeckLoader.load_deck(1, _opponent_deck_path)
@@ -277,6 +283,12 @@ func _start_game() -> void:
 
 
 func _reset_game() -> void:
+	## Clear pile visuals.
+	for node in _pile_nodes.values():
+		if is_instance_valid(node):
+			node.queue_free()
+	_pile_nodes.clear()
+
 	## Clear hand visuals.
 	player_hand.clear_cards()
 	for card in _hand_cards.values():
@@ -358,10 +370,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _try_pick_card(screen_pos: Vector2) -> void:
 	var card := _raycast_card(screen_pos)
-	if card == null:
-		return
+	if card == null or not card._is_in_hand:
+		return  ## Only hand cards are draggable; board/pile cards snap back automatically.
 	if card.data == null or not (card.data is PokemonCardData):
-		return  ## Only Basic Pokemon can be played in bare-bones mode.
+		return
 	if (card.data as PokemonCardData).stage != PokemonCardData.Stage.BASIC:
 		return
 	dragged_card = card
@@ -443,6 +455,90 @@ func _on_board_slot_changed(_slot_id: String, _instance) -> void:
 
 func _on_overflow_escalation(player_id: int, _instance) -> void:
 	_log("[Overflow] P%d has no empty bench — manual resolution required." % player_id)
+
+
+func _on_deck_changed(pid: int) -> void:
+	if pid == 0:
+		_refresh_deck_visual()
+
+
+func _on_discard_changed(pid: int) -> void:
+	if pid == 0:
+		_refresh_discard_visual()
+
+
+func _on_prizes_changed(pid: int) -> void:
+	if pid == 0:
+		_refresh_prizes_visual()
+
+
+## ---------------------------------------------------------------------------
+## Pile visuals (deck / discard / prizes)
+## ---------------------------------------------------------------------------
+
+func _refresh_deck_visual() -> void:
+	var zone := board.get_named_zone("Deck")
+	if zone == null:
+		return
+	var count: int = (manager.game_position.decks[0] as Array).size()
+	var node := _pile_nodes.get("Deck", null) as Card
+	if count == 0:
+		if node != null:
+			node.queue_free()
+			_pile_nodes.erase("Deck")
+		zone.set_label("Deck (0)")
+		return
+	if node == null:
+		node = card_scene.instantiate() as Card
+		zone.add_child(node)
+		node.position = Vector3.ZERO
+		node.face_down = true
+		_pile_nodes["Deck"] = node
+	zone.set_label("Deck (%d)" % count)
+
+
+func _refresh_discard_visual() -> void:
+	var zone := board.get_named_zone("Discard")
+	if zone == null:
+		return
+	var discard: Array = manager.game_position.discards[0]
+	var node := _pile_nodes.get("Discard", null) as Card
+	if discard.is_empty():
+		if node != null:
+			node.queue_free()
+			_pile_nodes.erase("Discard")
+		zone.set_label("Discard (0)")
+		return
+	if node == null:
+		node = card_scene.instantiate() as Card
+		zone.add_child(node)
+		node.position = Vector3.ZERO
+		_pile_nodes["Discard"] = node
+	node.face_down = false
+	node.set_data(discard.back() as CardData)
+	zone.set_label("Discard (%d)" % discard.size())
+
+
+func _refresh_prizes_visual() -> void:
+	var prize_row: Array = manager.game_position.prizes[0]
+	for i in range(6):
+		var zone_name := "Prize %d" % (i + 1)
+		var zone := board.get_named_zone(zone_name)
+		if zone == null or not zone.visible:
+			continue
+		var node := _pile_nodes.get(zone_name, null) as Card
+		var occupied: bool = (prize_row[i] != null)
+		if not occupied:
+			if node != null:
+				node.queue_free()
+				_pile_nodes.erase(zone_name)
+		else:
+			if node == null:
+				node = card_scene.instantiate() as Card
+				zone.add_child(node)
+				node.position = Vector3.ZERO
+				node.face_down = true
+				_pile_nodes[zone_name] = node
 
 
 func _log(text: String) -> void:

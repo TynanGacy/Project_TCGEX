@@ -80,24 +80,53 @@ func _initialise_zones() -> void:
 			zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
 
 
-## Hides excess Active / Bench DropZones so only the configured count is
-## visible.  Active range: 1-2, Bench range: 3-5.  BoardPosition's logical
-## slots are untouched — get_slot_zone_at already filters by visibility so
-## hidden zones become undroppable.
-func configure_slots(active_count: int, bench_count: int) -> void:
+## Active/bench spacing constants (world units between slot centres).
+const ACTIVE_SPACING := 1.05
+const BENCH_SPACING  := 1.35
+
+## Z positions of each row per player (index 0 = p0, index 1 = p1).
+const ACTIVE_Z: Array[float] = [1.1, -1.1]
+const BENCH_Z:  Array[float] = [2.4, -2.4]
+
+## Hides excess zones, centres the visible ones around x = 0, and hides
+## unused prize slots.  BoardPosition's logical slots are untouched.
+func configure_slots(active_count: int, bench_count: int, prize_count: int = 6) -> void:
 	active_count = clampi(active_count, 1, 2)
-	bench_count  = clampi(bench_count, 3, 5)
+	bench_count  = clampi(bench_count,  3, 5)
+	prize_count  = clampi(prize_count,  2, 6)
+
 	for pid in range(2):
+		## Active slots — centre the visible pair around x = 0.
 		for i in range(1, 3):
-			var sid := "p%d_active%d" % [pid, i]
-			var zone := get_zone_for_slot(sid)
-			if zone != null:
-				zone.visible = (i <= active_count)
+			var zone := get_zone_for_slot("p%d_active%d" % [pid, i])
+			if zone == null:
+				continue
+			zone.visible = (i <= active_count)
+			if zone.visible:
+				var half := (active_count - 1) / 2.0
+				zone.position = Vector3((i - 1 - half) * ACTIVE_SPACING, 0.0, ACTIVE_Z[pid])
+
+		## Bench slots — centre the visible group around x = 0.
 		for i in range(1, 6):
-			var sid := "p%d_bench%d" % [pid, i]
-			var zone := get_zone_for_slot(sid)
+			var zone := get_zone_for_slot("p%d_bench%d" % [pid, i])
+			if zone == null:
+				continue
+			zone.visible = (i <= bench_count)
+			if zone.visible:
+				var half := (bench_count - 1) / 2.0
+				zone.position = Vector3((i - 1 - half) * BENCH_SPACING, 0.0, BENCH_Z[pid])
+
+		## Prize slots — hide the unused tail slots.
+		var prize_prefix := "" if pid == 0 else "Opp "
+		for i in range(1, 7):
+			var zone := _find_zone_in_tree("%sPrize %d" % [prize_prefix, i])
 			if zone != null:
-				zone.visible = (i <= bench_count)
+				zone.visible = (i <= prize_count)
+
+
+## Returns any DropZone in the scene by its zone_name property.
+func get_named_zone(name: String) -> DropZone:
+	return _find_zone_in_tree(name)
 
 
 ## Returns the DropZone for a given BoardPosition slot_id, or null.
