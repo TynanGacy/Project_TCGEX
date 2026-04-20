@@ -151,10 +151,10 @@ func _build_nameplate() -> void:
 
 	_name_label = Label3D.new()
 	_name_label.name = "NameLabel"
-	_name_label.pixel_size = 0.0009
-	_name_label.font_size = 44
+	_name_label.pixel_size = 0.0022
+	_name_label.font_size = 48
 	_name_label.modulate = Color.WHITE
-	_name_label.outline_size = 6
+	_name_label.outline_size = 8
 	_name_label.outline_modulate = Color.BLACK
 	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_name_label.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
@@ -162,12 +162,12 @@ func _build_nameplate() -> void:
 
 	_hp_label = Label3D.new()
 	_hp_label.name = "HPLabel"
-	_hp_label.pixel_size = 0.0009
-	_hp_label.font_size = 38
+	_hp_label.pixel_size = 0.0022
+	_hp_label.font_size = 42
 	_hp_label.modulate = Color.WHITE
-	_hp_label.outline_size = 6
+	_hp_label.outline_size = 8
 	_hp_label.outline_modulate = Color.BLACK
-	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hp_label.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
 	_nameplate_node.add_child(_hp_label)
 
@@ -200,11 +200,15 @@ func _layout_nameplate() -> void:
 
 	var lift := 0.002  ## tiny offset so labels sit above the bg plane
 	var type_disc_radius: float = strip_h * 0.38
-	var edge_pad: float = strip_h * 0.25
+	var edge_pad: float = strip_h * 0.20
+	var disc_x: float = half_w - edge_pad - type_disc_radius
+	## HP label sits to the left of the disc, right-justified so it reads
+	## "120/120 ●" with the coloured disc acting as the type symbol.
+	var hp_x: float = disc_x - type_disc_radius - edge_pad * 0.5
 
 	_name_label.position = Vector3(-half_w + edge_pad, lift, 0.0)
-	_hp_label.position   = Vector3(0.0, lift, 0.0)
-	_type_symbol_mesh.position = Vector3(half_w - edge_pad - type_disc_radius, lift, 0.0)
+	_hp_label.position   = Vector3(hp_x, lift, 0.0)
+	_type_symbol_mesh.position = Vector3(disc_x, lift, 0.0)
 
 	var cyl := _type_symbol_mesh.mesh as CylinderMesh
 	cyl.top_radius    = type_disc_radius
