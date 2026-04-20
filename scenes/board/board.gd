@@ -80,6 +80,26 @@ func _initialise_zones() -> void:
 			zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
 
 
+## Hides excess Active / Bench DropZones so only the configured count is
+## visible.  Active range: 1-2, Bench range: 3-5.  BoardPosition's logical
+## slots are untouched — get_slot_zone_at already filters by visibility so
+## hidden zones become undroppable.
+func configure_slots(active_count: int, bench_count: int) -> void:
+	active_count = clampi(active_count, 1, 2)
+	bench_count  = clampi(bench_count, 3, 5)
+	for pid in range(2):
+		for i in range(1, 3):
+			var sid := "p%d_active%d" % [pid, i]
+			var zone := get_zone_for_slot(sid)
+			if zone != null:
+				zone.visible = (i <= active_count)
+		for i in range(1, 6):
+			var sid := "p%d_bench%d" % [pid, i]
+			var zone := get_zone_for_slot(sid)
+			if zone != null:
+				zone.visible = (i <= bench_count)
+
+
 ## Returns the DropZone for a given BoardPosition slot_id, or null.
 func get_zone_for_slot(slot_id: String) -> DropZone:
 	var zone_name: String = SLOT_TO_ZONE_NAME.get(slot_id, "")

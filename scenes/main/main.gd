@@ -1,15 +1,19 @@
 extends Node3D
 ## Minimal bare-bones main scene.
 ##
+## Startup flow:
+##   _ready() -> _show_setup_dialog() -> _on_setup_confirmed() -> _start_game()
+##
+## Setup collects: mode (developer / player), prize count (2-6), active slot
+## count (1-2), bench slot count (3-5), and per-player deck selection.  Both
+## modes currently behave the same because CPU / turn-flow was removed by the
+## four-system refactor; the mode flag is retained so it can drive future
+## CPU / perspective-flip features without re-plumbing the dialog.
+##
 ## Wires the four systems (PokemonInstance / BoardPosition / GamePosition /
 ## ManagerSystem) together for a single user flow: drag a Basic Pokemon
 ## card out of the hand onto an Active or Bench slot, and the Manager
 ## validates + dispatches the ActionPlayPokemon.
-##
-## Intentionally omitted for the refactor: CPU opponent, turn/phase system,
-## attacks, evolution, energy, trainers, retreat, prize taking, win check,
-## developer-mode perspective flip.  These will be re-added on top of the
-## cleaned-up four-system foundation.
 
 @onready var camera: Camera3D = $Camera3D
 @onready var board:  Board    = $Board
@@ -30,9 +34,20 @@ var _hand_cards: Dictionary = {}
 var dragged_card: Card = null
 const DRAG_PLANE := Plane(Vector3.UP, 0.0)
 
+## --- Setup state ------------------------------------------------------------
+var is_developer_mode: bool = false
+var _prize_count:      int  = 6
+var _active_slots:     int  = 1
+var _bench_slots:      int  = 5
+var _player_deck_path:   String = ""
+var _opponent_deck_path: String = ""
+
+var _setup_dialog: Control = null
+var _setup_selected_mode: String = ""
+
 
 func _ready() -> void:
-	phase_label.text = "Bare-bones refactor: drag a Basic Pokemon to Active/Bench"
+	phase_label.text = ""
 	end_turn_button.text = "Reset"
 	end_turn_button.pressed.connect(_reset_game)
 
@@ -45,20 +60,225 @@ func _ready() -> void:
 
 	## Wait a frame so Board._ready has run and DropZones are positioned.
 	await get_tree().process_frame
-
 	manager.attach_board_anchors(board.collect_slot_anchors())
+
+	_show_setup_dialog()
+
+
+## ---------------------------------------------------------------------------
+## Setup dialog
+## ---------------------------------------------------------------------------
+
+func _show_setup_dialog() -> void:
+	_setup_dialog = PanelContainer.new()
+	_setup_dialog.custom_minimum_size = Vector2(420, 320)
+	_setup_dialog.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.12, 0.18, 0.97)
+	style.corner_radius_top_left    = 8
+	style.corner_radius_top_right   = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	_setup_dialog.add_theme_stylebox_override("panel", style)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	_setup_dialog.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Pokemon TCG Simulator"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 20)
+	vbox.add_child(title)
+
+	var mode_label := Label.new()
+	mode_label.text = "Select Mode:"
+	vbox.add_child(mode_label)
+
+	var mode_row := HBoxContainer.new()
+	mode_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(mode_row)
+
+	var dev_btn    := Button.new()
+	var player_btn := Button.new()
+	dev_btn.text    = "Developer Mode"
+	player_btn.text = "Player Mode"
+	dev_btn.size_flags_horizontal    = Control.SIZE_EXPAND_FILL
+	player_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mode_row.add_child(dev_btn)
+	mode_row.add_child(player_btn)
+
+	var mode_desc := Label.new()
+	mode_desc.text = "Choose a mode above."
+	mode_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mode_desc.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
+	vbox.add_child(mode_desc)
+
+	vbox.add_child(HSeparator.new())
+
+	var prize_row := HBoxContainer.new()
+	var prize_lbl := Label.new()
+	prize_lbl.text = "Prize Cards (2-6):"
+	prize_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var prize_spin := SpinBox.new()
+	prize_spin.min_value = 2
+	prize_spin.max_value = 6
+	prize_spin.value     = _prize_count
+	prize_row.add_child(prize_lbl)
+	prize_row.add_child(prize_spin)
+	vbox.add_child(prize_row)
+
+	var active_row := HBoxContainer.new()
+	var active_lbl := Label.new()
+	active_lbl.text = "Active Slots (1-2):"
+	active_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var active_spin := SpinBox.new()
+	active_spin.min_value = 1
+	active_spin.max_value = 2
+	active_spin.value     = _active_slots
+	active_row.add_child(active_lbl)
+	active_row.add_child(active_spin)
+	vbox.add_child(active_row)
+
+	var bench_row := HBoxContainer.new()
+	var bench_lbl := Label.new()
+	bench_lbl.text = "Bench Slots (3-5):"
+	bench_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var bench_spin := SpinBox.new()
+	bench_spin.min_value = 3
+	bench_spin.max_value = 5
+	bench_spin.value     = _bench_slots
+	bench_row.add_child(bench_lbl)
+	bench_row.add_child(bench_spin)
+	vbox.add_child(bench_row)
+
+	vbox.add_child(HSeparator.new())
+
+	var deck_options := DeckLoader.get_valid_decks()
+
+	var p1_deck_row := HBoxContainer.new()
+	var p1_deck_lbl := Label.new()
+	p1_deck_lbl.text = "Player Deck:"
+	p1_deck_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var p1_deck_opt := OptionButton.new()
+	p1_deck_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	p1_deck_opt.add_item("Random Deck")
+	for deck_entry: Dictionary in deck_options:
+		p1_deck_opt.add_item(deck_entry["label"] as String)
+	p1_deck_row.add_child(p1_deck_lbl)
+	p1_deck_row.add_child(p1_deck_opt)
+	vbox.add_child(p1_deck_row)
+
+	var p2_deck_row := HBoxContainer.new()
+	var p2_deck_lbl := Label.new()
+	p2_deck_lbl.text = "Opponent Deck:"
+	p2_deck_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var p2_deck_opt := OptionButton.new()
+	p2_deck_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	p2_deck_opt.add_item("Random Deck")
+	for deck_entry: Dictionary in deck_options:
+		p2_deck_opt.add_item(deck_entry["label"] as String)
+	p2_deck_row.add_child(p2_deck_lbl)
+	p2_deck_row.add_child(p2_deck_opt)
+	vbox.add_child(p2_deck_row)
+
+	vbox.add_child(HSeparator.new())
+
+	var start_btn := Button.new()
+	start_btn.text     = "Start Game"
+	start_btn.disabled = true
+	vbox.add_child(start_btn)
+
+	_setup_selected_mode = ""
+
+	dev_btn.pressed.connect(func() -> void:
+		_setup_selected_mode = "developer"
+		dev_btn.modulate    = Color(0.4, 0.9, 0.4)
+		player_btn.modulate = Color.WHITE
+		mode_desc.text = "Developer Mode: No CPU. (Perspective flip / both-sides play will be restored alongside the turn system.)"
+		start_btn.disabled = false
+	)
+	player_btn.pressed.connect(func() -> void:
+		_setup_selected_mode = "player"
+		player_btn.modulate = Color(0.4, 0.4, 0.9)
+		dev_btn.modulate    = Color.WHITE
+		mode_desc.text = "Player Mode: CPU opponent will be restored with the turn system."
+		start_btn.disabled = false
+	)
+	start_btn.pressed.connect(func() -> void:
+		var p_sel := p1_deck_opt.selected
+		var o_sel := p2_deck_opt.selected
+		var p_path: String = _resolve_deck_path(p_sel, deck_options)
+		var o_path: String = _resolve_deck_path(o_sel, deck_options)
+		_setup_dialog.queue_free()
+		_setup_dialog = null
+		_on_setup_confirmed(
+			_setup_selected_mode,
+			int(prize_spin.value),
+			int(active_spin.value),
+			int(bench_spin.value),
+			p_path,
+			o_path
+		)
+	)
+
+	$HUD.add_child(_setup_dialog)
+
+
+func _resolve_deck_path(sel: int, deck_options: Array[Dictionary]) -> String:
+	if deck_options.is_empty():
+		return ""
+	if sel <= 0:
+		return deck_options[randi() % deck_options.size()]["path"] as String
+	return deck_options[sel - 1]["path"] as String
+
+
+func _on_setup_confirmed(
+	mode: String,
+	prizes: int,
+	active_slots: int,
+	bench_slots: int,
+	player_deck_path: String,
+	opponent_deck_path: String
+) -> void:
+	is_developer_mode   = (mode == "developer")
+	_prize_count        = prizes
+	_active_slots       = active_slots
+	_bench_slots        = bench_slots
+	_player_deck_path   = player_deck_path
+	_opponent_deck_path = opponent_deck_path
 	_start_game()
 
 
+## ---------------------------------------------------------------------------
+## Game lifecycle
+## ---------------------------------------------------------------------------
+
 func _start_game() -> void:
-	var deck: Array[CardData] = DeckLoader.load_deck(0)
-	manager.load_deck(0, deck)
+	board.configure_slots(_active_slots, _bench_slots)
+
+	var p0_deck: Array[CardData] = DeckLoader.load_deck(0, _player_deck_path)
+	var p1_deck: Array[CardData] = DeckLoader.load_deck(1, _opponent_deck_path)
+	manager.load_deck(0, p0_deck)
+	manager.load_deck(1, p1_deck)
+
 	manager.draw_starting_hand(0, 7)
+	manager.draw_starting_hand(1, 7)
+
+	manager.deal_prizes(0, _prize_count)
+	manager.deal_prizes(1, _prize_count)
+
 	_rebuild_hand_visual(0)
+	phase_label.text = "%s mode  |  %d prize cards" % [
+		"Developer" if is_developer_mode else "Player",
+		_prize_count,
+	]
 
 
 func _reset_game() -> void:
 	## Clear hand visuals.
+	player_hand.clear_cards()
 	for card in _hand_cards.values():
 		if is_instance_valid(card):
 			card.queue_free()
@@ -83,7 +303,8 @@ func _reset_game() -> void:
 	manager.game_position.prizes_changed.connect(func(pid): manager.prizes_changed.emit(pid))
 	manager.attach_board_anchors(board.collect_slot_anchors())
 
-	_start_game()
+	game_log.clear()
+	_show_setup_dialog()
 
 
 ## ---------------------------------------------------------------------------
@@ -120,6 +341,9 @@ func _on_hand_changed(player_id: int) -> void:
 ## ---------------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
+	## Block game input while setup dialog is open.
+	if _setup_dialog != null:
+		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
