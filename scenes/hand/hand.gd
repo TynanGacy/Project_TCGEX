@@ -68,6 +68,10 @@ func get_card_count() -> int:
 
 
 func _layout_cards() -> void:
+	for i in range(cards.size() - 1, -1, -1):
+		if not is_instance_valid(cards[i]):
+			cards.remove_at(i)
+
 	var count := cards.size()
 	if count == 0:
 		return
@@ -84,6 +88,8 @@ func _layout_cards() -> void:
 
 	for i in count:
 		var card := cards[i]
+		if not is_instance_valid(card):
+			continue
 		## Normalised position: -1 (left) to 1 (right)
 		var t := 0.0 if count == 1 else (float(i) / (count - 1)) * 2.0 - 1.0
 
