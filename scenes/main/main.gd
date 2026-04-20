@@ -286,10 +286,15 @@ func _start_game() -> void:
 
 
 func _reset_game() -> void:
-	## Clear pile visuals.
-	for node in _pile_nodes.values():
-		if is_instance_valid(node):
-			node.queue_free()
+	## Clear pile visuals.  Deck entries are Array[Card] (layered stack);
+	## discard / prize entries are single Card nodes.
+	for entry in _pile_nodes.values():
+		if entry is Array:
+			for layer in entry:
+				if is_instance_valid(layer):
+					(layer as Node).queue_free()
+		elif is_instance_valid(entry):
+			(entry as Node).queue_free()
 	_pile_nodes.clear()
 
 	## Clear hand visuals.
@@ -480,26 +485,45 @@ func _zone_prefix(pid: int) -> String:
 	return "" if pid == 0 else "Opp "
 
 
+## Deck stack visualisation — cap how many face-down layers we draw and how
+## thick each layer is so the shrinking pile stays legible without spawning
+## a Card node per real card.
+const DECK_MAX_LAYERS: int = 12
+const DECK_LAYER_THICKNESS: float = 0.018
+const DECK_FULL_SIZE: int = 60
+
+
 func _refresh_deck_visual(pid: int) -> void:
 	var zone_name := "%sDeck" % _zone_prefix(pid)
 	var zone := board.get_named_zone(zone_name)
 	if zone == null:
 		return
 	var count: int = (manager.game_position.decks[pid] as Array).size()
-	var node := _pile_nodes.get(zone_name, null) as Card
+
+	## Drop any previously built stack so we rebuild from scratch.
+	var layers: Array = _pile_nodes.get(zone_name, []) as Array
+	for old_layer in layers:
+		if is_instance_valid(old_layer):
+			(old_layer as Node).queue_free()
+	layers.clear()
+
 	if count == 0:
-		if node != null:
-			node.queue_free()
-			_pile_nodes.erase(zone_name)
+		_pile_nodes.erase(zone_name)
 		zone.set_label("Deck (0)")
 		return
-	if node == null:
-		node = card_scene.instantiate() as Card
-		zone.add_child(node)
-		node.position = Vector3.ZERO
-		node.back_texture = CARD_BACK
-		node.face_down = true
-		_pile_nodes[zone_name] = node
+
+	var layer_count: int = clampi(
+		ceili(float(count) / float(DECK_FULL_SIZE) * DECK_MAX_LAYERS),
+		1, DECK_MAX_LAYERS
+	)
+	for i in range(layer_count):
+		var layer_node := card_scene.instantiate() as Card
+		zone.add_child(layer_node)
+		layer_node.position = Vector3(0, i * DECK_LAYER_THICKNESS, 0)
+		layer_node.back_texture = CARD_BACK
+		layer_node.face_down = true
+		layers.append(layer_node)
+	_pile_nodes[zone_name] = layers
 	zone.set_label("Deck (%d)" % count)
 
 
@@ -545,6 +569,9 @@ func _refresh_prizes_visual(pid: int) -> void:
 				node = card_scene.instantiate() as Card
 				zone.add_child(node)
 				node.position = Vector3.ZERO
+				## Opponent prizes face the opposite side of the table.
+				if pid == 1:
+					node.rotation.y = PI
 				node.back_texture = CARD_BACK
 				node.face_down = true
 				_pile_nodes[zone_name] = node

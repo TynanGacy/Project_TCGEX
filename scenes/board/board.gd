@@ -128,15 +128,22 @@ func configure_slots(active_count: int, bench_count: int, prize_count: int = 6) 
 		## Prize slots — hide the unused tail slots and shift to the outer x
 		## columns so they clear the new wider active row.  Odd indices
 		## (1/3/5) use the outer column; even indices (2/4/6) the inner.
+		## When prize_count is odd, the final prize sits on its own row and
+		## is centred between the two columns.
 		var prize_prefix := "" if pid == 0 else "Opp "
 		var prize_z_sign := 1.0 if pid == 0 else -1.0
 		var prize_rows: Array[float] = [0.80, 1.0, 1.2]
+		var prize_center_x: float = (PRIZE_INNER_X[pid] + PRIZE_OUTER_X[pid]) / 2.0
 		for i in range(1, 7):
 			var zone := _find_zone_in_tree("%sPrize %d" % [prize_prefix, i])
 			if zone == null:
 				continue
 			zone.visible = (i <= prize_count)
-			var col_x: float = PRIZE_OUTER_X[pid] if (i % 2 == 1) else PRIZE_INNER_X[pid]
+			var col_x: float
+			if i == prize_count and prize_count % 2 == 1:
+				col_x = prize_center_x
+			else:
+				col_x = PRIZE_OUTER_X[pid] if (i % 2 == 1) else PRIZE_INNER_X[pid]
 			var row_z: float = prize_rows[(i - 1) / 2] * prize_z_sign
 			zone.position = Vector3(col_x, zone.position.y, row_z)
 
