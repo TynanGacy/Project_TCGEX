@@ -52,6 +52,17 @@ func remove_card(card: Card) -> void:
 	_layout_cards()
 
 
+func clear_cards() -> void:
+	for card in cards:
+		card._is_in_hand = false
+		card.scale = Vector3.ONE
+		if card.card_dropped.is_connected(_on_card_dropped):
+			card.card_dropped.disconnect(_on_card_dropped)
+		if card.get_parent() == self:
+			remove_child(card)
+	cards.clear()
+
+
 func get_card_count() -> int:
 	return cards.size()
 
