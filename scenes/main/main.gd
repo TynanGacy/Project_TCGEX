@@ -26,11 +26,14 @@ extends Node3D
 @onready var manager: Node = ManagerSystemSingleton
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
+const CARD_BACK: Texture2D = preload("res://assets/images/card_back.png")
 
 ## CardData -> Card node cache for the hand.
 var _hand_cards: Dictionary = {}
 
-## zone_name -> Card node for deck / discard / prize pile visuals.
+## zone_name -> Card node for deck / discard / prize pile visuals.  Keys are
+## the full DropZone.zone_name (e.g. "Deck", "Opp Deck", "Prize 3",
+## "Opp Prize 5") so player 0 and player 1 piles coexist without clashing.
 var _pile_nodes: Dictionary = {}
 
 ## Drag state
@@ -458,71 +461,76 @@ func _on_overflow_escalation(player_id: int, _instance) -> void:
 
 
 func _on_deck_changed(pid: int) -> void:
-	if pid == 0:
-		_refresh_deck_visual()
+	_refresh_deck_visual(pid)
 
 
 func _on_discard_changed(pid: int) -> void:
-	if pid == 0:
-		_refresh_discard_visual()
+	_refresh_discard_visual(pid)
 
 
 func _on_prizes_changed(pid: int) -> void:
-	if pid == 0:
-		_refresh_prizes_visual()
+	_refresh_prizes_visual(pid)
 
 
 ## ---------------------------------------------------------------------------
 ## Pile visuals (deck / discard / prizes)
 ## ---------------------------------------------------------------------------
 
-func _refresh_deck_visual() -> void:
-	var zone := board.get_named_zone("Deck")
+func _zone_prefix(pid: int) -> String:
+	return "" if pid == 0 else "Opp "
+
+
+func _refresh_deck_visual(pid: int) -> void:
+	var zone_name := "%sDeck" % _zone_prefix(pid)
+	var zone := board.get_named_zone(zone_name)
 	if zone == null:
 		return
-	var count: int = (manager.game_position.decks[0] as Array).size()
-	var node := _pile_nodes.get("Deck", null) as Card
+	var count: int = (manager.game_position.decks[pid] as Array).size()
+	var node := _pile_nodes.get(zone_name, null) as Card
 	if count == 0:
 		if node != null:
 			node.queue_free()
-			_pile_nodes.erase("Deck")
+			_pile_nodes.erase(zone_name)
 		zone.set_label("Deck (0)")
 		return
 	if node == null:
 		node = card_scene.instantiate() as Card
 		zone.add_child(node)
 		node.position = Vector3.ZERO
+		node.back_texture = CARD_BACK
 		node.face_down = true
-		_pile_nodes["Deck"] = node
+		_pile_nodes[zone_name] = node
 	zone.set_label("Deck (%d)" % count)
 
 
-func _refresh_discard_visual() -> void:
-	var zone := board.get_named_zone("Discard")
+func _refresh_discard_visual(pid: int) -> void:
+	var zone_name := "%sDiscard" % _zone_prefix(pid)
+	var zone := board.get_named_zone(zone_name)
 	if zone == null:
 		return
-	var discard: Array = manager.game_position.discards[0]
-	var node := _pile_nodes.get("Discard", null) as Card
+	var discard: Array = manager.game_position.discards[pid]
+	var node := _pile_nodes.get(zone_name, null) as Card
 	if discard.is_empty():
 		if node != null:
 			node.queue_free()
-			_pile_nodes.erase("Discard")
+			_pile_nodes.erase(zone_name)
 		zone.set_label("Discard (0)")
 		return
 	if node == null:
 		node = card_scene.instantiate() as Card
 		zone.add_child(node)
 		node.position = Vector3.ZERO
-		_pile_nodes["Discard"] = node
+		_pile_nodes[zone_name] = node
 	node.face_down = false
 	node.set_data(discard.back() as CardData)
 	zone.set_label("Discard (%d)" % discard.size())
 
 
-func _refresh_prizes_visual() -> void:
-	var prize_row: Array = manager.game_position.prizes[0]
+func _refresh_prizes_visual(pid: int) -> void:
+	var prefix := _zone_prefix(pid)
+	var prize_row: Array = manager.game_position.prizes[pid]
 	for i in range(6):
-		var zone_name := "Prize %d" % (i + 1)
+		var zone_name := "%sPrize %d" % [prefix, i + 1]
 		var zone := board.get_named_zone(zone_name)
 		if zone == null or not zone.visible:
 			continue
@@ -537,6 +545,7 @@ func _refresh_prizes_visual() -> void:
 				node = card_scene.instantiate() as Card
 				zone.add_child(node)
 				node.position = Vector3.ZERO
+				node.back_texture = CARD_BACK
 				node.face_down = true
 				_pile_nodes[zone_name] = node
 

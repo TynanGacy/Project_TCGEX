@@ -81,12 +81,21 @@ func _initialise_zones() -> void:
 
 
 ## Active/bench spacing constants (world units between slot centres).
-const ACTIVE_SPACING := 1.05
+## ACTIVE_SPACING must exceed ACTIVE_CARD_W (1.98) to avoid overlap.
+const ACTIVE_SPACING := 2.2
 const BENCH_SPACING  := 1.35
 
 ## Z positions of each row per player (index 0 = p0, index 1 = p1).
 const ACTIVE_Z: Array[float] = [1.1, -1.1]
 const BENCH_Z:  Array[float] = [2.4, -2.4]
+
+## Outer X positions for peripheral zones (prize columns, deck, discard).
+## Player 0 keeps prizes on the left (negative x) and deck/discard on the
+## right; player 1 mirrors that arrangement.
+const PRIZE_INNER_X: Array[float] = [-3.0,  3.0]
+const PRIZE_OUTER_X: Array[float] = [-3.6,  3.6]
+const DECK_X:        Array[float] = [ 3.5, -3.5]
+const DISCARD_X:     Array[float] = [ 4.2, -4.2]
 
 ## Hides excess zones, centres the visible ones around x = 0, and hides
 ## unused prize slots.  BoardPosition's logical slots are untouched.
@@ -116,12 +125,28 @@ func configure_slots(active_count: int, bench_count: int, prize_count: int = 6) 
 				var half := (bench_count - 1) / 2.0
 				zone.position = Vector3((i - 1 - half) * BENCH_SPACING, 0.0, BENCH_Z[pid])
 
-		## Prize slots — hide the unused tail slots.
+		## Prize slots — hide the unused tail slots and shift to the outer x
+		## columns so they clear the new wider active row.  Odd indices
+		## (1/3/5) use the outer column; even indices (2/4/6) the inner.
 		var prize_prefix := "" if pid == 0 else "Opp "
+		var prize_z_sign := 1.0 if pid == 0 else -1.0
+		var prize_rows: Array[float] = [0.80, 1.0, 1.2]
 		for i in range(1, 7):
 			var zone := _find_zone_in_tree("%sPrize %d" % [prize_prefix, i])
-			if zone != null:
-				zone.visible = (i <= prize_count)
+			if zone == null:
+				continue
+			zone.visible = (i <= prize_count)
+			var col_x: float = PRIZE_OUTER_X[pid] if (i % 2 == 1) else PRIZE_INNER_X[pid]
+			var row_z: float = prize_rows[(i - 1) / 2] * prize_z_sign
+			zone.position = Vector3(col_x, zone.position.y, row_z)
+
+		## Deck / discard — shift outward to clear the widened prize column.
+		var deck_zone := _find_zone_in_tree("%sDeck" % prize_prefix)
+		if deck_zone != null:
+			deck_zone.position = Vector3(DECK_X[pid], deck_zone.position.y, ACTIVE_Z[pid])
+		var discard_zone := _find_zone_in_tree("%sDiscard" % prize_prefix)
+		if discard_zone != null:
+			discard_zone.position = Vector3(DISCARD_X[pid], discard_zone.position.y, ACTIVE_Z[pid])
 
 
 ## Returns any DropZone in the scene by its zone_name property.
