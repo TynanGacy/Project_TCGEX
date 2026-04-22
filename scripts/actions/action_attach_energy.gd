@@ -3,8 +3,8 @@ extends GameAction
 ## Attaches an Energy card from hand to one of the player's in-play Pokemon.
 ##
 ## Classic rule: at most one energy attachment per turn.  The Manager owns the
-## per-turn energy_attached_this_turn flag; the turn system (when restored)
-## will clear it via Manager.reset_turn_flags().
+## per-turn energy_attached_this_turn flag; the turn system clears it each
+## turn via _reset_turn_flags().
 
 var player_id: int = 0
 var card: EnergyCardData = null
@@ -22,6 +22,8 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("No energy card specified.")
 	if manager.game_position == null or manager.board_position == null:
 		return ActionResult.fail("Manager is not initialised.")
+	if not manager.is_main_phase_for(player_id):
+		return ActionResult.fail("Not your main phase.")
 	if not (manager.game_position.hands[player_id] as Array).has(card):
 		return ActionResult.fail("Energy is not in your hand.")
 	if not manager.board_position.has_slot(target_slot):

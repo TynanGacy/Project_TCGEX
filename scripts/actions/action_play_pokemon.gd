@@ -24,6 +24,8 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Only Basic Pokemon can be played from hand.")
 	if manager.game_position == null or manager.board_position == null:
 		return ActionResult.fail("Manager is not initialised.")
+	if not manager.is_main_phase_for(player_id):
+		return ActionResult.fail("Not your main phase.")
 	if not (manager.game_position.hands[player_id] as Array).has(card):
 		return ActionResult.fail("Card is not in your hand.")
 	if not manager.board_position.has_slot(target_slot):
@@ -39,6 +41,7 @@ func apply(manager) -> void:
 	manager.game_position.take_from_hand(player_id, card)
 	var instance := PokemonInstance.create(card, player_id)
 	manager.board_position.place(target_slot, instance)
+	manager.pokemon_entered_play_this_turn[player_id].append(instance)
 
 
 func description() -> String:

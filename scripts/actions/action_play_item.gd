@@ -23,6 +23,8 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Card is not an Item.")
 	if manager.game_position == null:
 		return ActionResult.fail("Manager is not initialised.")
+	if not manager.is_main_phase_for(player_id):
+		return ActionResult.fail("Not your main phase.")
 	if not (manager.game_position.hands[player_id] as Array).has(card):
 		return ActionResult.fail("Item is not in your hand.")
 	return ActionResult.success()

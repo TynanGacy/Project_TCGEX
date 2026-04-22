@@ -29,6 +29,8 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Evolution card has no evolves_from slug.")
 	if manager.game_position == null or manager.board_position == null:
 		return ActionResult.fail("Manager is not initialised.")
+	if not manager.is_main_phase_for(player_id):
+		return ActionResult.fail("Not your main phase.")
 	if not (manager.game_position.hands[player_id] as Array).has(card):
 		return ActionResult.fail("Evolution card is not in your hand.")
 	if not manager.board_position.has_slot(target_slot):
@@ -52,6 +54,10 @@ func validate(manager) -> ActionResult:
 	)
 	if current.stage != required_prev:
 		return ActionResult.fail("Wrong evolution stage to evolve from.")
+	## Classic rule: a Pokemon cannot evolve on the turn it came into play
+	## (whether by play-from-hand or by a prior evolution this turn).
+	if (manager.pokemon_entered_play_this_turn[player_id] as Array).has(inst):
+		return ActionResult.fail("That Pokemon just came into play this turn.")
 	return ActionResult.success()
 
 
@@ -62,6 +68,8 @@ func apply(manager) -> void:
 	## Evolving clears Special Conditions; damage is carried over by evolve_to().
 	inst.special_conditions.clear()
 	inst.refresh_visual()
+	## The newly-evolved Pokemon also can't evolve again this turn.
+	manager.pokemon_entered_play_this_turn[player_id].append(inst)
 
 
 func description() -> String:
