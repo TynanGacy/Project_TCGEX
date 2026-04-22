@@ -46,8 +46,10 @@ var _pile_nodes: Dictionary = {}
 var dragged_card: Card = null
 const DRAG_PLANE := Plane(Vector3.UP, 0.0)
 
-## Hover state — the card currently raised by the mouse cursor, if any.
-var hovered_card: Card = null
+## Hover state — the Node3D currently lifted by the mouse cursor.  This is
+## either a Card (for hand / pile cards) or a PokemonInstance (for board
+## cards), so the whole instance — nameplate included — rises together.
+var _hovered_node: Node3D = null
 
 ## --- Setup state ------------------------------------------------------------
 var is_developer_mode: bool = false
@@ -432,8 +434,8 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 		return
 	## Clear any hover lift before the card enters drag mode so the two
 	## animations don't fight each other.
-	if hovered_card == card:
-		hovered_card = null
+	if _hovered_node == card:
+		_hovered_node = null
 	## All concrete CardData subclasses (PokemonCardData, TrainerCardData,
 	## EnergyCardData) are playable from hand — the action-specific validator
 	## decides legality when the drop lands.
@@ -441,19 +443,47 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 	card.start_drag()
 
 
-## Lifts whichever card (if any) the cursor is over and returns the previously
-## hovered card to its home.  Picks work for hand cards, pile cards, and the
-## Card visual inside a PokemonInstance — _raycast_card resolves all three to
-## the underlying Card node.
-func _update_hover(screen_pos: Vector2) -> void:
-	var card := _raycast_card(screen_pos)
-	if card == hovered_card:
+## Returns the node that should lift when the cursor is over [card].
+## Hand / pile cards hover as themselves; board cards (inside a
+## PokemonInstance) bubble up to the instance so the nameplate moves too.
+func _hover_target_for(card: Card) -> Node3D:
+	if card == null:
+		return null
+	var parent := card.get_parent()
+	if parent is PokemonInstance:
+		return parent as PokemonInstance
+	return card
+
+
+func _apply_hover(node: Node3D) -> void:
+	if node is Card:
+		(node as Card).set_hovered(true)
+	else:
+		var t := node.create_tween()
+		t.tween_property(node, "position:y", Card.HOVER_LIFT, Card.TWEEN_SPEED)
+
+
+func _release_hover() -> void:
+	if _hovered_node == null or not is_instance_valid(_hovered_node):
+		_hovered_node = null
 		return
-	if hovered_card != null and is_instance_valid(hovered_card):
-		hovered_card.set_hovered(false)
-	hovered_card = card
-	if hovered_card != null:
-		hovered_card.set_hovered(true)
+	if _hovered_node is Card:
+		(_hovered_node as Card).set_hovered(false)
+	else:
+		var t := _hovered_node.create_tween()
+		t.tween_property(_hovered_node, "position:y", 0.0, Card.TWEEN_SPEED)
+	_hovered_node = null
+
+
+## Lifts whichever node the cursor is over and returns the previous one.
+func _update_hover(screen_pos: Vector2) -> void:
+	var target := _hover_target_for(_raycast_card(screen_pos))
+	if target == _hovered_node:
+		return
+	_release_hover()
+	_hovered_node = target
+	if _hovered_node != null:
+		_apply_hover(_hovered_node)
 
 
 ## Shows the zoomed inspector popup for the card under the cursor.  Face-down

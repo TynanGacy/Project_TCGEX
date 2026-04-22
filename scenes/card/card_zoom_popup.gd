@@ -1,21 +1,13 @@
 class_name CardZoomPopup
 extends PanelContainer
-## Shows a zoomed view of a card on the left side of the screen when right-clicked.
+## Shows a zoomed view of a card's art on the left side of the screen when right-clicked.
+## Text overlays (HP, conditions, attachments) will be added here in future.
 
-@onready var card_art: TextureRect = $MarginContainer/VBoxContainer/CardArt
-@onready var card_name_label: Label = $MarginContainer/VBoxContainer/CardName
-@onready var rules_label: Label = $MarginContainer/VBoxContainer/RulesText
+@onready var card_art: TextureRect = $MarginContainer/CardArt
 
 
 func show_card(card: Card) -> void:
-	if card.data != null:
-		card_art.texture = card.data.art
-		card_name_label.text = card.data.display_name
-		rules_label.text = card.data.rules_text
-	else:
-		card_art.texture = null
-		card_name_label.text = card.card_name
-		rules_label.text = ""
+	card_art.texture = card.data.art if card.data != null else null
 	visible = true
 
 
