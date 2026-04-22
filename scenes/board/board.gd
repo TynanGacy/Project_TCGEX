@@ -91,11 +91,13 @@ const BENCH_Z:  Array[float] = [2.4, -2.4]
 
 ## Outer X positions for peripheral zones (prize columns, deck, discard).
 ## Player 0 keeps prizes on the left (negative x) and deck/discard on the
-## right; player 1 mirrors that arrangement.
-const PRIZE_INNER_X: Array[float] = [-3.0,  3.0]
-const PRIZE_OUTER_X: Array[float] = [-3.6,  3.6]
+## right; player 1 mirrors that arrangement.  The prize columns mirror the
+## deck / discard columns across the active row, so a player's prizes sit
+## at the same distance from their active zones as their deck and discard.
 const DECK_X:        Array[float] = [ 3.5, -3.5]
 const DISCARD_X:     Array[float] = [ 4.2, -4.2]
+const PRIZE_INNER_X: Array[float] = [-3.5,  3.5]
+const PRIZE_OUTER_X: Array[float] = [-4.2,  4.2]
 
 ## Hides excess zones, centres the visible ones around x = 0, and hides
 ## unused prize slots.  BoardPosition's logical slots are untouched.

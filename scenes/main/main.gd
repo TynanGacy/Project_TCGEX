@@ -27,6 +27,7 @@ extends Node3D
 @onready var phase_label: Label = $HUD/TopBar/PhaseLabel
 @onready var end_turn_button: Button = $HUD/TopBar/EndTurnButton
 @onready var game_log: RichTextLabel = $HUD/LogPanel/GameLog
+@onready var card_zoom_popup: CardZoomPopup = $HUD/CardZoomPopup
 
 @onready var manager: Node = ManagerSystemSingleton
 
@@ -44,6 +45,9 @@ var _pile_nodes: Dictionary = {}
 ## Drag state
 var dragged_card: Card = null
 const DRAG_PLANE := Plane(Vector3.UP, 0.0)
+
+## Hover state — the card currently raised by the mouse cursor, if any.
+var hovered_card: Card = null
 
 ## --- Setup state ------------------------------------------------------------
 var is_developer_mode: bool = false
@@ -396,14 +400,28 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
+		## Any mouse click dismisses an open inspector popup before falling
+		## through to drag / right-click handling.
+		if mb.pressed and card_zoom_popup != null and card_zoom_popup.visible:
+			card_zoom_popup.hide_popup()
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				_try_pick_card(mb.position)
 			else:
 				_try_drop_card()
-	elif event is InputEventMouseMotion and dragged_card != null:
-		var world := _screen_to_table((event as InputEventMouseMotion).position)
-		dragged_card.move_to_drag_position(world)
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_handle_right_click(mb.position)
+	elif event is InputEventKey:
+		var ke := event as InputEventKey
+		if ke.pressed and ke.keycode == KEY_ESCAPE and card_zoom_popup != null:
+			card_zoom_popup.hide_popup()
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if dragged_card != null:
+			var world := _screen_to_table(mm.position)
+			dragged_card.move_to_drag_position(world)
+		else:
+			_update_hover(mm.position)
 
 
 func _try_pick_card(screen_pos: Vector2) -> void:
@@ -412,11 +430,42 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 		return  ## Only hand cards are draggable; board/pile cards snap back automatically.
 	if card.data == null:
 		return
+	## Clear any hover lift before the card enters drag mode so the two
+	## animations don't fight each other.
+	if hovered_card == card:
+		hovered_card = null
 	## All concrete CardData subclasses (PokemonCardData, TrainerCardData,
 	## EnergyCardData) are playable from hand — the action-specific validator
 	## decides legality when the drop lands.
 	dragged_card = card
 	card.start_drag()
+
+
+## Lifts whichever card (if any) the cursor is over and returns the previously
+## hovered card to its home.  Picks work for hand cards, pile cards, and the
+## Card visual inside a PokemonInstance — _raycast_card resolves all three to
+## the underlying Card node.
+func _update_hover(screen_pos: Vector2) -> void:
+	var card := _raycast_card(screen_pos)
+	if card == hovered_card:
+		return
+	if hovered_card != null and is_instance_valid(hovered_card):
+		hovered_card.set_hovered(false)
+	hovered_card = card
+	if hovered_card != null:
+		hovered_card.set_hovered(true)
+
+
+## Shows the zoomed inspector popup for the card under the cursor.  Face-down
+## cards and empty pile anchors have no data worth inspecting, so they're
+## skipped.
+func _handle_right_click(screen_pos: Vector2) -> void:
+	var card := _raycast_card(screen_pos)
+	if card == null or card.face_down or card.data == null:
+		return
+	if card_zoom_popup == null:
+		return
+	card_zoom_popup.show_card(card)
 
 
 func _try_drop_card() -> void:
