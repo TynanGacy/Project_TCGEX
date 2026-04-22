@@ -51,6 +51,16 @@ const DRAG_PLANE := Plane(Vector3.UP, 0.0)
 ## cards), so the whole instance — nameplate included — rises together.
 var _hovered_node: Node3D = null
 
+## Perspective (developer mode).  When the active turn changes we flip the
+## camera, the hand anchor, and every in-play PokemonInstance so the board
+## reads correctly from whichever side the controlling player is on.  Piles
+## (prizes / deck / discard) and off-table UI stay put.
+var _controlling_player: int = 0
+var _p0_cam_transform: Transform3D = Transform3D.IDENTITY
+var _p1_cam_transform: Transform3D = Transform3D.IDENTITY
+var _p0_hand_transform: Transform3D = Transform3D.IDENTITY
+var _p1_hand_transform: Transform3D = Transform3D.IDENTITY
+
 ## --- Setup state ------------------------------------------------------------
 var is_developer_mode: bool = false
 var _prize_count:      int  = 6
@@ -91,6 +101,16 @@ func _ready() -> void:
 	manager.turn_started.connect(_on_turn_started)
 	manager.turn_ended.connect(_on_turn_ended)
 	manager.phase_changed.connect(_on_phase_changed)
+
+	## Capture both perspective transforms up front.  P0 takes the scene's
+	## default camera / hand placement; P1 is the same transforms rotated
+	## 180° around the world Y axis so the board reads from the opposite
+	## side of the table.
+	_p0_cam_transform  = camera.transform
+	_p0_hand_transform = player_hand.transform
+	var y_flip := Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
+	_p1_cam_transform  = y_flip * _p0_cam_transform
+	_p1_hand_transform = y_flip * _p0_hand_transform
 
 	## Wait a frame so Board._ready has run and DropZones are positioned.
 	await get_tree().process_frame
@@ -348,6 +368,12 @@ func _reset_game() -> void:
 	## Clear turn / global board state owned by the Manager.
 	manager.reset_game_state()
 
+	## Snap back to P0 perspective so the setup dialog and the next game
+	## start from the default camera side.
+	_controlling_player = 0
+	camera.transform = _p0_cam_transform
+	player_hand.transform = _p0_hand_transform
+
 	phase_label.text = ""
 	game_log.clear()
 	_show_setup_dialog()
@@ -444,14 +470,18 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 
 
 ## Returns the node that should lift when the cursor is over [card].
-## Hand / pile cards hover as themselves; board cards (inside a
-## PokemonInstance) bubble up to the instance so the nameplate moves too.
+## Hand cards hover as themselves; board cards (inside a PokemonInstance)
+## bubble up to the instance so the nameplate moves too; pile cards
+## (deck / discard / prize — parented directly to a DropZone) don't hover
+## at all, since there's no meaningful lift for a stacked pile.
 func _hover_target_for(card: Card) -> Node3D:
 	if card == null:
 		return null
 	var parent := card.get_parent()
 	if parent is PokemonInstance:
 		return parent as PokemonInstance
+	if parent is DropZone:
+		return null
 	return card
 
 
@@ -608,8 +638,14 @@ func _on_action_rejected(action: GameAction, reason: String) -> void:
 		_log("[X] %s" % reason)
 
 
-func _on_board_slot_changed(_slot_id: String, _instance) -> void:
-	pass  ## BoardPosition places the PokemonInstance visual itself.
+## BoardPosition places the PokemonInstance visual itself, but every
+## placement / move / swap resets the instance's local rotation.  Re-apply
+## the current perspective so a freshly-placed Pokemon reads right-side up
+## after a mid-game perspective flip.
+func _on_board_slot_changed(_slot_id: String, instance: PokemonInstance) -> void:
+	if instance == null:
+		return
+	instance.rotation.y = _board_rotation_y()
 
 
 func _on_overflow_escalation(player_id: int, _instance) -> void:
@@ -632,8 +668,36 @@ func _on_end_turn_pressed() -> void:
 
 
 func _on_turn_started(pid: int, _turn_num: int) -> void:
+	if is_developer_mode:
+		_apply_perspective(pid)
 	_rebuild_hand_visual(pid)
 	_update_phase_label()
+
+
+## --- Developer-mode perspective flip ---------------------------------------
+
+## Y rotation in radians that in-play cards should use from the controlling
+## player's perspective.  P0 reads natively; P1 reads upside-down unless we
+## flip the cards 180° around Y.
+func _board_rotation_y() -> float:
+	return 0.0 if _controlling_player == 0 else PI
+
+
+## Flips the camera, player hand anchor, and every in-play PokemonInstance
+## to the [pid] side of the table.  Prizes, deck, and discard piles are left
+## alone — they're face-down stacks whose orientation doesn't matter.
+func _apply_perspective(pid: int) -> void:
+	if pid == _controlling_player:
+		return
+	_controlling_player = pid
+	camera.transform = _p0_cam_transform if pid == 0 else _p1_cam_transform
+	player_hand.transform = _p0_hand_transform if pid == 0 else _p1_hand_transform
+
+	var y_rot := _board_rotation_y()
+	for sid in BoardPosition.all_slot_ids():
+		var inst := manager.board_position.get_instance(sid)
+		if inst != null:
+			inst.rotation.y = y_rot
 
 
 func _on_turn_ended(_pid: int) -> void:
