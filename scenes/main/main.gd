@@ -695,7 +695,7 @@ func _apply_perspective(pid: int) -> void:
 
 	var y_rot := _board_rotation_y()
 	for sid in BoardPosition.all_slot_ids():
-		var inst := manager.board_position.get_instance(sid)
+		var inst: PokemonInstance = manager.board_position.get_instance(sid)
 		if inst != null:
 			inst.rotation.y = y_rot
 
