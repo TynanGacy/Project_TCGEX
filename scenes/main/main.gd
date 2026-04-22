@@ -1,19 +1,24 @@
 extends Node3D
-## Minimal bare-bones main scene.
+## Main scene.
 ##
 ## Startup flow:
 ##   _ready() -> _show_setup_dialog() -> _on_setup_confirmed() -> _start_game()
+##   -> manager.begin_game(0) -> turn_started (per-turn loop).
 ##
 ## Setup collects: mode (developer / player), prize count (2-6), active slot
-## count (1-2), bench slot count (3-5), and per-player deck selection.  Both
-## modes currently behave the same because CPU / turn-flow was removed by the
-## four-system refactor; the mode flag is retained so it can drive future
-## CPU / perspective-flip features without re-plumbing the dialog.
+## count (1-2), bench slot count (3-5), and per-player deck selection.
+##
+## Developer mode swaps the visible hand to whichever player's turn it is
+## so the operator can drive both sides.  Player mode keeps the visible hand
+## fixed to player 0 (the CPU for player 1 is a future addition).
 ##
 ## Wires the four systems (PokemonInstance / BoardPosition / GamePosition /
-## ManagerSystem) together for a single user flow: drag a Basic Pokemon
-## card out of the hand onto an Active or Bench slot, and the Manager
-## validates + dispatches the ActionPlayPokemon.
+## ManagerSystem) together for the user flow:
+##   - Drag a card from the visible hand onto a board zone.
+##   - _build_action_for_drop() picks the right Game_Action by card type.
+##   - The Manager validates / applies / emits.
+## The turn flow (draw, main, cleanup, pass) is owned by the Manager; the
+## End Turn button submits manager.end_turn().
 
 @onready var camera: Camera3D = $Camera3D
 @onready var board:  Board    = $Board
@@ -52,10 +57,20 @@ var _setup_dialog: Control = null
 var _setup_selected_mode: String = ""
 
 
+## Programmatically-added Reset button lives next to the End-Turn button
+## in the TopBar.
+var _reset_button: Button = null
+
+
 func _ready() -> void:
 	phase_label.text = ""
-	end_turn_button.text = "Reset"
-	end_turn_button.pressed.connect(_reset_game)
+	end_turn_button.text = "End Turn"
+	end_turn_button.pressed.connect(_on_end_turn_pressed)
+
+	_reset_button = Button.new()
+	_reset_button.text = "Reset"
+	_reset_button.pressed.connect(_reset_game)
+	end_turn_button.get_parent().add_child(_reset_button)
 
 	manager.action_committed.connect(_on_action_committed)
 	manager.action_rejected.connect(_on_action_rejected)
@@ -66,6 +81,10 @@ func _ready() -> void:
 	manager.deck_changed.connect(_on_deck_changed)
 	manager.discard_changed.connect(_on_discard_changed)
 	manager.prizes_changed.connect(_on_prizes_changed)
+	manager.stadium_changed.connect(_on_stadium_changed)
+	manager.turn_started.connect(_on_turn_started)
+	manager.turn_ended.connect(_on_turn_ended)
+	manager.phase_changed.connect(_on_phase_changed)
 
 	## Wait a frame so Board._ready has run and DropZones are positioned.
 	await get_tree().process_frame
@@ -278,11 +297,8 @@ func _start_game() -> void:
 	manager.deal_prizes(0, _prize_count)
 	manager.deal_prizes(1, _prize_count)
 
-	_rebuild_hand_visual(0)
-	phase_label.text = "%s mode  |  %d prize cards" % [
-		"Developer" if is_developer_mode else "Player",
-		_prize_count,
-	]
+	## Start turn 1.  _on_turn_started handles the hand rebuild and phase label.
+	manager.begin_game(0)
 
 
 func _reset_game() -> void:
@@ -323,6 +339,10 @@ func _reset_game() -> void:
 	manager.game_position.prizes_changed.connect(func(pid): manager.prizes_changed.emit(pid))
 	manager.attach_board_anchors(board.collect_slot_anchors())
 
+	## Clear turn / global board state owned by the Manager.
+	manager.reset_game_state()
+
+	phase_label.text = ""
 	game_log.clear()
 	_show_setup_dialog()
 
@@ -331,9 +351,19 @@ func _reset_game() -> void:
 ## Hand visuals
 ## ---------------------------------------------------------------------------
 
+## Returns the player_id whose hand should currently be shown in PlayerHand.
+## Developer mode follows whoever's turn it is so the operator can drive
+## both sides; Player mode stays on player 0 until the CPU/opponent system
+## returns.
+func _visible_hand_player() -> int:
+	if is_developer_mode:
+		return manager.current_player
+	return 0
+
+
 func _rebuild_hand_visual(player_id: int) -> void:
-	if player_id != 0:
-		return  ## Only player 0 hand is rendered in bare-bones mode.
+	if player_id != _visible_hand_player():
+		return
 
 	player_hand.clear_cards()
 	for card in _hand_cards.values():
@@ -341,7 +371,7 @@ func _rebuild_hand_visual(player_id: int) -> void:
 			card.queue_free()
 	_hand_cards.clear()
 
-	var hand: Array = manager.game_position.hands[0]
+	var hand: Array = manager.game_position.hands[player_id]
 	for data in hand:
 		var card_node := card_scene.instantiate() as Card
 		card_node.set_data(data)
@@ -352,8 +382,8 @@ func _rebuild_hand_visual(player_id: int) -> void:
 
 
 func _on_hand_changed(player_id: int) -> void:
-	if player_id == 0:
-		_rebuild_hand_visual(0)
+	if player_id == _visible_hand_player():
+		_rebuild_hand_visual(player_id)
 
 
 ## ---------------------------------------------------------------------------
@@ -380,10 +410,11 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 	var card := _raycast_card(screen_pos)
 	if card == null or not card._is_in_hand:
 		return  ## Only hand cards are draggable; board/pile cards snap back automatically.
-	if card.data == null or not (card.data is PokemonCardData):
+	if card.data == null:
 		return
-	if (card.data as PokemonCardData).stage != PokemonCardData.Stage.BASIC:
-		return
+	## All concrete CardData subclasses (PokemonCardData, TrainerCardData,
+	## EnergyCardData) are playable from hand — the action-specific validator
+	## decides legality when the drop lands.
 	dragged_card = card
 	card.start_drag()
 
@@ -394,21 +425,60 @@ func _try_drop_card() -> void:
 	var card := dragged_card
 	dragged_card = null
 
-	var zone := board.get_slot_zone_at(card.global_position)
-	var slot_id := board.slot_id_for_zone(zone) if zone != null else ""
-
-	if slot_id == "" or card.data == null or not (card.data is PokemonCardData):
+	if card.data == null:
 		card.return_to_home()
 		card.end_drag()
 		return
 
-	var action := ActionPlayPokemon.new(0, card.data as PokemonCardData, slot_id)
+	var zone := board.get_slot_zone_at(card.global_position)
+	var slot_id := board.slot_id_for_zone(zone) if zone != null else ""
+
+	var action := _build_action_for_drop(card.data, slot_id)
+	if action == null:
+		card.return_to_home()
+		card.end_drag()
+		return
+
 	var result: ActionResult = manager.request_action(action)
 	## If committed the Card is freed by _rebuild_hand_visual; if rejected we
 	## snap it back to its previous position.
 	if not result.ok:
 		card.return_to_home()
 	card.end_drag()
+
+
+## Builds the Game_Action appropriate to the dragged card's type.  Returns
+## null if the drop is meaningless (e.g. a Pokemon / Energy / Tool with no
+## target slot).  Items, Supporters and Stadiums do not need a slot — they
+## can be dropped anywhere on the table.
+func _build_action_for_drop(data: CardData, slot_id: String) -> GameAction:
+	var PLAYER_ID: int = manager.current_player
+	if data is EnergyCardData:
+		if slot_id == "":
+			return null
+		return ActionAttachEnergy.new(PLAYER_ID, data as EnergyCardData, slot_id)
+	if data is TrainerCardData:
+		var trainer := data as TrainerCardData
+		match trainer.trainer_kind:
+			TrainerCardData.TrainerKind.TOOL:
+				if slot_id == "":
+					return null
+				return ActionAttachTool.new(PLAYER_ID, trainer, slot_id)
+			TrainerCardData.TrainerKind.ITEM:
+				return ActionPlayItem.new(PLAYER_ID, trainer)
+			TrainerCardData.TrainerKind.SUPPORTER:
+				return ActionPlaySupporter.new(PLAYER_ID, trainer)
+			TrainerCardData.TrainerKind.STADIUM:
+				return ActionPlayStadium.new(PLAYER_ID, trainer)
+		return null
+	if data is PokemonCardData:
+		if slot_id == "":
+			return null
+		var pokemon := data as PokemonCardData
+		if pokemon.stage == PokemonCardData.Stage.BASIC:
+			return ActionPlayPokemon.new(PLAYER_ID, pokemon, slot_id)
+		return ActionEvolve.new(PLAYER_ID, pokemon, slot_id)
+	return null
 
 
 func _on_card_drag_started(_card: Card) -> void:
@@ -465,6 +535,41 @@ func _on_board_slot_changed(_slot_id: String, _instance) -> void:
 
 func _on_overflow_escalation(player_id: int, _instance) -> void:
 	_log("[Overflow] P%d has no empty bench — manual resolution required." % player_id)
+
+
+func _on_stadium_changed(stadium: TrainerCardData, owner_id: int) -> void:
+	if stadium == null:
+		_log("[Stadium] cleared.")
+	else:
+		_log("[Stadium] P%d: %s is now in play." % [owner_id, stadium.display_name])
+
+
+## ---------------------------------------------------------------------------
+## Turn / phase
+## ---------------------------------------------------------------------------
+
+func _on_end_turn_pressed() -> void:
+	manager.end_turn()
+
+
+func _on_turn_started(pid: int, _turn_num: int) -> void:
+	_rebuild_hand_visual(pid)
+	_update_phase_label()
+
+
+func _on_turn_ended(_pid: int) -> void:
+	_update_phase_label()
+
+
+func _on_phase_changed(_phase: int) -> void:
+	_update_phase_label()
+
+
+func _update_phase_label() -> void:
+	var mode := "Developer" if is_developer_mode else "Player"
+	phase_label.text = "%s  |  P%d  |  Turn %d  |  %s" % [
+		mode, manager.current_player, manager.turn_number, manager.phase_name(),
+	]
 
 
 func _on_deck_changed(pid: int) -> void:

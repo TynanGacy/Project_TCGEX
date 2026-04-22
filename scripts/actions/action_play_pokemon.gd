@@ -1,11 +1,10 @@
 class_name ActionPlayPokemon
 extends GameAction
-## Plays a Basic Pokemon from hand into a specific slot.
-##
-## This is currently the ONLY concrete Game_Action in the codebase while the
-## four-system architecture (PokemonInstance / BoardPosition / GamePosition /
-## Manager) is being stabilised.  Other actions (attack, evolve, attach, etc.)
-## were intentionally deleted and will be re-added on top of this foundation.
+## Plays a Basic Pokemon from hand into a specific slot.  This is the
+## foundational Game_Action on top of which the other card-type actions
+## (attach energy / attach tool / play item / play supporter / play stadium /
+## evolve) are built.  Attack resolution and the formal turn system will be
+## layered on top of the same request_action() entry point.
 
 var player_id: int = 0
 var card: PokemonCardData = null
@@ -25,6 +24,8 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Only Basic Pokemon can be played from hand.")
 	if manager.game_position == null or manager.board_position == null:
 		return ActionResult.fail("Manager is not initialised.")
+	if not manager.is_main_phase_for(player_id):
+		return ActionResult.fail("Not your main phase.")
 	if not (manager.game_position.hands[player_id] as Array).has(card):
 		return ActionResult.fail("Card is not in your hand.")
 	if not manager.board_position.has_slot(target_slot):
@@ -40,6 +41,7 @@ func apply(manager) -> void:
 	manager.game_position.take_from_hand(player_id, card)
 	var instance := PokemonInstance.create(card, player_id)
 	manager.board_position.place(target_slot, instance)
+	manager.pokemon_entered_play_this_turn[player_id].append(instance)
 
 
 func description() -> String:
