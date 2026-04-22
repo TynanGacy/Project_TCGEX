@@ -66,6 +66,7 @@ func _ready() -> void:
 	manager.deck_changed.connect(_on_deck_changed)
 	manager.discard_changed.connect(_on_discard_changed)
 	manager.prizes_changed.connect(_on_prizes_changed)
+	manager.stadium_changed.connect(_on_stadium_changed)
 
 	## Wait a frame so Board._ready has run and DropZones are positioned.
 	await get_tree().process_frame
@@ -323,6 +324,13 @@ func _reset_game() -> void:
 	manager.game_position.prizes_changed.connect(func(pid): manager.prizes_changed.emit(pid))
 	manager.attach_board_anchors(board.collect_slot_anchors())
 
+	## Clear global board state owned by the Manager.
+	manager.active_stadium       = null
+	manager.active_stadium_owner = -1
+	for pid in range(2):
+		manager.supporter_played_this_turn[pid] = false
+		manager.energy_attached_this_turn[pid]  = false
+
 	game_log.clear()
 	_show_setup_dialog()
 
@@ -380,10 +388,11 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 	var card := _raycast_card(screen_pos)
 	if card == null or not card._is_in_hand:
 		return  ## Only hand cards are draggable; board/pile cards snap back automatically.
-	if card.data == null or not (card.data is PokemonCardData):
+	if card.data == null:
 		return
-	if (card.data as PokemonCardData).stage != PokemonCardData.Stage.BASIC:
-		return
+	## All concrete CardData subclasses (PokemonCardData, TrainerCardData,
+	## EnergyCardData) are playable from hand — the action-specific validator
+	## decides legality when the drop lands.
 	dragged_card = card
 	card.start_drag()
 
@@ -394,21 +403,60 @@ func _try_drop_card() -> void:
 	var card := dragged_card
 	dragged_card = null
 
-	var zone := board.get_slot_zone_at(card.global_position)
-	var slot_id := board.slot_id_for_zone(zone) if zone != null else ""
-
-	if slot_id == "" or card.data == null or not (card.data is PokemonCardData):
+	if card.data == null:
 		card.return_to_home()
 		card.end_drag()
 		return
 
-	var action := ActionPlayPokemon.new(0, card.data as PokemonCardData, slot_id)
+	var zone := board.get_slot_zone_at(card.global_position)
+	var slot_id := board.slot_id_for_zone(zone) if zone != null else ""
+
+	var action := _build_action_for_drop(card.data, slot_id)
+	if action == null:
+		card.return_to_home()
+		card.end_drag()
+		return
+
 	var result: ActionResult = manager.request_action(action)
 	## If committed the Card is freed by _rebuild_hand_visual; if rejected we
 	## snap it back to its previous position.
 	if not result.ok:
 		card.return_to_home()
 	card.end_drag()
+
+
+## Builds the Game_Action appropriate to the dragged card's type.  Returns
+## null if the drop is meaningless (e.g. a Pokemon / Energy / Tool with no
+## target slot).  Items, Supporters and Stadiums do not need a slot — they
+## can be dropped anywhere on the table.
+func _build_action_for_drop(data: CardData, slot_id: String) -> GameAction:
+	const PLAYER_ID := 0
+	if data is EnergyCardData:
+		if slot_id == "":
+			return null
+		return ActionAttachEnergy.new(PLAYER_ID, data as EnergyCardData, slot_id)
+	if data is TrainerCardData:
+		var trainer := data as TrainerCardData
+		match trainer.trainer_kind:
+			TrainerCardData.TrainerKind.TOOL:
+				if slot_id == "":
+					return null
+				return ActionAttachTool.new(PLAYER_ID, trainer, slot_id)
+			TrainerCardData.TrainerKind.ITEM:
+				return ActionPlayItem.new(PLAYER_ID, trainer)
+			TrainerCardData.TrainerKind.SUPPORTER:
+				return ActionPlaySupporter.new(PLAYER_ID, trainer)
+			TrainerCardData.TrainerKind.STADIUM:
+				return ActionPlayStadium.new(PLAYER_ID, trainer)
+		return null
+	if data is PokemonCardData:
+		if slot_id == "":
+			return null
+		var pokemon := data as PokemonCardData
+		if pokemon.stage == PokemonCardData.Stage.BASIC:
+			return ActionPlayPokemon.new(PLAYER_ID, pokemon, slot_id)
+		return ActionEvolve.new(PLAYER_ID, pokemon, slot_id)
+	return null
 
 
 func _on_card_drag_started(_card: Card) -> void:
@@ -465,6 +513,13 @@ func _on_board_slot_changed(_slot_id: String, _instance) -> void:
 
 func _on_overflow_escalation(player_id: int, _instance) -> void:
 	_log("[Overflow] P%d has no empty bench — manual resolution required." % player_id)
+
+
+func _on_stadium_changed(stadium: TrainerCardData, owner_id: int) -> void:
+	if stadium == null:
+		_log("[Stadium] cleared.")
+	else:
+		_log("[Stadium] P%d: %s is now in play." % [owner_id, stadium.display_name])
 
 
 func _on_deck_changed(pid: int) -> void:

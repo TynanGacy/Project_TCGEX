@@ -1,9 +1,8 @@
 extends Node
-## Bare-bones central Manager.  In the current refactor it only mediates the
-## single Game_Action that exists — playing a Basic Pokemon from hand to an
-## active or bench slot.  Everything else (attacks, evolution, energy, etc.)
-## was intentionally removed so the four-system architecture can stabilise
-## before being re-expanded.
+## Central Manager.  Mediates every Game_Action that mutates the game state:
+## playing Basic Pokemon, attaching energy and tools, playing items /
+## supporters / stadiums, and evolving.  Attacks and the formal turn system
+## will be layered on top of these once they return.
 ##
 ## Contract (vision):
 ##   - Game_Actions are declarative; they do NOT mutate state themselves.
@@ -26,8 +25,25 @@ signal deck_changed(player_id: int)
 signal discard_changed(player_id: int)
 signal prizes_changed(player_id: int)
 
+## Stadium is a global board-state card (only one exists across both players).
+signal stadium_changed(stadium: TrainerCardData, owner_id: int)
+
 var board_position: BoardPosition = null
 var game_position:  GamePosition = null
+
+## --- Global board state owned by the Manager --------------------------------
+##
+## These pieces of state are neither per-PokemonInstance nor per-hand/deck;
+## they're game-wide flags the turn system will reset each turn.
+
+## The Stadium currently in play (null if none), and which player owns it.
+var active_stadium: TrainerCardData = null
+var active_stadium_owner: int = -1
+
+## Per-player turn flags.  Reset by reset_turn_flags() when the turn system
+## is restored; until then they persist across the session.
+var supporter_played_this_turn: Array[bool] = [false, false]
+var energy_attached_this_turn:  Array[bool] = [false, false]
 
 
 func _ready() -> void:
@@ -86,6 +102,16 @@ func draw_starting_hand(player_id: int, count: int = 7) -> void:
 
 func deal_prizes(player_id: int, count: int = 6) -> void:
 	game_position.deal_prizes(player_id, count)
+
+
+## Clears per-turn flags for [player_id].  Called by the (future) turn
+## system at the start of a player's turn.  Stadium state is intentionally
+## NOT cleared — Stadiums persist across turns until replaced.
+func reset_turn_flags(player_id: int) -> void:
+	if player_id < 0 or player_id >= supporter_played_this_turn.size():
+		return
+	supporter_played_this_turn[player_id] = false
+	energy_attached_this_turn[player_id]  = false
 
 
 ## --- Internal ---------------------------------------------------------------

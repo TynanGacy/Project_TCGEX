@@ -1,11 +1,10 @@
 class_name ActionPlayPokemon
 extends GameAction
-## Plays a Basic Pokemon from hand into a specific slot.
-##
-## This is currently the ONLY concrete Game_Action in the codebase while the
-## four-system architecture (PokemonInstance / BoardPosition / GamePosition /
-## Manager) is being stabilised.  Other actions (attack, evolve, attach, etc.)
-## were intentionally deleted and will be re-added on top of this foundation.
+## Plays a Basic Pokemon from hand into a specific slot.  This is the
+## foundational Game_Action on top of which the other card-type actions
+## (attach energy / attach tool / play item / play supporter / play stadium /
+## evolve) are built.  Attack resolution and the formal turn system will be
+## layered on top of the same request_action() entry point.
 
 var player_id: int = 0
 var card: PokemonCardData = null
