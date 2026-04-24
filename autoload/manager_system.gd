@@ -32,6 +32,10 @@ signal log_message(text: String)
 ## new visuals, when hand/discard/deck change, etc.  They are re-emits of
 ## the underlying system signals so the scene only has to listen in one place.
 signal board_slot_changed(slot_id: String, instance: PokemonInstance)
+## Emitted after any action that mutates an already-placed PokemonInstance
+## (attachments, HP, conditions, evolution).  Slot-keyed so listeners can
+## target only the relevant instance.
+signal pokemon_state_changed(slot_id: String, instance: PokemonInstance)
 signal overflow_escalation(player_id: int, instance: PokemonInstance)
 signal hand_changed(player_id: int)
 signal deck_changed(player_id: int)
@@ -113,6 +117,10 @@ func request_action(action: GameAction) -> ActionResult:
 	action.apply(self)
 	log_message.emit(action.description())
 	action_committed.emit(action)
+	for slot_id in action.affected_slots():
+		var inst: PokemonInstance = board_position.get_instance(slot_id)
+		if inst != null:
+			pokemon_state_changed.emit(slot_id, inst)
 	return ActionResult.success()
 
 

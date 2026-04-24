@@ -11,6 +11,10 @@ signal action_committed(action: GameAction)
 signal action_rejected(action: GameAction, reason: String)
 signal log_message(text: String)
 signal board_slot_changed(slot_id: String, instance: PokemonInstance)
+## Emitted whenever an already-placed PokemonInstance mutates in-place
+## (HP, conditions, attachments, evolution).  Scene code and future online
+## clients use this to refresh HUD or trigger effects without polling.
+signal pokemon_state_changed(slot_id: String, instance: PokemonInstance)
 signal overflow_escalation(player_id: int, instance: PokemonInstance)
 signal hand_changed(player_id: int)
 signal deck_changed(player_id: int)

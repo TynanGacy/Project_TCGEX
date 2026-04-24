@@ -20,3 +20,10 @@ func apply(_manager) -> void:
 
 func description() -> String:
 	return "GameAction"
+
+## Returns the board slot IDs whose in-play Pokemon state changed as a result
+## of apply().  The Manager emits pokemon_state_changed for each slot so the
+## scene layer (and future online authority) can react without inspecting
+## concrete action types.  Override in any action that mutates a PokemonInstance.
+func affected_slots() -> Array[String]:
+	return []

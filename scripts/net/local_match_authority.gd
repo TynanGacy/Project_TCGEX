@@ -27,6 +27,9 @@ func _bind_signals() -> void:
 	_manager.board_slot_changed.connect(func(slot_id: String, instance: PokemonInstance) -> void:
 		board_slot_changed.emit(slot_id, instance)
 	)
+	_manager.pokemon_state_changed.connect(func(slot_id: String, instance: PokemonInstance) -> void:
+		pokemon_state_changed.emit(slot_id, instance)
+	)
 	_manager.overflow_escalation.connect(func(player_id: int, instance: PokemonInstance) -> void:
 		overflow_escalation.emit(player_id, instance)
 	)

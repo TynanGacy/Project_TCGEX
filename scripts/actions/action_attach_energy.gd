@@ -48,3 +48,7 @@ func apply(manager) -> void:
 func description() -> String:
 	var name := card.display_name if card != null else "Energy"
 	return "P%d attaches %s to %s" % [player_id, name, target_slot]
+
+
+func affected_slots() -> Array[String]:
+	return [target_slot]

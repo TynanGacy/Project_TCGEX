@@ -69,7 +69,14 @@ var _hp_label: Label3D = null
 var _type_symbol_mesh: MeshInstance3D = null
 var _type_symbol_mat: StandardMaterial3D = null
 var _condition_label: Label3D = null
-var _energy_label: Label3D = null
+
+## Attachment icon pool — built once, updated on every refresh_visual().
+var _attachment_node: Node3D = null
+var _energy_icon_discs: Array[MeshInstance3D] = []
+var _energy_icon_labels: Array[Label3D] = []
+var _energy_overflow_label: Label3D = null
+var _tool_icon_disc: MeshInstance3D = null
+var _tool_icon_label: Label3D = null
 
 
 static func create(pokemon_card: PokemonCardData, owner: int = 0) -> PokemonInstance:
@@ -94,17 +101,7 @@ func _build_visual() -> void:
 	_card_visual.set_data(card)
 
 	_build_nameplate()
-
-	_energy_label = Label3D.new()
-	_energy_label.name = "EnergyLabel"
-	_energy_label.pixel_size = 0.0009
-	_energy_label.font_size = 28
-	_energy_label.modulate = Color(0.8, 0.95, 1.0)
-	_energy_label.outline_size = 6
-	_energy_label.outline_modulate = Color.BLACK
-	_energy_label.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
-	_energy_label.position = Vector3(-display_width * 0.35, 0.03, display_width * 0.18)
-	add_child(_energy_label)
+	_build_attachments()
 
 	_condition_label = Label3D.new()
 	_condition_label.name = "ConditionLabel"
@@ -124,8 +121,7 @@ func refresh_visual() -> void:
 		_card_visual.set_data(card)
 		_card_visual.face_down = false
 	_refresh_nameplate()
-	if _energy_label != null:
-		_energy_label.text = "" if attached_energy.is_empty() else "E×%d" % attached_energy.size()
+	_refresh_attachments()
 	if _condition_label != null:
 		_condition_label.text = _conditions_text()
 
@@ -227,6 +223,148 @@ func _refresh_nameplate() -> void:
 		_type_symbol_mat.albedo_color = TYPE_SYMBOL_COLORS[type_idx]
 
 
+## --- Attachment display -----------------------------------------------------
+
+func _build_attachments() -> void:
+	_attachment_node = Node3D.new()
+	_attachment_node.name = "Attachments"
+	add_child(_attachment_node)
+
+	for i in range(AttachmentDisplay.MAX_VISIBLE_ENERGY):
+		var disc := _make_disc_mesh(Color.WHITE)
+		disc.name = "EnergyDisc%d" % i
+		var lbl := _make_icon_label()
+		lbl.name = "EnergyLabel%d" % i
+		_attachment_node.add_child(disc)
+		_attachment_node.add_child(lbl)
+		_energy_icon_discs.append(disc)
+		_energy_icon_labels.append(lbl)
+		disc.visible = false
+		lbl.visible = false
+
+	_energy_overflow_label = Label3D.new()
+	_energy_overflow_label.name = "EnergyOverflow"
+	_energy_overflow_label.pixel_size = 0.0009
+	_energy_overflow_label.font_size = 22
+	_energy_overflow_label.modulate = Color.WHITE
+	_energy_overflow_label.outline_size = 5
+	_energy_overflow_label.outline_modulate = Color.BLACK
+	_energy_overflow_label.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
+	_energy_overflow_label.visible = false
+	_attachment_node.add_child(_energy_overflow_label)
+
+	_tool_icon_disc = _make_disc_mesh(AttachmentDisplay.TOOL_ICON_COLOR)
+	_tool_icon_disc.name = "ToolDisc"
+	_tool_icon_label = _make_icon_label()
+	_tool_icon_label.name = "ToolLabel"
+	_attachment_node.add_child(_tool_icon_disc)
+	_attachment_node.add_child(_tool_icon_label)
+	_tool_icon_disc.visible = false
+	_tool_icon_label.visible = false
+
+	_layout_attachments()
+
+
+func _layout_attachments() -> void:
+	if _attachment_node == null:
+		return
+	var card_w: float = display_width
+	var card_h: float = display_width / Card.BOARD_ART_RATIO
+	var disc_radius: float = AttachmentDisplay.ENERGY_NORM_STEP_X * card_w * 0.40
+	var disc_y: float = 0.012
+	var label_y: float = 0.024
+
+	for i in range(AttachmentDisplay.MAX_VISIBLE_ENERGY):
+		var norm_x: float = AttachmentDisplay.ENERGY_NORM_START_X + i * AttachmentDisplay.ENERGY_NORM_STEP_X
+		var ix: float = -card_w * 0.5 + norm_x * card_w
+		var iz: float = -card_h * 0.5 + AttachmentDisplay.ENERGY_NORM_Y * card_h
+		var disc := _energy_icon_discs[i]
+		var cyl := disc.mesh as CylinderMesh
+		cyl.top_radius = disc_radius
+		cyl.bottom_radius = disc_radius
+		disc.position = Vector3(ix, disc_y, iz)
+		_energy_icon_labels[i].position = Vector3(ix, label_y, iz)
+
+	var overflow_norm_x: float = (
+		AttachmentDisplay.ENERGY_NORM_START_X
+		+ AttachmentDisplay.MAX_VISIBLE_ENERGY * AttachmentDisplay.ENERGY_NORM_STEP_X
+	)
+	_energy_overflow_label.position = Vector3(
+		-card_w * 0.5 + overflow_norm_x * card_w,
+		label_y,
+		-card_h * 0.5 + AttachmentDisplay.ENERGY_NORM_Y * card_h
+	)
+
+	var tool_x: float = -card_w * 0.5 + AttachmentDisplay.TOOL_NORM_X * card_w
+	var tool_z: float = -card_h * 0.5 + AttachmentDisplay.TOOL_NORM_START_Y * card_h
+	if _tool_icon_disc != null:
+		var tcyl := _tool_icon_disc.mesh as CylinderMesh
+		tcyl.top_radius = disc_radius
+		tcyl.bottom_radius = disc_radius
+		_tool_icon_disc.position = Vector3(tool_x, disc_y, tool_z)
+	if _tool_icon_label != null:
+		_tool_icon_label.position = Vector3(tool_x, label_y, tool_z)
+
+
+func _refresh_attachments() -> void:
+	if _attachment_node == null:
+		return
+	var sorted: Array[CardData] = AttachmentDisplay.sort_energy(attached_energy)
+	var visible_count: int = mini(sorted.size(), AttachmentDisplay.MAX_VISIBLE_ENERGY)
+	var overflow_count: int = sorted.size() - visible_count
+
+	for i in range(AttachmentDisplay.MAX_VISIBLE_ENERGY):
+		var disc := _energy_icon_discs[i]
+		var lbl := _energy_icon_labels[i]
+		if i < visible_count:
+			var color := AttachmentDisplay.energy_color(sorted[i])
+			(disc.get_surface_override_material(0) as StandardMaterial3D).albedo_color = color
+			lbl.text = AttachmentDisplay.energy_label(sorted[i])
+			disc.visible = true
+			lbl.visible = true
+		else:
+			disc.visible = false
+			lbl.visible = false
+
+	if overflow_count > 0:
+		_energy_overflow_label.text = "+%d" % overflow_count
+		_energy_overflow_label.visible = true
+	else:
+		_energy_overflow_label.visible = false
+
+	var has_tool := not attached_tools.is_empty()
+	if _tool_icon_disc != null:
+		_tool_icon_disc.visible = has_tool
+	if _tool_icon_label != null:
+		_tool_icon_label.text = attached_tools[0].display_name.substr(0, 1) if has_tool else ""
+		_tool_icon_label.visible = has_tool
+
+
+static func _make_disc_mesh(color: Color) -> MeshInstance3D:
+	var mesh_inst := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.height = 0.005
+	cyl.radial_segments = 16
+	mesh_inst.mesh = cyl
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mesh_inst.set_surface_override_material(0, mat)
+	return mesh_inst
+
+
+static func _make_icon_label() -> Label3D:
+	var lbl := Label3D.new()
+	lbl.pixel_size = 0.0009
+	lbl.font_size = 22
+	lbl.modulate = Color.WHITE
+	lbl.outline_size = 5
+	lbl.outline_modulate = Color.BLACK
+	lbl.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
+	return lbl
+
+
+## --- Conditions text ---------------------------------------------------------
+
 func _conditions_text() -> String:
 	if special_conditions.is_empty():
 		return ""
@@ -276,6 +414,20 @@ func attach_energy(energy_card: CardData) -> void:
 
 func attach_tool(tool_card: CardData) -> void:
 	attached_tools.append(tool_card)
+	refresh_visual()
+
+
+## Replaces the full energy list from an authoritative state snapshot (e.g.
+## delivered by an online server delta).  Prefer individual attach_energy()
+## calls for incremental mutations during local play.
+func set_energy(energy: Array[CardData]) -> void:
+	attached_energy = energy.duplicate()
+	refresh_visual()
+
+
+## Replaces the full tool list from an authoritative state snapshot.
+func set_tools(tools: Array[CardData]) -> void:
+	attached_tools = tools.duplicate()
 	refresh_visual()
 
 
@@ -332,7 +484,6 @@ func set_display_width(w: float) -> void:
 		_card_visual.set_display_width(w)
 		_card_visual.set_board_mode(true)
 	_layout_nameplate()
-	if _energy_label != null:
-		_energy_label.position = Vector3(-w * 0.35, 0.03, w * 0.18)
+	_layout_attachments()
 	if _condition_label != null:
 		_condition_label.position = Vector3(w * 0.30, 0.03, w * 0.18)
