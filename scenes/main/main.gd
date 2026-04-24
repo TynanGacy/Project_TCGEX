@@ -30,6 +30,7 @@ extends Node3D
 @onready var card_zoom_popup: CardZoomPopup = $HUD/CardZoomPopup
 
 @onready var manager: Node = ManagerSystemSingleton
+var _authority: MatchAuthority = null
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 const CARD_BACK: Texture2D = preload("res://assets/images/card_back.png")
@@ -88,19 +89,20 @@ func _ready() -> void:
 	_reset_button.pressed.connect(_reset_game)
 	end_turn_button.get_parent().add_child(_reset_button)
 
-	manager.action_committed.connect(_on_action_committed)
-	manager.action_rejected.connect(_on_action_rejected)
-	manager.log_message.connect(_log)
-	manager.hand_changed.connect(_on_hand_changed)
-	manager.board_slot_changed.connect(_on_board_slot_changed)
-	manager.overflow_escalation.connect(_on_overflow_escalation)
-	manager.deck_changed.connect(_on_deck_changed)
-	manager.discard_changed.connect(_on_discard_changed)
-	manager.prizes_changed.connect(_on_prizes_changed)
-	manager.stadium_changed.connect(_on_stadium_changed)
-	manager.turn_started.connect(_on_turn_started)
-	manager.turn_ended.connect(_on_turn_ended)
-	manager.phase_changed.connect(_on_phase_changed)
+	_authority = LocalMatchAuthority.new(manager)
+	_authority.action_committed.connect(_on_action_committed)
+	_authority.action_rejected.connect(_on_action_rejected)
+	_authority.log_message.connect(_log)
+	_authority.hand_changed.connect(_on_hand_changed)
+	_authority.board_slot_changed.connect(_on_board_slot_changed)
+	_authority.overflow_escalation.connect(_on_overflow_escalation)
+	_authority.deck_changed.connect(_on_deck_changed)
+	_authority.discard_changed.connect(_on_discard_changed)
+	_authority.prizes_changed.connect(_on_prizes_changed)
+	_authority.stadium_changed.connect(_on_stadium_changed)
+	_authority.turn_started.connect(_on_turn_started)
+	_authority.turn_ended.connect(_on_turn_ended)
+	_authority.phase_changed.connect(_on_phase_changed)
 
 	## Capture both perspective transforms up front.  P0 takes the scene's
 	## default camera / hand placement; P1 is the same transforms rotated
@@ -114,7 +116,7 @@ func _ready() -> void:
 
 	## Wait a frame so Board._ready has run and DropZones are positioned.
 	await get_tree().process_frame
-	manager.attach_board_anchors(board.collect_slot_anchors())
+	_authority.attach_board_anchors(board.collect_slot_anchors())
 
 	_show_setup_dialog()
 
@@ -314,17 +316,17 @@ func _start_game() -> void:
 
 	var p0_deck: Array[CardData] = DeckLoader.load_deck(0, _player_deck_path)
 	var p1_deck: Array[CardData] = DeckLoader.load_deck(1, _opponent_deck_path)
-	manager.load_deck(0, p0_deck)
-	manager.load_deck(1, p1_deck)
+	_authority.load_deck(0, p0_deck)
+	_authority.load_deck(1, p1_deck)
 
-	manager.draw_starting_hand(0, 7)
-	manager.draw_starting_hand(1, 7)
+	_authority.draw_starting_hand(0, 7)
+	_authority.draw_starting_hand(1, 7)
 
-	manager.deal_prizes(0, _prize_count)
-	manager.deal_prizes(1, _prize_count)
+	_authority.deal_prizes(0, _prize_count)
+	_authority.deal_prizes(1, _prize_count)
 
 	## Start turn 1.  _on_turn_started handles the hand rebuild and phase label.
-	manager.begin_game(0)
+	_authority.begin_game(0)
 
 
 func _reset_game() -> void:
@@ -389,7 +391,7 @@ func _reset_game() -> void:
 ## returns.
 func _visible_hand_player() -> int:
 	if is_developer_mode:
-		return manager.current_player
+		return _authority.current_player_id()
 	return 0
 
 
@@ -548,7 +550,7 @@ func _try_drop_card() -> void:
 		card.end_drag()
 		return
 
-	var result: ActionResult = manager.request_action(action)
+	var result: ActionResult = _authority.request_action(action)
 	## If committed the Card is freed by _rebuild_hand_visual; if rejected we
 	## snap it back to its previous position.
 	if not result.ok:
@@ -561,7 +563,7 @@ func _try_drop_card() -> void:
 ## target slot).  Items, Supporters and Stadiums do not need a slot — they
 ## can be dropped anywhere on the table.
 func _build_action_for_drop(data: CardData, slot_id: String) -> GameAction:
-	var PLAYER_ID: int = manager.current_player
+	var PLAYER_ID: int = _authority.current_player_id()
 	if data is EnergyCardData:
 		if slot_id == "":
 			return null
@@ -664,7 +666,7 @@ func _on_stadium_changed(stadium: TrainerCardData, owner_id: int) -> void:
 ## ---------------------------------------------------------------------------
 
 func _on_end_turn_pressed() -> void:
-	manager.end_turn()
+	_authority.end_turn()
 
 
 func _on_turn_started(pid: int, _turn_num: int) -> void:
@@ -711,7 +713,7 @@ func _on_phase_changed(_phase: int) -> void:
 func _update_phase_label() -> void:
 	var mode := "Developer" if is_developer_mode else "Player"
 	phase_label.text = "%s  |  P%d  |  Turn %d  |  %s" % [
-		mode, manager.current_player, manager.turn_number, manager.phase_name(),
+		mode, _authority.current_player_id(), _authority.current_turn_number(), _authority.phase_name(),
 	]
 
 
