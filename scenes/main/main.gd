@@ -34,9 +34,14 @@ var _authority: MatchAuthority = null
 
 var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 const CARD_BACK: Texture2D = preload("res://assets/images/card_back.png")
+const _HAND_SCENE: PackedScene = preload("res://scenes/hand/hand.tscn")
 
-## CardData -> Card node cache for the hand.
+## CardData -> Card node cache for the visible (interactive) hand.
 var _hand_cards: Dictionary = {}
+
+## Face-down card nodes for the opponent's hand (count mirror only).
+var _opponent_hand_cards: Array[Card] = []
+var _opponent_hand: Hand = null
 
 ## zone_name -> Card node for deck / discard / prize pile visuals.  Keys are
 ## the full DropZone.zone_name (e.g. "Deck", "Opp Deck", "Prize 3",
@@ -314,6 +319,12 @@ func _on_setup_confirmed(
 func _start_game() -> void:
 	board.configure_slots(_active_slots, _bench_slots, _prize_count)
 
+	## Create a second Hand for the opponent's face-down cards.
+	_opponent_hand = _HAND_SCENE.instantiate() as Hand
+	_opponent_hand.name = "OpponentHand"
+	board.add_child(_opponent_hand)
+	_opponent_hand.transform = _p1_hand_transform
+
 	var p0_deck: Array[CardData] = DeckLoader.load_deck(0, _player_deck_path)
 	var p1_deck: Array[CardData] = DeckLoader.load_deck(1, _opponent_deck_path)
 	_authority.load_deck(0, p0_deck)
@@ -348,6 +359,11 @@ func _reset_game() -> void:
 			card.queue_free()
 	_hand_cards.clear()
 
+	if _opponent_hand != null:
+		_opponent_hand.queue_free()
+		_opponent_hand = null
+	_opponent_hand_cards.clear()
+
 	## Clear every PokemonInstance from every slot.
 	for sid in BoardPosition.all_slot_ids():
 		var inst: PokemonInstance = manager.board_position.clear(sid)
@@ -375,6 +391,7 @@ func _reset_game() -> void:
 	_controlling_player = 0
 	camera.transform = _p0_cam_transform
 	player_hand.transform = _p0_hand_transform
+	## _opponent_hand was already freed above; nothing else to reset here.
 
 	phase_label.text = ""
 	game_log.clear()
@@ -415,9 +432,58 @@ func _rebuild_hand_visual(player_id: int) -> void:
 		_hand_cards[data] = card_node
 
 
+## Incrementally syncs the visible hand to [player_id]'s current hand data.
+## Removes only the cards that left and adds only the cards that arrived, so
+## the remaining cards slide smoothly into their new fan positions instead of
+## the whole hand expanding from the centre.
+func _update_hand_visual(player_id: int) -> void:
+	if player_id != _visible_hand_player():
+		return
+
+	var new_hand: Array = manager.game_position.hands[player_id]
+
+	var to_remove: Array[CardData] = []
+	for data: CardData in _hand_cards:
+		if not new_hand.has(data):
+			to_remove.append(data)
+	for data in to_remove:
+		var card_node: Card = _hand_cards[data]
+		_hand_cards.erase(data)
+		player_hand.remove_card(card_node)
+		card_node.queue_free()
+
+	for data: CardData in new_hand:
+		if not _hand_cards.has(data):
+			var card_node := card_scene.instantiate() as Card
+			card_node.set_data(data)
+			player_hand.add_card(card_node)
+			card_node.drag_started.connect(_on_card_drag_started)
+			card_node.card_dropped.connect(_on_card_dropped)
+			_hand_cards[data] = card_node
+
+
+## Rebuilds the opponent's face-down card-back fan to reflect the current
+## hand count for [opponent_id].  Cards have no data and cannot be dragged.
+func _rebuild_opponent_hand_visual(opponent_id: int) -> void:
+	if _opponent_hand == null:
+		return
+	_opponent_hand.clear_cards()
+	_opponent_hand_cards.clear()
+
+	var count: int = (manager.game_position.hands[opponent_id] as Array).size()
+	for _i in count:
+		var card_node := card_scene.instantiate() as Card
+		card_node.back_texture = CARD_BACK
+		card_node.face_down = true
+		_opponent_hand.add_card(card_node)
+		_opponent_hand_cards.append(card_node)
+
+
 func _on_hand_changed(player_id: int) -> void:
 	if player_id == _visible_hand_player():
-		_rebuild_hand_visual(player_id)
+		_update_hand_visual(player_id)
+	else:
+		_rebuild_opponent_hand_visual(player_id)
 
 
 ## ---------------------------------------------------------------------------
@@ -676,6 +742,7 @@ func _on_turn_started(pid: int, _turn_num: int) -> void:
 	if is_developer_mode:
 		_apply_perspective(pid)
 	_rebuild_hand_visual(pid)
+	_rebuild_opponent_hand_visual(1 - pid)
 	_update_phase_label()
 
 
@@ -696,7 +763,9 @@ func _apply_perspective(pid: int) -> void:
 		return
 	_controlling_player = pid
 	camera.transform = _p0_cam_transform if pid == 0 else _p1_cam_transform
-	player_hand.transform = _p0_hand_transform if pid == 0 else _p1_hand_transform
+	player_hand.transform   = _p0_hand_transform if pid == 0 else _p1_hand_transform
+	if _opponent_hand != null:
+		_opponent_hand.transform = _p1_hand_transform if pid == 0 else _p0_hand_transform
 
 	var y_rot := _board_rotation_y()
 	for sid in BoardPosition.all_slot_ids():

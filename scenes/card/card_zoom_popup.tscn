@@ -18,27 +18,25 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+[node name="CardFrame" type="Control" parent="MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
-[node name="CardArt" type="TextureRect" parent="MarginContainer/VBoxContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(322, 449)
+[node name="CardArt" type="TextureRect" parent="MarginContainer/CardFrame"]
+layout_mode = 0
 size_flags_horizontal = 3
 expand_mode = 1
 stretch_mode = 5
 
-[node name="AttachmentSection" type="VBoxContainer" parent="MarginContainer/VBoxContainer"]
-layout_mode = 2
+[node name="AttachmentSection" type="VBoxContainer" parent="MarginContainer/CardFrame"]
+layout_mode = 0
 visible = false
 theme_override_constants/separation = 4
 
-[node name="EnergyRows" type="VBoxContainer" parent="MarginContainer/VBoxContainer/AttachmentSection"]
+[node name="EnergyRows" type="VBoxContainer" parent="MarginContainer/CardFrame/AttachmentSection"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="ToolRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer/AttachmentSection"]
+[node name="ToolRow" type="HBoxContainer" parent="MarginContainer/CardFrame/AttachmentSection"]
 layout_mode = 2
 visible = false
 theme_override_constants/separation = 6
