@@ -11,9 +11,12 @@ extends PanelContainer
 ## re-open the popup or react without tight coupling to PokemonInstance directly.
 
 ## Side length (px) of each circular attachment icon.
-const ICON_SIZE   := 36
-## Corner radius that makes the icon appear circular (half of ICON_SIZE).
-const ICON_RADIUS := 18
+## Derived from the board formula: ENERGY_NORM_STEP_X × card_w × 0.80 ≈ 12 % of
+## card width.  Applied to the popup's 322 px card art width: 322 × 0.12 ≈ 39 px;
+## bumped to 56 px so the icons read clearly and still fit 5 per row.
+const ICON_SIZE   := 56
+## Corner radius that makes the square Panel appear circular (half of ICON_SIZE).
+const ICON_RADIUS := 28
 
 @onready var card_art:           TextureRect  = $MarginContainer/VBoxContainer/CardArt
 @onready var _attachment_section: VBoxContainer = $MarginContainer/VBoxContainer/AttachmentSection
@@ -56,7 +59,8 @@ func _refresh_attachments(instance: PokemonInstance) -> void:
 		var i := 0
 		while i < sorted.size():
 			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 4)
+			row.alignment = BoxContainer.ALIGNMENT_CENTER
+			row.add_theme_constant_override("separation", 6)
 			_energy_rows.add_child(row)
 			for j in range(AttachmentDisplay.MAX_VISIBLE_ENERGY):
 				if i + j >= sorted.size():
@@ -66,6 +70,7 @@ func _refresh_attachments(instance: PokemonInstance) -> void:
 
 	var has_tool := not instance.attached_tools.is_empty()
 	if has_tool:
+		_tool_row.alignment = BoxContainer.ALIGNMENT_CENTER
 		_tool_row.add_child(_make_tool_disc(instance.attached_tools[0]))
 		var name_label := Label.new()
 		name_label.text = instance.attached_tools[0].display_name
