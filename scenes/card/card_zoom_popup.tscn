@@ -8,8 +8,6 @@
 script = ExtResource("1_czp")
 offset_left = 10.0
 offset_top = 50.0
-offset_right = 240.0
-offset_bottom = 373.0
 visible = false
 theme_override_styles/panel = SubResource("StyleBoxEmpty_1")
 
@@ -20,9 +18,25 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="CardArt" type="TextureRect" parent="MarginContainer"]
+[node name="CardFrame" type="Control" parent="MarginContainer"]
 layout_mode = 2
-custom_minimum_size = Vector2(214, 299)
+
+[node name="CardArt" type="TextureRect" parent="MarginContainer/CardFrame"]
+layout_mode = 0
 size_flags_horizontal = 3
 expand_mode = 1
 stretch_mode = 5
+
+[node name="AttachmentSection" type="VBoxContainer" parent="MarginContainer/CardFrame"]
+layout_mode = 0
+visible = false
+theme_override_constants/separation = 4
+
+[node name="EnergyRows" type="VBoxContainer" parent="MarginContainer/CardFrame/AttachmentSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ToolRow" type="HBoxContainer" parent="MarginContainer/CardFrame/AttachmentSection"]
+layout_mode = 2
+visible = false
+theme_override_constants/separation = 6
