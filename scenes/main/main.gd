@@ -27,6 +27,7 @@ extends Node3D
 @onready var phase_label: Label = $HUD/TopBar/PhaseLabel
 @onready var end_turn_button: Button = $HUD/TopBar/EndTurnButton
 @onready var game_log: RichTextLabel = $HUD/LogPanel/GameLog
+@onready var card_zoom_popup: CardZoomPopup = $HUD/CardZoomPopup
 
 @onready var manager: Node = ManagerSystemSingleton
 
@@ -44,6 +45,21 @@ var _pile_nodes: Dictionary = {}
 ## Drag state
 var dragged_card: Card = null
 const DRAG_PLANE := Plane(Vector3.UP, 0.0)
+
+## Hover state — the Node3D currently lifted by the mouse cursor.  This is
+## either a Card (for hand / pile cards) or a PokemonInstance (for board
+## cards), so the whole instance — nameplate included — rises together.
+var _hovered_node: Node3D = null
+
+## Perspective (developer mode).  When the active turn changes we flip the
+## camera, the hand anchor, and every in-play PokemonInstance so the board
+## reads correctly from whichever side the controlling player is on.  Piles
+## (prizes / deck / discard) and off-table UI stay put.
+var _controlling_player: int = 0
+var _p0_cam_transform: Transform3D = Transform3D.IDENTITY
+var _p1_cam_transform: Transform3D = Transform3D.IDENTITY
+var _p0_hand_transform: Transform3D = Transform3D.IDENTITY
+var _p1_hand_transform: Transform3D = Transform3D.IDENTITY
 
 ## --- Setup state ------------------------------------------------------------
 var is_developer_mode: bool = false
@@ -85,6 +101,16 @@ func _ready() -> void:
 	manager.turn_started.connect(_on_turn_started)
 	manager.turn_ended.connect(_on_turn_ended)
 	manager.phase_changed.connect(_on_phase_changed)
+
+	## Capture both perspective transforms up front.  P0 takes the scene's
+	## default camera / hand placement; P1 is the same transforms rotated
+	## 180° around the world Y axis so the board reads from the opposite
+	## side of the table.
+	_p0_cam_transform  = camera.transform
+	_p0_hand_transform = player_hand.transform
+	var y_flip := Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
+	_p1_cam_transform  = y_flip * _p0_cam_transform
+	_p1_hand_transform = y_flip * _p0_hand_transform
 
 	## Wait a frame so Board._ready has run and DropZones are positioned.
 	await get_tree().process_frame
@@ -342,6 +368,12 @@ func _reset_game() -> void:
 	## Clear turn / global board state owned by the Manager.
 	manager.reset_game_state()
 
+	## Snap back to P0 perspective so the setup dialog and the next game
+	## start from the default camera side.
+	_controlling_player = 0
+	camera.transform = _p0_cam_transform
+	player_hand.transform = _p0_hand_transform
+
 	phase_label.text = ""
 	game_log.clear()
 	_show_setup_dialog()
@@ -396,14 +428,28 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
+		## Any mouse click dismisses an open inspector popup before falling
+		## through to drag / right-click handling.
+		if mb.pressed and card_zoom_popup != null and card_zoom_popup.visible:
+			card_zoom_popup.hide_popup()
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				_try_pick_card(mb.position)
 			else:
 				_try_drop_card()
-	elif event is InputEventMouseMotion and dragged_card != null:
-		var world := _screen_to_table((event as InputEventMouseMotion).position)
-		dragged_card.move_to_drag_position(world)
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_handle_right_click(mb.position)
+	elif event is InputEventKey:
+		var ke := event as InputEventKey
+		if ke.pressed and ke.keycode == KEY_ESCAPE and card_zoom_popup != null:
+			card_zoom_popup.hide_popup()
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if dragged_card != null:
+			var world := _screen_to_table(mm.position)
+			dragged_card.move_to_drag_position(world)
+		else:
+			_update_hover(mm.position)
 
 
 func _try_pick_card(screen_pos: Vector2) -> void:
@@ -412,11 +458,74 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 		return  ## Only hand cards are draggable; board/pile cards snap back automatically.
 	if card.data == null:
 		return
+	## Clear any hover lift before the card enters drag mode so the two
+	## animations don't fight each other.
+	if _hovered_node == card:
+		_hovered_node = null
 	## All concrete CardData subclasses (PokemonCardData, TrainerCardData,
 	## EnergyCardData) are playable from hand — the action-specific validator
 	## decides legality when the drop lands.
 	dragged_card = card
 	card.start_drag()
+
+
+## Returns the node that should lift when the cursor is over [card].
+## Hand cards hover as themselves; board cards (inside a PokemonInstance)
+## bubble up to the instance so the nameplate moves too; pile cards
+## (deck / discard / prize — parented directly to a DropZone) don't hover
+## at all, since there's no meaningful lift for a stacked pile.
+func _hover_target_for(card: Card) -> Node3D:
+	if card == null:
+		return null
+	var parent := card.get_parent()
+	if parent is PokemonInstance:
+		return parent as PokemonInstance
+	if parent is DropZone:
+		return null
+	return card
+
+
+func _apply_hover(node: Node3D) -> void:
+	if node is Card:
+		(node as Card).set_hovered(true)
+	else:
+		var t := node.create_tween()
+		t.tween_property(node, "position:y", Card.HOVER_LIFT, Card.TWEEN_SPEED)
+
+
+func _release_hover() -> void:
+	if _hovered_node == null or not is_instance_valid(_hovered_node):
+		_hovered_node = null
+		return
+	if _hovered_node is Card:
+		(_hovered_node as Card).set_hovered(false)
+	else:
+		var t := _hovered_node.create_tween()
+		t.tween_property(_hovered_node, "position:y", 0.0, Card.TWEEN_SPEED)
+	_hovered_node = null
+
+
+## Lifts whichever node the cursor is over and returns the previous one.
+func _update_hover(screen_pos: Vector2) -> void:
+	var target := _hover_target_for(_raycast_card(screen_pos))
+	if target == _hovered_node:
+		return
+	_release_hover()
+	_hovered_node = target
+	if _hovered_node != null:
+		_apply_hover(_hovered_node)
+
+
+## Shows the zoomed inspector popup for the card under the cursor.  Face-down
+## cards and empty pile anchors have no data worth inspecting, so they're
+## skipped.
+func _handle_right_click(screen_pos: Vector2) -> void:
+	var card := _raycast_card(screen_pos)
+	if card == null or card.face_down or card.data == null:
+		return
+	if card_zoom_popup == null:
+		return
+	card_zoom_popup.show_card(card)
 
 
 func _try_drop_card() -> void:
@@ -529,8 +638,14 @@ func _on_action_rejected(action: GameAction, reason: String) -> void:
 		_log("[X] %s" % reason)
 
 
-func _on_board_slot_changed(_slot_id: String, _instance) -> void:
-	pass  ## BoardPosition places the PokemonInstance visual itself.
+## BoardPosition places the PokemonInstance visual itself, but every
+## placement / move / swap resets the instance's local rotation.  Re-apply
+## the current perspective so a freshly-placed Pokemon reads right-side up
+## after a mid-game perspective flip.
+func _on_board_slot_changed(_slot_id: String, instance: PokemonInstance) -> void:
+	if instance == null:
+		return
+	instance.rotation.y = _board_rotation_y()
 
 
 func _on_overflow_escalation(player_id: int, _instance) -> void:
@@ -553,8 +668,36 @@ func _on_end_turn_pressed() -> void:
 
 
 func _on_turn_started(pid: int, _turn_num: int) -> void:
+	if is_developer_mode:
+		_apply_perspective(pid)
 	_rebuild_hand_visual(pid)
 	_update_phase_label()
+
+
+## --- Developer-mode perspective flip ---------------------------------------
+
+## Y rotation in radians that in-play cards should use from the controlling
+## player's perspective.  P0 reads natively; P1 reads upside-down unless we
+## flip the cards 180° around Y.
+func _board_rotation_y() -> float:
+	return 0.0 if _controlling_player == 0 else PI
+
+
+## Flips the camera, player hand anchor, and every in-play PokemonInstance
+## to the [pid] side of the table.  Prizes, deck, and discard piles are left
+## alone — they're face-down stacks whose orientation doesn't matter.
+func _apply_perspective(pid: int) -> void:
+	if pid == _controlling_player:
+		return
+	_controlling_player = pid
+	camera.transform = _p0_cam_transform if pid == 0 else _p1_cam_transform
+	player_hand.transform = _p0_hand_transform if pid == 0 else _p1_hand_transform
+
+	var y_rot := _board_rotation_y()
+	for sid in BoardPosition.all_slot_ids():
+		var inst: PokemonInstance = manager.board_position.get_instance(sid)
+		if inst != null:
+			inst.rotation.y = y_rot
 
 
 func _on_turn_ended(_pid: int) -> void:
