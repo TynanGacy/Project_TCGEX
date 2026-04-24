@@ -36,6 +36,9 @@ func _bind_signals() -> void:
 	_manager.hand_changed.connect(func(player_id: int) -> void:
 		hand_changed.emit(player_id)
 	)
+	_manager.card_left_hand.connect(func(player_id: int, card: CardData) -> void:
+		card_left_hand.emit(player_id, card)
+	)
 	_manager.deck_changed.connect(func(player_id: int) -> void:
 		deck_changed.emit(player_id)
 	)

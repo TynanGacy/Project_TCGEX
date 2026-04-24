@@ -17,6 +17,8 @@ signal board_slot_changed(slot_id: String, instance: PokemonInstance)
 signal pokemon_state_changed(slot_id: String, instance: PokemonInstance)
 signal overflow_escalation(player_id: int, instance: PokemonInstance)
 signal hand_changed(player_id: int)
+## Fired immediately after a card departs a player's hand (before hand_changed).
+signal card_left_hand(player_id: int, card: CardData)
 signal deck_changed(player_id: int)
 signal discard_changed(player_id: int)
 signal prizes_changed(player_id: int)

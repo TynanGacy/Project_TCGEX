@@ -99,6 +99,7 @@ func _ready() -> void:
 	_authority.action_rejected.connect(_on_action_rejected)
 	_authority.log_message.connect(_log)
 	_authority.hand_changed.connect(_on_hand_changed)
+	_authority.card_left_hand.connect(_on_card_left_hand)
 	_authority.board_slot_changed.connect(_on_board_slot_changed)
 	_authority.overflow_escalation.connect(_on_overflow_escalation)
 	_authority.deck_changed.connect(_on_deck_changed)
@@ -379,6 +380,7 @@ func _reset_game() -> void:
 	manager.board_position.overflow_escalation.connect(manager._on_overflow_escalation)
 	manager.game_position.deck_changed.connect(func(pid): manager.deck_changed.emit(pid))
 	manager.game_position.hand_changed.connect(func(pid): manager.hand_changed.emit(pid))
+	manager.game_position.card_left_hand.connect(func(pid, card): manager.card_left_hand.emit(pid, card))
 	manager.game_position.discard_changed.connect(func(pid): manager.discard_changed.emit(pid))
 	manager.game_position.prizes_changed.connect(func(pid): manager.prizes_changed.emit(pid))
 	manager.attach_board_anchors(board.collect_slot_anchors())
@@ -432,27 +434,13 @@ func _rebuild_hand_visual(player_id: int) -> void:
 		_hand_cards[data] = card_node
 
 
-## Incrementally syncs the visible hand to [player_id]'s current hand data.
-## Removes only the cards that left and adds only the cards that arrived, so
-## the remaining cards slide smoothly into their new fan positions instead of
-## the whole hand expanding from the centre.
-func _update_hand_visual(player_id: int) -> void:
+## Adds any cards in [player_id]'s current hand that are not yet tracked.
+## Removals are handled exclusively by _on_card_left_hand so the fan slides
+## smoothly without a full rebuild whenever the hand shrinks.
+func _sync_new_hand_cards(player_id: int) -> void:
 	if player_id != _visible_hand_player():
 		return
-
-	var new_hand: Array = manager.game_position.hands[player_id]
-
-	var to_remove: Array[CardData] = []
-	for data: CardData in _hand_cards:
-		if not new_hand.has(data):
-			to_remove.append(data)
-	for data in to_remove:
-		var card_node: Card = _hand_cards[data]
-		_hand_cards.erase(data)
-		player_hand.remove_card(card_node)
-		card_node.queue_free()
-
-	for data: CardData in new_hand:
+	for data: CardData in manager.game_position.hands[player_id]:
 		if not _hand_cards.has(data):
 			var card_node := card_scene.instantiate() as Card
 			card_node.set_data(data)
@@ -460,6 +448,21 @@ func _update_hand_visual(player_id: int) -> void:
 			card_node.drag_started.connect(_on_card_drag_started)
 			card_node.card_dropped.connect(_on_card_dropped)
 			_hand_cards[data] = card_node
+
+
+## Removes the exact card that just left [player_id]'s hand.  The CardData
+## reference carried by the signal matches the key in _hand_cards, so this is
+## a single O(1) lookup — no diffing, no stale-state risk.
+func _on_card_left_hand(player_id: int, card: CardData) -> void:
+	if player_id != _visible_hand_player():
+		_rebuild_opponent_hand_visual(player_id)
+		return
+	if not _hand_cards.has(card):
+		return
+	var card_node: Card = _hand_cards[card]
+	_hand_cards.erase(card)
+	player_hand.remove_card(card_node)
+	card_node.queue_free()
 
 
 ## Rebuilds the opponent's face-down card-back fan to reflect the current
@@ -481,7 +484,7 @@ func _rebuild_opponent_hand_visual(opponent_id: int) -> void:
 
 func _on_hand_changed(player_id: int) -> void:
 	if player_id == _visible_hand_player():
-		_update_hand_visual(player_id)
+		_sync_new_hand_cards(player_id)
 	else:
 		_rebuild_opponent_hand_visual(player_id)
 
