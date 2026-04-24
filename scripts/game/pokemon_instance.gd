@@ -74,6 +74,7 @@ var _condition_label: Label3D = null
 var _attachment_node: Node3D = null
 var _energy_icon_discs: Array[MeshInstance3D] = []
 var _energy_icon_labels: Array[Label3D] = []
+var _energy_overflow_disc: MeshInstance3D = null
 var _energy_overflow_label: Label3D = null
 var _tool_icon_disc: MeshInstance3D = null
 var _tool_icon_label: Label3D = null
@@ -242,14 +243,20 @@ func _build_attachments() -> void:
 		disc.visible = false
 		lbl.visible = false
 
+	_energy_overflow_disc = _make_disc_mesh(Color(0.40, 0.40, 0.40))
+	_energy_overflow_disc.name = "EnergyOverflowDisc"
+	_attachment_node.add_child(_energy_overflow_disc)
+	_energy_overflow_disc.visible = false
+
 	_energy_overflow_label = Label3D.new()
-	_energy_overflow_label.name = "EnergyOverflow"
+	_energy_overflow_label.name = "EnergyOverflowLabel"
 	_energy_overflow_label.pixel_size = 0.0009
 	_energy_overflow_label.font_size = 22
 	_energy_overflow_label.modulate = Color.WHITE
 	_energy_overflow_label.outline_size = 5
 	_energy_overflow_label.outline_modulate = Color.BLACK
 	_energy_overflow_label.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
+	_energy_overflow_label.text = "+"
 	_energy_overflow_label.visible = false
 	_attachment_node.add_child(_energy_overflow_label)
 
@@ -289,11 +296,14 @@ func _layout_attachments() -> void:
 		AttachmentDisplay.ENERGY_NORM_START_X
 		+ AttachmentDisplay.MAX_VISIBLE_ENERGY * AttachmentDisplay.ENERGY_NORM_STEP_X
 	)
-	_energy_overflow_label.position = Vector3(
-		-card_w * 0.5 + overflow_norm_x * card_w,
-		label_y,
-		-card_h * 0.5 + AttachmentDisplay.ENERGY_NORM_Y * card_h
-	)
+	var overflow_x: float = -card_w * 0.5 + overflow_norm_x * card_w
+	var overflow_z: float = -card_h * 0.5 + AttachmentDisplay.ENERGY_NORM_Y * card_h
+	if _energy_overflow_disc != null:
+		var ocyl := _energy_overflow_disc.mesh as CylinderMesh
+		ocyl.top_radius = disc_radius
+		ocyl.bottom_radius = disc_radius
+		_energy_overflow_disc.position = Vector3(overflow_x, disc_y, overflow_z)
+	_energy_overflow_label.position = Vector3(overflow_x, label_y, overflow_z)
 
 	var tool_x: float = -card_w * 0.5 + AttachmentDisplay.TOOL_NORM_X * card_w
 	var tool_z: float = -card_h * 0.5 + AttachmentDisplay.TOOL_NORM_START_Y * card_h
@@ -326,11 +336,10 @@ func _refresh_attachments() -> void:
 			disc.visible = false
 			lbl.visible = false
 
-	if overflow_count > 0:
-		_energy_overflow_label.text = "+%d" % overflow_count
-		_energy_overflow_label.visible = true
-	else:
-		_energy_overflow_label.visible = false
+	var show_overflow := overflow_count > 0
+	if _energy_overflow_disc != null:
+		_energy_overflow_disc.visible = show_overflow
+	_energy_overflow_label.visible = show_overflow
 
 	var has_tool := not attached_tools.is_empty()
 	if _tool_icon_disc != null:

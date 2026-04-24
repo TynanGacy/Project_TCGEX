@@ -527,7 +527,10 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 		return
 	if card_zoom_popup == null:
 		return
-	card_zoom_popup.show_card(card)
+	var instance: PokemonInstance = null
+	if card.get_parent() is PokemonInstance:
+		instance = card.get_parent() as PokemonInstance
+	card_zoom_popup.show_card(card, instance)
 
 
 func _try_drop_card() -> void:
