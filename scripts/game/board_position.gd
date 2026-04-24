@@ -93,6 +93,9 @@ func first_empty_bench(player_id: int) -> String:
 
 
 func first_empty_active(player_id: int) -> String:
+	## Placeholder for upcoming "multi-active" rule support and effects that
+	## can promote into secondary active slots.  Not called by the current
+	## single-active flow, but intentionally kept as part of the board API.
 	for s in ACTIVE_SLOTS:
 		var sid := _sid(player_id, s)
 		if is_empty(sid):

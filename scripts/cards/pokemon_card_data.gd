@@ -22,4 +22,6 @@ enum EnergyType { NONE, FIRE, WATER, GRASS, LIGHTNING, PSYCHIC, FIGHTING, DARKNE
 @export var abilities: Array[AbilityData] = []
 
 static func energy_type_to_string(t: EnergyType) -> String:
+	## Utility kept for upcoming HUD/log formatting (effect text, battle log,
+	## and debug overlays) where enum names need stable string output.
 	return String(EnergyType.keys()[t])

@@ -249,16 +249,20 @@ static func _cond_abbrev(c: int) -> String:
 ## --- Mutators (no legality checks — Manager is responsible) -----------------
 
 func apply_damage(amount: int) -> void:
+	## Used by future attack/effect resolvers; current prototype mostly moves
+	## cards and validates placement, so direct HP mutation is minimal for now.
 	current_hp = maxi(0, current_hp - maxi(0, amount))
 	refresh_visual()
 
 
 func heal(amount: int) -> void:
+	## Retained for future card effects (potions/abilities) that restore HP.
 	current_hp = mini(max_hp, current_hp + maxi(0, amount))
 	refresh_visual()
 
 
 func add_condition(c: SpecialCondition) -> void:
+	## Retained for future status-resolution phase logic.
 	if not special_conditions.has(c):
 		special_conditions.append(c)
 	refresh_visual()
@@ -292,6 +296,7 @@ func evolve_to(new_card: PokemonCardData) -> void:
 
 
 func is_knocked_out() -> bool:
+	## Read helper for future KO checks in attack/effect pipeline.
 	return current_hp <= 0
 
 

@@ -119,6 +119,8 @@ func take_from_hand(player_id: int, card: CardData) -> bool:
 
 
 func put_in_hand(player_id: int, card: CardData) -> void:
+	## Reserved for future effects that add cards directly to hand
+	## (search/recovery/draw replacements) without using draw().
 	(hands[player_id] as Array).append(card)
 	hand_changed.emit(player_id)
 
@@ -131,6 +133,9 @@ func put_in_discard(player_id: int, card: CardData) -> void:
 ## Takes a specific prize card by slot index (0..5).  Returns the card, or
 ## null if the slot is empty.
 func take_prize(player_id: int, slot_index: int) -> CardData:
+	## Reserved for future explicit prize-selection UI.  Current flow awards
+	## prizes automatically after KO resolution, but this API is retained so
+	## user-selected prize cards can be supported later without reshaping state.
 	if slot_index < 0 or slot_index >= MAX_PRIZES:
 		return null
 	var card: CardData = prizes[player_id][slot_index]
@@ -143,6 +148,8 @@ func take_prize(player_id: int, slot_index: int) -> CardData:
 ## Discards every card in [cards] for [player_id].  Used when a
 ## PokemonInstance is released after KO.
 func discard_all(player_id: int, cards: Array[CardData]) -> void:
+	## Batch helper for future board wipes / mass detaches.  Current runtime
+	## mostly discards single cards, but this keeps discard signaling atomic.
 	var discard: Array = discards[player_id]
 	for c in cards:
 		if c != null:
