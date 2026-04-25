@@ -57,6 +57,15 @@ func _bind_signals() -> void:
 	_manager.prize_taken.connect(func(player_id: int) -> void:
 		prize_taken.emit(player_id)
 	)
+	_manager.prize_selection_required.connect(func(player_id: int) -> void:
+		prize_selection_required.emit(player_id)
+	)
+	_manager.promotion_required.connect(func(player_id: int) -> void:
+		promotion_required.emit(player_id)
+	)
+	_manager.promotion_done.connect(func(player_id: int, to_slot: String) -> void:
+		promotion_done.emit(player_id, to_slot)
+	)
 	_manager.game_won.connect(func(player_id: int) -> void:
 		game_won.emit(player_id)
 	)

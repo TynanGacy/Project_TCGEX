@@ -50,6 +50,9 @@ signal stadium_changed(stadium: TrainerCardData, owner_id: int)
 ## Combat signals.
 signal pokemon_knocked_out(slot_id: String)
 signal prize_taken(player_id: int)
+signal prize_selection_required(player_id: int)
+signal promotion_required(player_id: int)
+signal promotion_done(player_id: int, to_slot: String)
 signal game_won(player_id: int)
 
 ## Turn / phase signals.
@@ -88,6 +91,13 @@ var energy_attached_this_turn:  Array[bool] = [false, false]
 var retreat_used_this_turn:     Array[bool] = [false, false]
 var attack_used_this_turn:      Array[bool] = [false, false]
 
+## Prize-selection and promotion phases happen between turns (after a KO).
+## These are cleared by ActionTakePrize / ActionPromote respectively.
+var prize_selection_phase_for: int = -1
+var promotion_phase_for:       int = -1
+## Defender whose promotion to check after prize selection resolves.
+var _ko_defender: int = -1
+
 ## Per-player list of PokemonInstance objects that came into play this turn
 ## (via play-from-hand or evolution).  Prevents "evolve on the same turn you
 ## played this Pokemon" and "evolve twice on the same turn".
@@ -125,6 +135,14 @@ func request_action(action: GameAction) -> ActionResult:
 		_reject(null, "Null action.")
 		return ActionResult.fail("Null action.")
 
+	## During prize selection or promotion, only the matching action type passes.
+	if prize_selection_phase_for >= 0 and not (action is ActionTakePrize):
+		_reject(action, "Prize selection is pending — take a prize first.")
+		return ActionResult.fail("Prize selection is pending.")
+	if promotion_phase_for >= 0 and not (action is ActionPromote):
+		_reject(action, "Promotion is pending — promote a Pokémon first.")
+		return ActionResult.fail("Promotion is pending.")
+
 	var result: ActionResult = action.validate(self)
 	if not result.ok:
 		_reject(action, result.reason)
@@ -153,7 +171,12 @@ func phase_name() -> String:
 			if setup_placing_player >= 0:
 				return "Place Pokémon"
 			return "Setup"
-		Phase.MAIN:  return "Main"
+		Phase.MAIN:
+			if prize_selection_phase_for >= 0:
+				return "Take Prize (P%d)" % prize_selection_phase_for
+			if promotion_phase_for >= 0:
+				return "Promote (P%d)" % promotion_phase_for
+			return "Main"
 		Phase.ENDED: return "Cleanup"
 	return "?"
 
@@ -259,8 +282,11 @@ func reset_game_state() -> void:
 	current_player       = 0
 	current_phase        = Phase.SETUP
 	turn_number          = 0
-	active_stadium       = null
-	active_stadium_owner = -1
+	active_stadium            = null
+	active_stadium_owner      = -1
+	prize_selection_phase_for = -1
+	promotion_phase_for       = -1
+	_ko_defender              = -1
 	for pid in range(2):
 		_reset_turn_flags(pid)
 
@@ -331,15 +357,13 @@ func _cleanup_instance(inst: PokemonInstance) -> void:
 ## --- Combat resolution -------------------------------------------------------
 
 ## Called by ActionAttack after a KO is detected.
-## Clears the slot, discards all released cards to the defending player's pile,
-## awards one prize to the attacking player, and checks the win condition.
 func resolve_knockout(defending_slot: String, attacking_player: int) -> void:
 	var inst: PokemonInstance = board_position.get_instance(defending_slot)
 	if inst == null or not inst.is_knocked_out():
 		return
 	var defender_player := board_position.player_of(defending_slot)
-	var name := inst.card.display_name if inst.card != null else "Pokémon"
-	log_message.emit("[KO] %s was Knocked Out!" % name)
+	var ko_name := inst.card.display_name if inst.card != null else "Pokémon"
+	log_message.emit("[KO] %s was Knocked Out!" % ko_name)
 
 	board_position.clear(defending_slot)
 	var released: Array[CardData] = inst.release_cards()
@@ -348,27 +372,62 @@ func resolve_knockout(defending_slot: String, attacking_player: int) -> void:
 
 	pokemon_knocked_out.emit(defending_slot)
 
-	var took_last := _take_prize_for_player(attacking_player)
-	if took_last:
-		log_message.emit("[WIN] P%d takes their last prize card and wins!" % attacking_player)
+	## If the defender now has zero Pokémon remaining, the attacker wins
+	## immediately (before prizes are taken).
+	var defender_has_pokemon := false
+	for sid: String in BoardPosition.all_slot_ids(defender_player):
+		if board_position.get_instance(sid) != null:
+			defender_has_pokemon = true
+			break
+	if not defender_has_pokemon:
+		log_message.emit("[WIN] P%d has no Pokémon remaining — P%d wins!" % [defender_player, attacking_player])
 		current_phase = Phase.ENDED
 		phase_changed.emit(current_phase)
 		game_won.emit(attacking_player)
+		return
+
+	## Begin prize selection for the attacking player.
+	if game_position.prizes_remaining(attacking_player) > 0:
+		_ko_defender = defender_player
+		prize_selection_phase_for = attacking_player
+		phase_changed.emit(current_phase)
+		prize_selection_required.emit(attacking_player)
+	else:
+		_check_promotion_needed(defender_player)
 
 
-## Takes the first available prize card for [player_id], moving it to their hand.
-## Returns true if that was their last prize (win condition).
-func _take_prize_for_player(player_id: int) -> bool:
-	var prize_row: Array = game_position.prizes[player_id]
-	for i in range(prize_row.size()):
-		if prize_row[i] != null:
-			var card: CardData = game_position.take_prize(player_id, i)
-			if card != null:
-				game_position.put_in_hand(player_id, card)
-				log_message.emit("[Prize] P%d takes a prize card." % player_id)
-				prize_taken.emit(player_id)
-			return game_position.prizes_remaining(player_id) == 0
-	return false
+## Checks whether [defender] has an empty active slot that needs filling and
+## either fills it automatically (one choice) or emits promotion_required.
+func _check_promotion_needed(defender: int) -> void:
+	var empty_actives: Array[String] = []
+	for s: String in BoardPosition.ACTIVE_SLOTS:
+		var sid := "p%d_%s" % [defender, s]
+		if board_position.has_slot(sid) and board_position.get_instance(sid) == null:
+			empty_actives.append(sid)
+	if empty_actives.is_empty():
+		return
+
+	var bench_occupied: Array[String] = []
+	for s: String in BoardPosition.BENCH_SLOTS:
+		var sid := "p%d_%s" % [defender, s]
+		if board_position.has_slot(sid) and board_position.get_instance(sid) != null:
+			bench_occupied.append(sid)
+	if bench_occupied.is_empty():
+		return
+
+	if empty_actives.size() == 1 and bench_occupied.size() == 1:
+		var from_slot := bench_occupied[0]
+		var to_slot   := empty_actives[0]
+		board_position.move(from_slot, to_slot)
+		var promoted: PokemonInstance = board_position.get_instance(to_slot)
+		var pname := promoted.card.display_name if promoted != null and promoted.card != null else "Pokémon"
+		log_message.emit("[Promote] %s auto-promoted to active." % pname)
+		promotion_done.emit(defender, to_slot)
+		return
+
+	promotion_phase_for = defender
+	phase_changed.emit(current_phase)
+	promotion_required.emit(defender)
 
 
 ## --- Internal: dispatch -----------------------------------------------------

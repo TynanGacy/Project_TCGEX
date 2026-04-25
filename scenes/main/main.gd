@@ -91,11 +91,16 @@ signal _setup_choice_made(chose_yes: bool)
 
 ## Programmatically-added Reset button lives next to the End-Turn button
 ## in the TopBar.
-var _reset_button: Button = null
+var _reset_button:  Button = null
 var _attack_button: Button = null
+var _retreat_button: Button = null
 
-## Active attack-selection or target-selection panel (only one open at a time).
+## Active attack/retreat/prize/promotion dialog (at most one open at a time).
 var _attack_dialog: Control = null
+
+## Deferred end-of-turn: set when an attack commits; cleared after prize
+## selection and promotion both resolve so we don't end the turn too early.
+var _attack_end_turn_pending: bool = false
 
 
 func _ready() -> void:
@@ -112,6 +117,11 @@ func _ready() -> void:
 	_attack_button.text = "Attack"
 	_attack_button.pressed.connect(_on_attack_pressed)
 	end_turn_button.get_parent().add_child(_attack_button)
+
+	_retreat_button = Button.new()
+	_retreat_button.text = "Retreat"
+	_retreat_button.pressed.connect(_on_retreat_pressed)
+	end_turn_button.get_parent().add_child(_retreat_button)
 
 	_authority = LocalMatchAuthority.new(manager)
 	_authority.action_committed.connect(_on_action_committed)
@@ -130,6 +140,9 @@ func _ready() -> void:
 	_authority.phase_changed.connect(_on_phase_changed)
 	_authority.pokemon_knocked_out.connect(_on_pokemon_knocked_out)
 	_authority.prize_taken.connect(_on_prize_taken)
+	_authority.prize_selection_required.connect(_on_prize_selection_required)
+	_authority.promotion_required.connect(_on_promotion_required)
+	_authority.promotion_done.connect(_on_promotion_done)
 	_authority.game_won.connect(_on_game_won)
 
 	## Capture both perspective transforms up front.  P0 takes the scene's
@@ -583,6 +596,7 @@ func _show_coin_flip_result(starting_player: int, flip_result: int) -> void:
 
 func _reset_game() -> void:
 	_in_setup_phase = false
+	_attack_end_turn_pending = false
 	if _attack_dialog != null:
 		_attack_dialog.queue_free()
 		_attack_dialog = null
@@ -1294,7 +1308,21 @@ func _submit_attack(pid: int, atk_slot: String, atk_idx: int, tgt_slot: String) 
 	var action := ActionAttack.new(pid, atk_slot, atk_idx, tgt_slot)
 	var result := _authority.request_action(action)
 	if result.ok:
-		_authority.end_turn()
+		_attack_end_turn_pending = true
+		_try_end_turn_after_attack()
+
+
+## Ends the attacker's turn only once prize selection and promotion are both
+## fully resolved so the turn doesn't advance mid-interaction.
+func _try_end_turn_after_attack() -> void:
+	if not _attack_end_turn_pending:
+		return
+	if manager.prize_selection_phase_for >= 0:
+		return
+	if manager.promotion_phase_for >= 0:
+		return
+	_attack_end_turn_pending = false
+	_authority.end_turn()
 
 
 ## Returns a bracketed string of single-letter energy symbols for [atk]'s cost.
@@ -1315,24 +1343,282 @@ func _format_attack_cost(atk: AttackData) -> String:
 
 
 ## ---------------------------------------------------------------------------
-## KO / prize / win signal handlers
+## Retreat UI
+## ---------------------------------------------------------------------------
+
+func _on_retreat_pressed() -> void:
+	if _setup_dialog != null or _in_setup_phase:
+		return
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+		return
+	_show_retreat_dialog()
+
+
+func _show_retreat_dialog() -> void:
+	var pid := _authority.current_player_id()
+
+	## Collect active Pokémon that can afford to retreat.
+	var retreatable: Array = []
+	for i in range(1, _active_slots + 1):
+		var sid := "p%d_active%d" % [pid, i]
+		var inst: PokemonInstance = manager.board_position.get_instance(sid)
+		if inst == null or inst.card == null:
+			continue
+		if inst.attached_energy.size() >= inst.card.retreat_cost:
+			retreatable.append({"slot": sid, "inst": inst})
+
+	if retreatable.is_empty():
+		_log("[Retreat] No active Pokémon can afford to retreat.")
+		return
+
+	## Collect bench Pokémon available as replacements.
+	var bench_options: Array[String] = []
+	for i in range(1, _bench_slots + 1):
+		var sid := "p%d_bench%d" % [pid, i]
+		if manager.board_position.get_instance(sid) != null:
+			bench_options.append(sid)
+
+	if bench_options.is_empty():
+		_log("[Retreat] No bench Pokémon to retreat to.")
+		return
+
+	var panel := _make_setup_panel()
+	panel.custom_minimum_size = Vector2(400, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var title := Label.new()
+	title.text = "Choose Pokémon to Retreat"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(title)
+
+	for entry: Dictionary in retreatable:
+		var inst: PokemonInstance = entry["inst"]
+		var slot: String = entry["slot"]
+		var cost: int = inst.card.retreat_cost
+		var have: int = inst.attached_energy.size()
+		var btn := Button.new()
+		btn.text = "%s  (cost %d, have %d energy)" % [inst.card.display_name, cost, have]
+		var fn: Callable = func(s: String) -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			_pick_bench_for_retreat(pid, s, bench_options)
+		btn.pressed.connect(fn.bind(slot))
+		vbox.add_child(btn)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+	)
+	vbox.add_child(cancel)
+	$HUD.add_child(panel)
+	_attack_dialog = panel
+
+
+func _pick_bench_for_retreat(pid: int, active_slot: String, bench_options: Array[String]) -> void:
+	if bench_options.size() == 1:
+		_submit_retreat(pid, active_slot, bench_options[0])
+		return
+
+	var panel := _make_setup_panel()
+	panel.custom_minimum_size = Vector2(380, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var title := Label.new()
+	title.text = "Choose Bench Replacement"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(title)
+
+	for bnch: String in bench_options:
+		var inst: PokemonInstance = manager.board_position.get_instance(bnch)
+		var pname := inst.card.display_name if inst != null and inst.card != null else bnch
+		var hp_str := " (%d/%d HP)" % [inst.current_hp, inst.max_hp] if inst != null else ""
+		var btn := Button.new()
+		btn.text = "%s%s" % [pname, hp_str]
+		var fn: Callable = func(bs: String) -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			_submit_retreat(pid, active_slot, bs)
+		btn.pressed.connect(fn.bind(bnch))
+		vbox.add_child(btn)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+	)
+	vbox.add_child(cancel)
+	$HUD.add_child(panel)
+	_attack_dialog = panel
+
+
+func _submit_retreat(pid: int, active_slot: String, bench_slot: String) -> void:
+	var action := ActionRetreat.new(pid, active_slot, bench_slot)
+	_authority.request_action(action)
+
+
+## ---------------------------------------------------------------------------
+## Prize selection dialog
+## ---------------------------------------------------------------------------
+
+func _on_prize_selection_required(player_id: int) -> void:
+	_update_phase_label()
+	_show_prize_selection_dialog(player_id)
+
+
+func _show_prize_selection_dialog(player_id: int) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+
+	var panel := _make_setup_panel()
+	panel.custom_minimum_size = Vector2(380, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var title := Label.new()
+	title.text = "P%d: Take a Prize Card" % player_id
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(title)
+
+	var prizes: Array = manager.game_position.prizes[player_id]
+	for i in range(prizes.size()):
+		if prizes[i] == null:
+			continue
+		var card := prizes[i] as CardData
+		var card_name := card.display_name if card != null else "Card"
+		var btn := Button.new()
+		btn.text = "Prize %d — %s" % [i + 1, card_name]
+		var fn: Callable = func(idx: int) -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			var action := ActionTakePrize.new(player_id, idx)
+			_authority.request_action(action)
+		btn.pressed.connect(fn.bind(i))
+		vbox.add_child(btn)
+
+	$HUD.add_child(panel)
+	_attack_dialog = panel
+
+
+## ---------------------------------------------------------------------------
+## Promotion dialog
+## ---------------------------------------------------------------------------
+
+func _on_promotion_required(player_id: int) -> void:
+	_update_phase_label()
+	_show_promotion_dialog(player_id)
+
+
+func _show_promotion_dialog(player_id: int) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+
+	## Gather the empty active slots and bench options.
+	var empty_actives: Array[String] = []
+	for i in range(1, _active_slots + 1):
+		var sid := "p%d_active%d" % [player_id, i]
+		if manager.board_position.get_instance(sid) == null \
+				and manager.board_position.has_slot(sid):
+			empty_actives.append(sid)
+
+	var bench_occupied: Array[String] = []
+	for i in range(1, _bench_slots + 1):
+		var sid := "p%d_bench%d" % [player_id, i]
+		if manager.board_position.get_instance(sid) != null:
+			bench_occupied.append(sid)
+
+	if empty_actives.is_empty() or bench_occupied.is_empty():
+		return
+
+	var panel := _make_setup_panel()
+	panel.custom_minimum_size = Vector2(400, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var title := Label.new()
+	title.text = "P%d: Promote a Pokémon to Active" % player_id
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(title)
+
+	## If there is only one active slot to fill, skip the active-slot choice.
+	var to_slot: String = empty_actives[0] if empty_actives.size() == 1 else ""
+
+	for bnch: String in bench_occupied:
+		var inst: PokemonInstance = manager.board_position.get_instance(bnch)
+		var pname := inst.card.display_name if inst != null and inst.card != null else bnch
+		var hp_str := " (%d/%d HP)" % [inst.current_hp, inst.max_hp] if inst != null else ""
+
+		if to_slot != "":
+			## Only one active destination — promote directly.
+			var btn := Button.new()
+			btn.text = "%s%s" % [pname, hp_str]
+			var fn: Callable = func(bs: String, ts: String) -> void:
+				panel.queue_free()
+				_attack_dialog = null
+				_submit_promotion(player_id, bs, ts)
+			btn.pressed.connect(fn.bind(bnch, to_slot))
+			vbox.add_child(btn)
+		else:
+			## Multiple empty actives — show a sub-label then one button per active.
+			var lbl := Label.new()
+			lbl.text = "%s%s → ?" % [pname, hp_str]
+			vbox.add_child(lbl)
+			for act: String in empty_actives:
+				var btn := Button.new()
+				btn.text = "  → %s" % act
+				var fn: Callable = func(bs: String, ts: String) -> void:
+					panel.queue_free()
+					_attack_dialog = null
+					_submit_promotion(player_id, bs, ts)
+				btn.pressed.connect(fn.bind(bnch, act))
+				vbox.add_child(btn)
+
+	$HUD.add_child(panel)
+	_attack_dialog = panel
+
+
+func _submit_promotion(player_id: int, from_slot: String, to_slot: String) -> void:
+	var action := ActionPromote.new(player_id, from_slot, to_slot)
+	_authority.request_action(action)
+
+
+## ---------------------------------------------------------------------------
+## KO / prize / promotion / win signal handlers
 ## ---------------------------------------------------------------------------
 
 func _on_pokemon_knocked_out(_slot_id: String) -> void:
 	_update_phase_label()
 
 
-func _on_prize_taken(player_id: int) -> void:
-	var remaining: int = manager.game_position.prizes_remaining(player_id)
-	_log("[Prize] P%d has %d prize(s) remaining." % [player_id, remaining])
+func _on_prize_taken(_player_id: int) -> void:
+	_update_phase_label()
+	## If no promotion is pending after this prize, the attacking turn can end.
+	_try_end_turn_after_attack()
+
+
+func _on_promotion_done(_player_id: int, _to_slot: String) -> void:
+	_update_phase_label()
+	_try_end_turn_after_attack()
 
 
 func _on_game_won(player_id: int) -> void:
+	_attack_end_turn_pending = false
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
 	_log("[GAME OVER] Player %d wins!" % player_id)
-	end_turn_button.disabled = true
-	if _attack_button != null:
-		_attack_button.disabled = true
-	## Show a win announcement panel.
+	end_turn_button.disabled  = true
+	if _attack_button  != null: _attack_button.disabled  = true
+	if _retreat_button != null: _retreat_button.disabled = true
+
 	var panel := _make_setup_panel()
 	var vbox := panel.get_child(0) as VBoxContainer
 	var lbl := Label.new()
@@ -1344,9 +1630,9 @@ func _on_game_won(player_id: int) -> void:
 	btn.text = "Play Again"
 	btn.pressed.connect(func() -> void:
 		panel.queue_free()
-		end_turn_button.disabled = false
-		if _attack_button != null:
-			_attack_button.disabled = false
+		end_turn_button.disabled  = false
+		if _attack_button  != null: _attack_button.disabled  = false
+		if _retreat_button != null: _retreat_button.disabled = false
 		_reset_game()
 	)
 	vbox.add_child(btn)
