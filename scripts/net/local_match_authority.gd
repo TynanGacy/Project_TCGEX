@@ -51,6 +51,24 @@ func _bind_signals() -> void:
 	_manager.stadium_changed.connect(func(stadium: TrainerCardData, owner_id: int) -> void:
 		stadium_changed.emit(stadium, owner_id)
 	)
+	_manager.pokemon_knocked_out.connect(func(slot_id: String) -> void:
+		pokemon_knocked_out.emit(slot_id)
+	)
+	_manager.prize_taken.connect(func(player_id: int) -> void:
+		prize_taken.emit(player_id)
+	)
+	_manager.prize_selection_required.connect(func(player_id: int) -> void:
+		prize_selection_required.emit(player_id)
+	)
+	_manager.promotion_required.connect(func(player_id: int) -> void:
+		promotion_required.emit(player_id)
+	)
+	_manager.promotion_done.connect(func(player_id: int, to_slot: String) -> void:
+		promotion_done.emit(player_id, to_slot)
+	)
+	_manager.game_won.connect(func(player_id: int) -> void:
+		game_won.emit(player_id)
+	)
 	_manager.turn_started.connect(func(player_id: int, turn_number: int) -> void:
 		turn_started.emit(player_id, turn_number)
 	)
