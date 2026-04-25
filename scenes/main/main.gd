@@ -92,6 +92,10 @@ signal _setup_choice_made(chose_yes: bool)
 ## Programmatically-added Reset button lives next to the End-Turn button
 ## in the TopBar.
 var _reset_button: Button = null
+var _attack_button: Button = null
+
+## Active attack-selection or target-selection panel (only one open at a time).
+var _attack_dialog: Control = null
 
 
 func _ready() -> void:
@@ -103,6 +107,11 @@ func _ready() -> void:
 	_reset_button.text = "Reset"
 	_reset_button.pressed.connect(_reset_game)
 	end_turn_button.get_parent().add_child(_reset_button)
+
+	_attack_button = Button.new()
+	_attack_button.text = "Attack"
+	_attack_button.pressed.connect(_on_attack_pressed)
+	end_turn_button.get_parent().add_child(_attack_button)
 
 	_authority = LocalMatchAuthority.new(manager)
 	_authority.action_committed.connect(_on_action_committed)
@@ -119,6 +128,9 @@ func _ready() -> void:
 	_authority.turn_started.connect(_on_turn_started)
 	_authority.turn_ended.connect(_on_turn_ended)
 	_authority.phase_changed.connect(_on_phase_changed)
+	_authority.pokemon_knocked_out.connect(_on_pokemon_knocked_out)
+	_authority.prize_taken.connect(_on_prize_taken)
+	_authority.game_won.connect(_on_game_won)
 
 	## Capture both perspective transforms up front.  P0 takes the scene's
 	## default camera / hand placement; P1 is the same transforms rotated
@@ -571,6 +583,9 @@ func _show_coin_flip_result(starting_player: int, flip_result: int) -> void:
 
 func _reset_game() -> void:
 	_in_setup_phase = false
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
 	## Clear pile visuals.  Deck entries are Array[Card] (layered stack);
 	## discard / prize entries are single Card nodes.
 	for entry in _pile_nodes.values():
@@ -1134,6 +1149,208 @@ func _refresh_prizes_visual(pid: int) -> void:
 				node.back_texture = CARD_BACK
 				node.face_down = true
 				_pile_nodes[zone_name] = node
+
+
+## ---------------------------------------------------------------------------
+## Attack UI
+## ---------------------------------------------------------------------------
+
+func _on_attack_pressed() -> void:
+	if _setup_dialog != null or _in_setup_phase:
+		return
+	## Toggle the dialog if it is already open.
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+		return
+	_show_attack_dialog()
+
+
+func _show_attack_dialog() -> void:
+	var pid := _authority.current_player_id()
+
+	## Collect opponent active slots that have a Pokémon.
+	var opp_id := 1 - pid
+	var opp_actives: Array[String] = []
+	for i in range(1, _active_slots + 1):
+		var sid := "p%d_active%d" % [opp_id, i]
+		if manager.board_position.get_instance(sid) != null:
+			opp_actives.append(sid)
+
+	if opp_actives.is_empty():
+		_log("[Attack] No opponent active Pokémon to attack.")
+		return
+
+	## Build list of available (attacker_slot, attack_index) entries.
+	var entries: Array = []
+	for i in range(1, _active_slots + 1):
+		var sid := "p%d_active%d" % [pid, i]
+		var inst: PokemonInstance = manager.board_position.get_instance(sid)
+		if inst == null or inst.card == null:
+			continue
+		if inst.special_conditions.has(PokemonInstance.SpecialCondition.ASLEEP) \
+				or inst.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED):
+			continue
+		for j in range(inst.card.attacks.size()):
+			entries.append({
+				"slot":   sid,
+				"idx":    j,
+				"attack": inst.card.attacks[j],
+				"can":    ActionAttack._check_energy(inst, inst.card.attacks[j]).ok,
+				"inst":   inst,
+			})
+
+	if entries.is_empty():
+		_log("[Attack] No attacks available this turn.")
+		return
+
+	var panel := _make_setup_panel()
+	panel.custom_minimum_size = Vector2(400, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var title := Label.new()
+	title.text = "Choose an Attack"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(title)
+
+	for entry: Dictionary in entries:
+		var atk: AttackData       = entry["attack"]
+		var can: bool             = entry["can"]
+		var inst: PokemonInstance = entry["inst"]
+		var slot: String          = entry["slot"]
+		var idx: int              = entry["idx"]
+
+		var cost_str := _format_attack_cost(atk)
+		var dmg_str  := ("%d dmg" % atk.base_damage) if atk.base_damage > 0 else "no dmg"
+		var btn := Button.new()
+		btn.text     = "%s  %s %s  %s" % [inst.card.display_name, atk.name, cost_str, dmg_str]
+		btn.disabled = not can
+		if not can:
+			btn.modulate = Color(0.55, 0.55, 0.55)
+
+		btn.pressed.connect(func(s: String, i: int) -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			_pick_target_then_attack(pid, s, i, opp_actives)
+		.bind(slot, idx))
+		vbox.add_child(btn)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+	)
+	vbox.add_child(cancel)
+
+	$HUD.add_child(panel)
+	_attack_dialog = panel
+
+
+## If there is exactly one opponent active the attack is unambiguous.
+## Otherwise show a second dialog for target selection.
+func _pick_target_then_attack(pid: int, atk_slot: String, atk_idx: int, opp_actives: Array[String]) -> void:
+	if opp_actives.size() == 1:
+		_submit_attack(pid, atk_slot, atk_idx, opp_actives[0])
+		return
+
+	var panel := _make_setup_panel()
+	panel.custom_minimum_size = Vector2(380, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var title := Label.new()
+	title.text = "Choose a Target"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(title)
+
+	for tgt_slot: String in opp_actives:
+		var inst: PokemonInstance = manager.board_position.get_instance(tgt_slot)
+		var name := inst.card.display_name if (inst != null and inst.card != null) else tgt_slot
+		var hp_str := " (%d/%d HP)" % [inst.current_hp, inst.max_hp] if inst != null else ""
+		var btn := Button.new()
+		btn.text = "%s%s" % [name, hp_str]
+		btn.pressed.connect(func(ts: String) -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			_submit_attack(pid, atk_slot, atk_idx, ts)
+		.bind(tgt_slot))
+		vbox.add_child(btn)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+	)
+	vbox.add_child(cancel)
+
+	$HUD.add_child(panel)
+	_attack_dialog = panel
+
+
+func _submit_attack(pid: int, atk_slot: String, atk_idx: int, tgt_slot: String) -> void:
+	var action := ActionAttack.new(pid, atk_slot, atk_idx, tgt_slot)
+	var result := _authority.request_action(action)
+	if result.ok:
+		_authority.end_turn()
+
+
+## Returns a bracketed string of single-letter energy symbols for [atk]'s cost.
+func _format_attack_cost(atk: AttackData) -> String:
+	var parts: Array[String] = []
+	for _i in range(atk.cost_fire):      parts.append("R")
+	for _i in range(atk.cost_water):     parts.append("W")
+	for _i in range(atk.cost_grass):     parts.append("G")
+	for _i in range(atk.cost_lightning): parts.append("L")
+	for _i in range(atk.cost_psychic):   parts.append("P")
+	for _i in range(atk.cost_fighting):  parts.append("F")
+	for _i in range(atk.cost_darkness):  parts.append("D")
+	for _i in range(atk.cost_metal):     parts.append("M")
+	for _i in range(atk.cost_colorless): parts.append("C")
+	if parts.is_empty():
+		return "[–]"
+	return "[%s]" % "".join(parts)
+
+
+## ---------------------------------------------------------------------------
+## KO / prize / win signal handlers
+## ---------------------------------------------------------------------------
+
+func _on_pokemon_knocked_out(_slot_id: String) -> void:
+	_update_phase_label()
+
+
+func _on_prize_taken(player_id: int) -> void:
+	var remaining: int = manager.game_position.prizes_remaining(player_id)
+	_log("[Prize] P%d has %d prize(s) remaining." % [player_id, remaining])
+
+
+func _on_game_won(player_id: int) -> void:
+	_log("[GAME OVER] Player %d wins!" % player_id)
+	end_turn_button.disabled = true
+	if _attack_button != null:
+		_attack_button.disabled = true
+	## Show a win announcement panel.
+	var panel := _make_setup_panel()
+	var vbox := panel.get_child(0) as VBoxContainer
+	var lbl := Label.new()
+	lbl.text = "Player %d Wins!" % player_id
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 28)
+	vbox.add_child(lbl)
+	var btn := Button.new()
+	btn.text = "Play Again"
+	btn.pressed.connect(func() -> void:
+		panel.queue_free()
+		end_turn_button.disabled = false
+		if _attack_button != null:
+			_attack_button.disabled = false
+		_reset_game()
+	)
+	vbox.add_child(btn)
+	$HUD.add_child(panel)
 
 
 func _log(text: String) -> void:

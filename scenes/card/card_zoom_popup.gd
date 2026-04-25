@@ -30,8 +30,19 @@ const ICON_RADIUS := 28
 func _ready() -> void:
 	card_art.position = Vector2.ZERO
 	card_art.size = Vector2(CARD_ART_W, CARD_ART_H)
+	_apply_rounded_shader()
 	_layout_card_frame()
 	call_deferred("reset_size")
+
+
+func _apply_rounded_shader() -> void:
+	var shader: Shader = load("res://scenes/card/card_zoom_rounded_2d.gdshader")
+	if shader == null:
+		return
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("card_size", Vector2(CARD_ART_W, CARD_ART_H))
+	card_art.material = mat
 
 
 ## Shows the popup for [card].  Pass the owning [instance] (if any) to render

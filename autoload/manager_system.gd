@@ -47,6 +47,11 @@ signal prizes_changed(player_id: int)
 ## Stadium is a global board-state card (only one exists across both players).
 signal stadium_changed(stadium: TrainerCardData, owner_id: int)
 
+## Combat signals.
+signal pokemon_knocked_out(slot_id: String)
+signal prize_taken(player_id: int)
+signal game_won(player_id: int)
+
 ## Turn / phase signals.
 signal turn_started(player_id: int, turn_number: int)
 signal turn_ended(player_id: int)
@@ -81,6 +86,7 @@ var setup_placing_player: int = -1
 var supporter_played_this_turn: Array[bool] = [false, false]
 var energy_attached_this_turn:  Array[bool] = [false, false]
 var retreat_used_this_turn:     Array[bool] = [false, false]
+var attack_used_this_turn:      Array[bool] = [false, false]
 
 ## Per-player list of PokemonInstance objects that came into play this turn
 ## (via play-from-hand or evolution).  Prevents "evolve on the same turn you
@@ -281,9 +287,10 @@ func _begin_turn(pid: int) -> void:
 func _reset_turn_flags(pid: int) -> void:
 	if pid < 0 or pid >= supporter_played_this_turn.size():
 		return
-	supporter_played_this_turn[pid] = false
-	energy_attached_this_turn[pid]  = false
-	retreat_used_this_turn[pid]     = false
+	supporter_played_this_turn[pid]  = false
+	energy_attached_this_turn[pid]   = false
+	retreat_used_this_turn[pid]      = false
+	attack_used_this_turn[pid]       = false
 	pokemon_entered_play_this_turn[pid] = []
 
 
@@ -319,6 +326,49 @@ func _cleanup_instance(inst: PokemonInstance) -> void:
 			log_message.emit("[Cleanup] %s's Burn ends." % name)
 		else:
 			log_message.emit("[Cleanup] %s stays Burned." % name)
+
+
+## --- Combat resolution -------------------------------------------------------
+
+## Called by ActionAttack after a KO is detected.
+## Clears the slot, discards all released cards to the defending player's pile,
+## awards one prize to the attacking player, and checks the win condition.
+func resolve_knockout(defending_slot: String, attacking_player: int) -> void:
+	var inst: PokemonInstance = board_position.get_instance(defending_slot)
+	if inst == null or not inst.is_knocked_out():
+		return
+	var defender_player := board_position.player_of(defending_slot)
+	var name := inst.card.display_name if inst.card != null else "Pokémon"
+	log_message.emit("[KO] %s was Knocked Out!" % name)
+
+	board_position.clear(defending_slot)
+	var released: Array[CardData] = inst.release_cards()
+	game_position.discard_all(defender_player, released)
+	inst.queue_free()
+
+	pokemon_knocked_out.emit(defending_slot)
+
+	var took_last := _take_prize_for_player(attacking_player)
+	if took_last:
+		log_message.emit("[WIN] P%d takes their last prize card and wins!" % attacking_player)
+		current_phase = Phase.ENDED
+		phase_changed.emit(current_phase)
+		game_won.emit(attacking_player)
+
+
+## Takes the first available prize card for [player_id], moving it to their hand.
+## Returns true if that was their last prize (win condition).
+func _take_prize_for_player(player_id: int) -> bool:
+	var prize_row: Array = game_position.prizes[player_id]
+	for i in range(prize_row.size()):
+		if prize_row[i] != null:
+			var card: CardData = game_position.take_prize(player_id, i)
+			if card != null:
+				game_position.put_in_hand(player_id, card)
+				log_message.emit("[Prize] P%d takes a prize card." % player_id)
+				prize_taken.emit(player_id)
+			return game_position.prizes_remaining(player_id) == 0
+	return false
 
 
 ## --- Internal: dispatch -----------------------------------------------------
