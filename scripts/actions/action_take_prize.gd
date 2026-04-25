@@ -37,7 +37,7 @@ func apply(manager) -> void:
 
 	if manager.game_position.prizes_remaining(player_id) == 0:
 		manager.log_message.emit("[WIN] P%d takes their last prize and wins!" % player_id)
-		manager.current_phase = Phase.ENDED
+		manager.current_phase = manager.Phase.ENDED
 		manager.phase_changed.emit(manager.current_phase)
 		manager.game_won.emit(player_id)
 		return
