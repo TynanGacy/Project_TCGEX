@@ -25,8 +25,8 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Not your main phase.")
 	if not (manager.game_position.hands[player_id] as Array).has(card):
 		return ActionResult.fail("Supporter is not in your hand.")
-	if manager.supporter_played_this_turn[player_id]:
-		return ActionResult.fail("You have already played a Supporter this turn.")
+	if not manager.can_play_supporter(player_id):
+		return ActionResult.fail("Cannot play a Supporter this turn.")
 	return ActionResult.success()
 
 

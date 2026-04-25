@@ -36,11 +36,10 @@ var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 const CARD_BACK: Texture2D = preload("res://assets/images/card_back.png")
 const _HAND_SCENE: PackedScene = preload("res://scenes/hand/hand.tscn")
 
-## CardData -> Card node cache for the visible (interactive) hand.
-var _hand_cards: Dictionary = {}
-
-## Face-down card nodes for the opponent's hand (count mirror only).
-var _opponent_hand_cards: Array[Card] = []
+## Per-player CardData → Card node cache.  Index 0 = player 0, 1 = player 1.
+## Both players' hands are tracked symmetrically; face-up vs face-down is a
+## rendering decision, not a structural one.
+var _hand_cards: Array = [{}, {}]
 var _opponent_hand: Hand = null
 
 ## zone_name -> Card node for deck / discard / prize pile visuals.  Keys are
@@ -77,6 +76,17 @@ var _opponent_deck_path: String = ""
 
 var _setup_dialog: Control = null
 var _setup_selected_mode: String = ""
+
+## True while the pre-game setup sequence (mulligans / coin flip) is running.
+## Blocks drag input so cards can't be moved before the game starts.
+var _in_setup_phase: bool = false
+
+## True while a player is in the "place starting Pokémon" step.  The End Turn
+## button is relabelled "Ready" and guarded against calling end_turn().
+var _in_placement_phase: bool = false
+
+## Used by choice dialogs during the setup sequence to relay a yes/no answer.
+signal _setup_choice_made(chose_yes: bool)
 
 
 ## Programmatically-added Reset button lives next to the End-Turn button
@@ -318,9 +328,9 @@ func _on_setup_confirmed(
 ## ---------------------------------------------------------------------------
 
 func _start_game() -> void:
+	_in_setup_phase = true
 	board.configure_slots(_active_slots, _bench_slots, _prize_count)
 
-	## Create a second Hand for the opponent's face-down cards.
 	_opponent_hand = _HAND_SCENE.instantiate() as Hand
 	_opponent_hand.name = "OpponentHand"
 	board.add_child(_opponent_hand)
@@ -331,17 +341,236 @@ func _start_game() -> void:
 	_authority.load_deck(0, p0_deck)
 	_authority.load_deck(1, p1_deck)
 
+	## Both players draw 7 before the coin flip (RS-PK setup rule).
 	_authority.draw_starting_hand(0, 7)
 	_authority.draw_starting_hand(1, 7)
 
+	## Prizes are dealt after the mulligan phase so a deck with few basics
+	## cannot softlock by prizing all of them before the hand is drawn.
+
+	## Run mulligan loop, placement, then coin flip; begin_game() is called at the end.
+	_run_setup_sequence()
+
+
+## ---------------------------------------------------------------------------
+## Setup sequence (mulligans + coin flip)
+## ---------------------------------------------------------------------------
+
+## Async coroutine that drives the full RS-PK pre-game setup:
+##   1. Mulligan loop until both players have at least one Basic in hand.
+##   2. Prize cards dealt (after mulligans so basics can't be prized out).
+##   3. Each player places their starting Pokémon (active required, bench optional).
+##      Opponent's side is hidden while the other player places.
+##   4. Coin flip — winner must go first; first-turn restrictions apply to them.
+##   5. Call begin_game() with the starting player.
+func _run_setup_sequence() -> void:
+	var mulligan_counts: Array[int] = [0, 0]
+
+	while true:
+		var p0_ok := _authority.has_basic_in_hand(0)
+		var p1_ok := _authority.has_basic_in_hand(1)
+		if p0_ok and p1_ok:
+			break
+
+		## Both have no basics — both mulligan simultaneously, no bonus draws.
+		if not p0_ok and not p1_ok:
+			mulligan_counts[0] += 1
+			mulligan_counts[1] += 1
+			_log("[Setup] Both players have no Basic Pokémon — both take a mulligan.")
+			_authority.return_hand_to_deck(0)
+			_authority.return_hand_to_deck(1)
+			_authority.draw_starting_hand(0, 7)
+			_authority.draw_starting_hand(1, 7)
+			await _show_setup_info(
+				"Both players had no Basic Pokémon.\nBoth shuffled and drew 7 new cards."
+			)
+			continue
+
+		## Exactly one player has no basics — they mulligan; opponent may draw.
+		var mulligan_pid: int = 0 if not p0_ok else 1
+		var other_pid:    int = 1 - mulligan_pid
+		mulligan_counts[mulligan_pid] += 1
+		_log("[Setup] P%d has no Basic Pokémon — taking mulligan #%d." \
+				% [mulligan_pid, mulligan_counts[mulligan_pid]])
+		_authority.return_hand_to_deck(mulligan_pid)
+		_authority.draw_starting_hand(mulligan_pid, 7)
+
+		await _show_setup_info(
+			"Player %d had no Basic Pokémon\nand took mulligan #%d.\nThey shuffled and drew 7 new cards." \
+			% [mulligan_pid, mulligan_counts[mulligan_pid]]
+		)
+
+		## Opponent decides whether to draw a bonus card for this mulligan.
+		var wants_draw: bool = await _show_mulligan_card_offer(other_pid)
+		if wants_draw:
+			_authority.draw_one(other_pid)
+			_log("[Setup] P%d draws an extra card (mulligan bonus)." % other_pid)
+
+	## Prizes are dealt after the mulligan phase (RS-PK rule).
 	_authority.deal_prizes(0, _prize_count)
 	_authority.deal_prizes(1, _prize_count)
+	_log("[Setup] Prize cards dealt.")
 
-	## Start turn 1.  _on_turn_started handles the hand rebuild and phase label.
-	_authority.begin_game(0)
+	## Placement phase — each player places their starting Pokémon in turn.
+	## The other player's side is hidden while they place.
+	for placing_pid: int in [0, 1]:
+		_authority.begin_setup_placement(placing_pid)
+		_apply_perspective(placing_pid)
+		## Rebuild both hands so the placing player's cards are face-up and
+		## the waiting player's cards are face-down from this perspective.
+		_rebuild_hand_visual(0)
+		_rebuild_hand_visual(1)
+		_in_setup_phase = false   ## allow drag input during placement
+		await _show_placement_phase(placing_pid)
+		_in_setup_phase = true    ## block drag again between phases
+		_authority.end_setup_placement()
+		_log("[Setup] P%d finished placing starting Pokémon." % placing_pid)
+
+	## Both players have set up — flip to decide who goes first.
+	var flip_result:    int = randi() % 2  ## 0 = Heads → P0 first, 1 = Tails → P1 first
+	var starting_player: int = flip_result
+	_log("[Setup] Coin flip: %s — P%d goes first." \
+			% ["Heads" if flip_result == 0 else "Tails", starting_player])
+
+	await _show_coin_flip_result(starting_player, flip_result)
+
+	_in_setup_phase = false
+	## _on_turn_started handles the hand rebuild and phase label.
+	_authority.begin_game(starting_player)
+
+
+## ---------------------------------------------------------------------------
+## Setup-phase dialog helpers
+## ---------------------------------------------------------------------------
+
+## Builds a centred modal panel and returns it with an empty VBoxContainer
+## child ready for content.  Caller adds to $HUD.
+func _make_setup_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(380, 120)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.12, 0.18, 0.97)
+	style.corner_radius_top_left     = 8
+	style.corner_radius_top_right    = 8
+	style.corner_radius_bottom_left  = 8
+	style.corner_radius_bottom_right = 8
+	panel.add_theme_stylebox_override("panel", style)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+	return panel
+
+
+## True if [pid] has at least one Pokémon in any of their active slots.
+func _has_active_pokemon(pid: int) -> bool:
+	for i in range(1, _active_slots + 1):
+		if manager.board_position.get_instance("p%d_active%d" % [pid, i]) != null:
+			return true
+	return false
+
+
+## Placement phase for [placing_pid]: repurposes the End Turn button as
+## "Ready", enables it only once the active slot contains a Pokémon, and
+## awaits the press.  No popup — the phase label and button label carry all
+## the needed context.
+func _show_placement_phase(placing_pid: int) -> void:
+	_in_placement_phase      = true
+	end_turn_button.text     = "Ready"
+	end_turn_button.disabled = not _has_active_pokemon(placing_pid)
+	_update_phase_label()
+
+	var refresh := func(_sid: String, _inst: PokemonInstance) -> void:
+		end_turn_button.disabled = not _has_active_pokemon(placing_pid)
+	_authority.board_slot_changed.connect(refresh)
+
+	await end_turn_button.pressed
+	_authority.board_slot_changed.disconnect(refresh)
+
+	end_turn_button.text     = "End Turn"
+	end_turn_button.disabled = false
+	_in_placement_phase      = false
+
+
+## Shows an informational panel with a "Continue" button and awaits it.
+func _show_setup_info(message: String) -> void:
+	var panel := _make_setup_panel()
+	var vbox := panel.get_child(0) as VBoxContainer
+	var lbl := Label.new()
+	lbl.text = message
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl)
+	var btn := Button.new()
+	btn.text = "Continue"
+	vbox.add_child(btn)
+	$HUD.add_child(panel)
+	await btn.pressed
+	panel.queue_free()
+
+
+## Asks [offer_pid] whether they want a bonus mulligan draw card.
+## Returns true if they click "Yes".
+func _show_mulligan_card_offer(offer_pid: int) -> bool:
+	var panel := _make_setup_panel()
+	var vbox := panel.get_child(0) as VBoxContainer
+	var lbl := Label.new()
+	lbl.text = "Player %d: Draw a bonus card\nfor your opponent's mulligan?" % offer_pid
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	vbox.add_child(row)
+	var yes_btn := Button.new()
+	yes_btn.text = "Yes"
+	var no_btn := Button.new()
+	no_btn.text  = "No"
+	row.add_child(yes_btn)
+	row.add_child(no_btn)
+	yes_btn.pressed.connect(func() -> void: _setup_choice_made.emit(true))
+	no_btn.pressed.connect(func() -> void:  _setup_choice_made.emit(false))
+	$HUD.add_child(panel)
+	var result: bool = await _setup_choice_made
+	panel.queue_free()
+	return result
+
+
+## Shows the coin-flip outcome and first-turn restriction note, then awaits
+## the "Begin Game" button.
+func _show_coin_flip_result(starting_player: int, flip_result: int) -> void:
+	var panel := _make_setup_panel()
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var flip_lbl := Label.new()
+	flip_lbl.text = "%s!" % ("Heads" if flip_result == 0 else "Tails")
+	flip_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	flip_lbl.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(flip_lbl)
+
+	var result_lbl := Label.new()
+	result_lbl.text = "Player %d goes first." % starting_player
+	result_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(result_lbl)
+
+	var note_lbl := Label.new()
+	note_lbl.text = "First-turn restrictions: no draw, no Supporters."
+	note_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note_lbl.add_theme_color_override("font_color", Color(0.65, 0.65, 0.5))
+	vbox.add_child(note_lbl)
+
+	var btn := Button.new()
+	btn.text = "Begin Game"
+	vbox.add_child(btn)
+	$HUD.add_child(panel)
+	await btn.pressed
+	panel.queue_free()
 
 
 func _reset_game() -> void:
+	_in_setup_phase = false
 	## Clear pile visuals.  Deck entries are Array[Card] (layered stack);
 	## discard / prize entries are single Card nodes.
 	for entry in _pile_nodes.values():
@@ -353,17 +582,17 @@ func _reset_game() -> void:
 			(entry as Node).queue_free()
 	_pile_nodes.clear()
 
-	## Clear hand visuals.
+	## Clear hand visuals for both players.
 	player_hand.clear_cards()
-	for card in _hand_cards.values():
-		if is_instance_valid(card):
-			card.queue_free()
-	_hand_cards.clear()
+	for pid in range(2):
+		for card in (_hand_cards[pid] as Dictionary).values():
+			if is_instance_valid(card):
+				(card as Card).queue_free()
+	_hand_cards = [{}, {}]
 
 	if _opponent_hand != null:
 		_opponent_hand.queue_free()
 		_opponent_hand = null
-	_opponent_hand_cards.clear()
 
 	## Clear every PokemonInstance from every slot.
 	for sid in BoardPosition.all_slot_ids():
@@ -392,8 +621,6 @@ func _reset_game() -> void:
 	## start from the default camera side.
 	_controlling_player = 0
 	camera.transform = _p0_cam_transform
-	player_hand.transform = _p0_hand_transform
-	## _opponent_hand was already freed above; nothing else to reset here.
 
 	phase_label.text = ""
 	game_log.clear()
@@ -404,89 +631,79 @@ func _reset_game() -> void:
 ## Hand visuals
 ## ---------------------------------------------------------------------------
 
-## Returns the player_id whose hand should currently be shown in PlayerHand.
-## Developer mode follows whoever's turn it is so the operator can drive
-## both sides; Player mode stays on player 0 until the CPU/opponent system
-## returns.
-func _visible_hand_player() -> int:
-	if is_developer_mode:
-		return _authority.current_player_id()
-	return 0
+## Returns the Hand scene node that physically represents [pid]'s hand on the
+## table.  P0's node is fixed at P0's side; P1's at P1's side.  The camera
+## flip in _apply_perspective makes whichever side is "near" depend on who is
+## controlling, without moving the hand nodes themselves.
+func _hand_node(pid: int) -> Hand:
+	return player_hand if pid == 0 else _opponent_hand
 
 
+## Full rebuild of [player_id]'s hand visual from scratch.
+## In developer mode every card is face-up and draggable.
+## In player mode P1's cards are rendered face-down (CPU placeholder).
 func _rebuild_hand_visual(player_id: int) -> void:
-	if player_id != _visible_hand_player():
+	if _hand_node(player_id) == null:
 		return
-
-	player_hand.clear_cards()
-	for card in _hand_cards.values():
+	_hand_node(player_id).clear_cards()
+	for card in (_hand_cards[player_id] as Dictionary).values():
 		if is_instance_valid(card):
-			card.queue_free()
-	_hand_cards.clear()
+			(card as Card).queue_free()
+	(_hand_cards[player_id] as Dictionary).clear()
 
+	var face_up: bool = (player_id == _authority.current_player_id())
 	var hand: Array = manager.game_position.hands[player_id]
 	for data in hand:
 		var card_node := card_scene.instantiate() as Card
-		card_node.set_data(data)
-		player_hand.add_card(card_node)
-		card_node.drag_started.connect(_on_card_drag_started)
-		card_node.card_dropped.connect(_on_card_dropped)
-		_hand_cards[data] = card_node
+		if face_up:
+			card_node.set_data(data)
+			card_node.drag_started.connect(_on_card_drag_started)
+			card_node.card_dropped.connect(_on_card_dropped)
+		else:
+			card_node.back_texture = CARD_BACK
+			card_node.face_down    = true
+		_hand_node(player_id).add_card(card_node)
+		(_hand_cards[player_id] as Dictionary)[data] = card_node
 
 
-## Adds any cards in [player_id]'s current hand that are not yet tracked.
+## Adds any cards in [player_id]'s hand that are not yet tracked.
 ## Removals are handled exclusively by _on_card_left_hand so the fan slides
 ## smoothly without a full rebuild whenever the hand shrinks.
 func _sync_new_hand_cards(player_id: int) -> void:
-	if player_id != _visible_hand_player():
+	if _hand_node(player_id) == null:
 		return
+	var face_up: bool = (player_id == _authority.current_player_id())
+	var dict: Dictionary = _hand_cards[player_id]
 	for data: CardData in manager.game_position.hands[player_id]:
-		if not _hand_cards.has(data):
+		if not dict.has(data):
 			var card_node := card_scene.instantiate() as Card
-			card_node.set_data(data)
-			player_hand.add_card(card_node)
-			card_node.drag_started.connect(_on_card_drag_started)
-			card_node.card_dropped.connect(_on_card_dropped)
-			_hand_cards[data] = card_node
+			if face_up:
+				card_node.set_data(data)
+				card_node.drag_started.connect(_on_card_drag_started)
+				card_node.card_dropped.connect(_on_card_dropped)
+			else:
+				card_node.back_texture = CARD_BACK
+				card_node.face_down    = true
+			_hand_node(player_id).add_card(card_node)
+			dict[data] = card_node
 
 
-## Removes the exact card that just left [player_id]'s hand.  The CardData
-## reference carried by the signal matches the key in _hand_cards, so this is
-## a single O(1) lookup — no diffing, no stale-state risk.
+## Removes the exact card that just left [player_id]'s hand.  O(1) lookup via
+## the CardData key; works identically for both players.
 func _on_card_left_hand(player_id: int, card: CardData) -> void:
-	if player_id != _visible_hand_player():
-		_rebuild_opponent_hand_visual(player_id)
+	if _hand_node(player_id) == null:
 		return
-	if not _hand_cards.has(card):
+	var dict: Dictionary = _hand_cards[player_id]
+	if not dict.has(card):
 		return
-	var card_node: Card = _hand_cards[card]
-	_hand_cards.erase(card)
-	player_hand.remove_card(card_node)
+	var card_node: Card = dict[card]
+	dict.erase(card)
+	_hand_node(player_id).remove_card(card_node)
 	card_node.queue_free()
 
 
-## Rebuilds the opponent's face-down card-back fan to reflect the current
-## hand count for [opponent_id].  Cards have no data and cannot be dragged.
-func _rebuild_opponent_hand_visual(opponent_id: int) -> void:
-	if _opponent_hand == null:
-		return
-	_opponent_hand.clear_cards()
-	_opponent_hand_cards.clear()
-
-	var count: int = (manager.game_position.hands[opponent_id] as Array).size()
-	for _i in count:
-		var card_node := card_scene.instantiate() as Card
-		card_node.back_texture = CARD_BACK
-		card_node.face_down = true
-		_opponent_hand.add_card(card_node)
-		_opponent_hand_cards.append(card_node)
-
-
 func _on_hand_changed(player_id: int) -> void:
-	if player_id == _visible_hand_player():
-		_sync_new_hand_cards(player_id)
-	else:
-		_rebuild_opponent_hand_visual(player_id)
+	_sync_new_hand_cards(player_id)
 
 
 ## ---------------------------------------------------------------------------
@@ -494,8 +711,8 @@ func _on_hand_changed(player_id: int) -> void:
 ## ---------------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
-	## Block game input while setup dialog is open.
-	if _setup_dialog != null:
+	## Block game input while setup dialog or setup sequence is active.
+	if _setup_dialog != null or _in_setup_phase:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -527,15 +744,18 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 	var card := _raycast_card(screen_pos)
 	if card == null or not card._is_in_hand:
 		return  ## Only hand cards are draggable; board/pile cards snap back automatically.
-	if card.data == null:
+	## Face-down cards belong to the opponent in player mode and are never
+	## directly interactive.  In developer mode all cards are face-up.
+	if card.face_down or card.data == null:
+		return
+	## Only the current player's cards can be picked up.
+	var card_owner: int = 0 if card.get_parent() == player_hand else 1
+	if card_owner != _authority.current_player_id():
 		return
 	## Clear any hover lift before the card enters drag mode so the two
 	## animations don't fight each other.
 	if _hovered_node == card:
 		_hovered_node = null
-	## All concrete CardData subclasses (PokemonCardData, TrainerCardData,
-	## EnergyCardData) are playable from hand — the action-specific validator
-	## decides legality when the drop lands.
 	dragged_card = card
 	card.start_drag()
 
@@ -636,6 +856,16 @@ func _try_drop_card() -> void:
 ## can be dropped anywhere on the table.
 func _build_action_for_drop(data: CardData, slot_id: String) -> GameAction:
 	var PLAYER_ID: int = _authority.current_player_id()
+
+	## During the setup placement phase only Basics may be placed, using the
+	## setup-specific action that skips the main-phase requirement.
+	if manager.setup_placing_player >= 0:
+		if data is PokemonCardData and slot_id != "":
+			var p := data as PokemonCardData
+			if p.stage == PokemonCardData.Stage.BASIC:
+				return ActionSetupPlayBasic.new(PLAYER_ID, p, slot_id)
+		return null
+
 	if data is EnergyCardData:
 		if slot_id == "":
 			return null
@@ -738,14 +968,16 @@ func _on_stadium_changed(stadium: TrainerCardData, owner_id: int) -> void:
 ## ---------------------------------------------------------------------------
 
 func _on_end_turn_pressed() -> void:
+	if _in_placement_phase:
+		return  ## Button is acting as "Ready" — handled by _show_placement_phase.
 	_authority.end_turn()
 
 
 func _on_turn_started(pid: int, _turn_num: int) -> void:
 	if is_developer_mode:
 		_apply_perspective(pid)
-	_rebuild_hand_visual(pid)
-	_rebuild_opponent_hand_visual(1 - pid)
+	_rebuild_hand_visual(0)
+	_rebuild_hand_visual(1)
 	_update_phase_label()
 
 
@@ -758,18 +990,16 @@ func _board_rotation_y() -> float:
 	return 0.0 if _controlling_player == 0 else PI
 
 
-## Flips the camera, player hand anchor, and every in-play PokemonInstance
-## to the [pid] side of the table.  Prizes, deck, and discard piles are left
-## alone — they're face-down stacks whose orientation doesn't matter.
+## Moves the camera to [pid]'s side of the table and re-orients every
+## in-play PokemonInstance so cards read right-side-up from that perspective.
+## The two Hand nodes are fixed in world space at their respective player's
+## side — the camera flip naturally brings each player's hand to the near side
+## without needing to move the nodes themselves.
 func _apply_perspective(pid: int) -> void:
 	if pid == _controlling_player:
 		return
 	_controlling_player = pid
 	camera.transform = _p0_cam_transform if pid == 0 else _p1_cam_transform
-	player_hand.transform   = _p0_hand_transform if pid == 0 else _p1_hand_transform
-	if _opponent_hand != null:
-		_opponent_hand.transform = _p1_hand_transform if pid == 0 else _p0_hand_transform
-
 	var y_rot := _board_rotation_y()
 	for sid in BoardPosition.all_slot_ids():
 		var inst: PokemonInstance = manager.board_position.get_instance(sid)

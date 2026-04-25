@@ -44,6 +44,27 @@ func deal_prizes(_player_id: int, _count: int = 6) -> void:
 	push_error("MatchAuthority.deal_prizes is not implemented.")
 
 
+func has_basic_in_hand(_pid: int) -> bool:
+	push_error("MatchAuthority.has_basic_in_hand is not implemented.")
+	return false
+
+
+func return_hand_to_deck(_pid: int) -> void:
+	push_error("MatchAuthority.return_hand_to_deck is not implemented.")
+
+
+func draw_one(_pid: int) -> void:
+	push_error("MatchAuthority.draw_one is not implemented.")
+
+
+func begin_setup_placement(_pid: int) -> void:
+	push_error("MatchAuthority.begin_setup_placement is not implemented.")
+
+
+func end_setup_placement() -> void:
+	push_error("MatchAuthority.end_setup_placement is not implemented.")
+
+
 func begin_game(_starting_player: int = 0) -> void:
 	push_error("MatchAuthority.begin_game is not implemented.")
 

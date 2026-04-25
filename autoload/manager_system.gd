@@ -70,6 +70,13 @@ var current_player: int = 0
 var current_phase:  int = Phase.SETUP
 var turn_number:    int = 0
 
+## The player who won the opening coin flip and goes first.  Set by begin_game().
+var first_player: int = 0
+
+## The player currently in the pre-game placement phase (-1 = not placing).
+## Set by begin_setup_placement(); cleared by end_setup_placement().
+var setup_placing_player: int = -1
+
 ## Per-player turn flags.  Cleared at the start of each player's turn.
 var supporter_played_this_turn: Array[bool] = [false, false]
 var energy_attached_this_turn:  Array[bool] = [false, false]
@@ -136,10 +143,20 @@ func is_main_phase_for(pid: int) -> bool:
 ## the phase label (avoids cross-script enum lookups).
 func phase_name() -> String:
 	match current_phase:
-		Phase.SETUP: return "Setup"
+		Phase.SETUP:
+			if setup_placing_player >= 0:
+				return "Place Pokémon"
+			return "Setup"
 		Phase.MAIN:  return "Main"
 		Phase.ENDED: return "Cleanup"
 	return "?"
+
+
+## True if [pid] is on their very first turn of the game.
+## The first player's first turn is turn 1; the second player's is turn 2.
+func is_first_turn_for(pid: int) -> bool:
+	return (pid == first_player and turn_number == 1) \
+		or (pid != first_player and turn_number == 2)
 
 
 ## --- Public API: setup / turn flow ------------------------------------------
@@ -158,14 +175,61 @@ func deal_prizes(player_id: int, count: int = 6) -> void:
 	game_position.deal_prizes(player_id, count)
 
 
-## Starts the match.  Called once after decks / hands / prizes have been
-## dealt.  The starting player draws their turn's card and enters MAIN.
+## Starts the match.  Called once after the setup sequence (mulligans + coin
+## flip) is complete.  [starting_player] is the coin-flip winner, who goes
+## first and has first-turn restrictions applied.
 func begin_game(starting_player: int = 0) -> void:
+	first_player   = starting_player
 	turn_number    = 0
 	current_phase  = Phase.SETUP
 	for pid in range(2):
 		_reset_turn_flags(pid)
 	_begin_turn(starting_player)
+
+
+## --- Public API: setup placement / helpers ----------------------------------
+
+## Enters the placement phase for [pid]: records who is placing so
+## ActionSetupPlayBasic can validate correctly, and sets current_player so
+## the scene layer's current_player_id() returns the right value.
+func begin_setup_placement(pid: int) -> void:
+	setup_placing_player = pid
+	current_player       = pid
+
+
+## Exits the placement phase.
+func end_setup_placement() -> void:
+	setup_placing_player = -1
+
+
+## True when [pid] is currently in the pre-game placement phase.
+func is_setup_placement_for(pid: int) -> bool:
+	return current_phase == Phase.SETUP and setup_placing_player == pid
+
+
+## True if [pid]'s current hand contains at least one Basic Pokémon.
+func has_basic_in_hand(pid: int) -> bool:
+	return game_position.has_basic_pokemon(pid)
+
+
+## Returns every card in [pid]'s hand to their deck and shuffles.
+func return_hand_to_deck(pid: int) -> void:
+	game_position.return_hand_to_deck(pid)
+
+
+## Draws one card for [pid] (used to grant the opponent a bonus mulligan draw).
+func draw_one(pid: int) -> void:
+	game_position.draw(pid)
+
+
+## Returns true if [pid] is allowed to play a Supporter this turn.
+## The first player cannot play a Supporter on their very first turn.
+func can_play_supporter(pid: int) -> bool:
+	if supporter_played_this_turn[pid]:
+		return false
+	if pid == first_player and turn_number == 1:
+		return false
+	return true
 
 
 ## Ends the current player's turn: runs cleanup for their board state, emits
@@ -184,9 +248,11 @@ func end_turn() -> void:
 ## resetting the match back to the setup dialog.  Subsystems (GamePosition
 ## / BoardPosition) are rebuilt separately by the scene layer.
 func reset_game_state() -> void:
-	current_player = 0
-	current_phase  = Phase.SETUP
-	turn_number    = 0
+	first_player         = 0
+	setup_placing_player = -1
+	current_player       = 0
+	current_phase        = Phase.SETUP
+	turn_number          = 0
 	active_stadium       = null
 	active_stadium_owner = -1
 	for pid in range(2):
@@ -201,12 +267,14 @@ func _begin_turn(pid: int) -> void:
 	_reset_turn_flags(pid)
 	current_phase = Phase.MAIN
 	phase_changed.emit(current_phase)
-	## Draw phase — always auto-draw at turn start.  Classic TCG skips draw
-	## on the very first turn for the first player; we intentionally keep
-	## the simpler "always draw" rule for now.
-	if not (game_position.decks[pid] as Array).is_empty():
+	## The first player does not draw on their very first turn (RS-PK rule).
+	var skip_draw := (pid == first_player and turn_number == 1)
+	if not skip_draw and not (game_position.decks[pid] as Array).is_empty():
 		game_position.draw(pid)
-	log_message.emit("[Turn %d] P%d begins." % [turn_number, pid])
+	if skip_draw:
+		log_message.emit("[Turn %d] P%d begins — no draw (first player's first turn)." % [turn_number, pid])
+	else:
+		log_message.emit("[Turn %d] P%d begins." % [turn_number, pid])
 	turn_started.emit(pid, turn_number)
 
 
