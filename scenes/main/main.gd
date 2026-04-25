@@ -36,11 +36,10 @@ var card_scene: PackedScene = preload("res://scenes/card/card.tscn")
 const CARD_BACK: Texture2D = preload("res://assets/images/card_back.png")
 const _HAND_SCENE: PackedScene = preload("res://scenes/hand/hand.tscn")
 
-## CardData -> Card node cache for the visible (interactive) hand.
-var _hand_cards: Dictionary = {}
-
-## Face-down card nodes for the opponent's hand (count mirror only).
-var _opponent_hand_cards: Array[Card] = []
+## Per-player CardData → Card node cache.  Index 0 = player 0, 1 = player 1.
+## Both players' hands are tracked symmetrically; face-up vs face-down is a
+## rendering decision, not a structural one.
+var _hand_cards: Array = [{}, {}]
 var _opponent_hand: Hand = null
 
 ## zone_name -> Card node for deck / discard / prize pile visuals.  Keys are
@@ -587,17 +586,17 @@ func _reset_game() -> void:
 			(entry as Node).queue_free()
 	_pile_nodes.clear()
 
-	## Clear hand visuals.
+	## Clear hand visuals for both players.
 	player_hand.clear_cards()
-	for card in _hand_cards.values():
-		if is_instance_valid(card):
-			card.queue_free()
-	_hand_cards.clear()
+	for pid in range(2):
+		for card in (_hand_cards[pid] as Dictionary).values():
+			if is_instance_valid(card):
+				(card as Card).queue_free()
+	_hand_cards = [{}, {}]
 
 	if _opponent_hand != null:
 		_opponent_hand.queue_free()
 		_opponent_hand = null
-	_opponent_hand_cards.clear()
 
 	## Clear every PokemonInstance from every slot.
 	for sid in BoardPosition.all_slot_ids():
@@ -626,8 +625,6 @@ func _reset_game() -> void:
 	## start from the default camera side.
 	_controlling_player = 0
 	camera.transform = _p0_cam_transform
-	player_hand.transform = _p0_hand_transform
-	## _opponent_hand was already freed above; nothing else to reset here.
 
 	phase_label.text = ""
 	game_log.clear()
@@ -638,89 +635,79 @@ func _reset_game() -> void:
 ## Hand visuals
 ## ---------------------------------------------------------------------------
 
-## Returns the player_id whose hand should currently be shown in PlayerHand.
-## Developer mode follows whoever's turn it is so the operator can drive
-## both sides; Player mode stays on player 0 until the CPU/opponent system
-## returns.
-func _visible_hand_player() -> int:
-	if is_developer_mode:
-		return _authority.current_player_id()
-	return 0
+## Returns the Hand scene node that physically represents [pid]'s hand on the
+## table.  P0's node is fixed at P0's side; P1's at P1's side.  The camera
+## flip in _apply_perspective makes whichever side is "near" depend on who is
+## controlling, without moving the hand nodes themselves.
+func _hand_node(pid: int) -> Hand:
+	return player_hand if pid == 0 else _opponent_hand
 
 
+## Full rebuild of [player_id]'s hand visual from scratch.
+## In developer mode every card is face-up and draggable.
+## In player mode P1's cards are rendered face-down (CPU placeholder).
 func _rebuild_hand_visual(player_id: int) -> void:
-	if player_id != _visible_hand_player():
+	if _hand_node(player_id) == null:
 		return
-
-	player_hand.clear_cards()
-	for card in _hand_cards.values():
+	_hand_node(player_id).clear_cards()
+	for card in (_hand_cards[player_id] as Dictionary).values():
 		if is_instance_valid(card):
-			card.queue_free()
-	_hand_cards.clear()
+			(card as Card).queue_free()
+	(_hand_cards[player_id] as Dictionary).clear()
 
+	var face_up: bool = is_developer_mode or (player_id == 0)
 	var hand: Array = manager.game_position.hands[player_id]
 	for data in hand:
 		var card_node := card_scene.instantiate() as Card
-		card_node.set_data(data)
-		player_hand.add_card(card_node)
-		card_node.drag_started.connect(_on_card_drag_started)
-		card_node.card_dropped.connect(_on_card_dropped)
-		_hand_cards[data] = card_node
+		if face_up:
+			card_node.set_data(data)
+			card_node.drag_started.connect(_on_card_drag_started)
+			card_node.card_dropped.connect(_on_card_dropped)
+		else:
+			card_node.back_texture = CARD_BACK
+			card_node.face_down    = true
+		_hand_node(player_id).add_card(card_node)
+		(_hand_cards[player_id] as Dictionary)[data] = card_node
 
 
-## Adds any cards in [player_id]'s current hand that are not yet tracked.
+## Adds any cards in [player_id]'s hand that are not yet tracked.
 ## Removals are handled exclusively by _on_card_left_hand so the fan slides
 ## smoothly without a full rebuild whenever the hand shrinks.
 func _sync_new_hand_cards(player_id: int) -> void:
-	if player_id != _visible_hand_player():
+	if _hand_node(player_id) == null:
 		return
+	var face_up: bool = is_developer_mode or (player_id == 0)
+	var dict: Dictionary = _hand_cards[player_id]
 	for data: CardData in manager.game_position.hands[player_id]:
-		if not _hand_cards.has(data):
+		if not dict.has(data):
 			var card_node := card_scene.instantiate() as Card
-			card_node.set_data(data)
-			player_hand.add_card(card_node)
-			card_node.drag_started.connect(_on_card_drag_started)
-			card_node.card_dropped.connect(_on_card_dropped)
-			_hand_cards[data] = card_node
+			if face_up:
+				card_node.set_data(data)
+				card_node.drag_started.connect(_on_card_drag_started)
+				card_node.card_dropped.connect(_on_card_dropped)
+			else:
+				card_node.back_texture = CARD_BACK
+				card_node.face_down    = true
+			_hand_node(player_id).add_card(card_node)
+			dict[data] = card_node
 
 
-## Removes the exact card that just left [player_id]'s hand.  The CardData
-## reference carried by the signal matches the key in _hand_cards, so this is
-## a single O(1) lookup — no diffing, no stale-state risk.
+## Removes the exact card that just left [player_id]'s hand.  O(1) lookup via
+## the CardData key; works identically for both players.
 func _on_card_left_hand(player_id: int, card: CardData) -> void:
-	if player_id != _visible_hand_player():
-		_rebuild_opponent_hand_visual(player_id)
+	if _hand_node(player_id) == null:
 		return
-	if not _hand_cards.has(card):
+	var dict: Dictionary = _hand_cards[player_id]
+	if not dict.has(card):
 		return
-	var card_node: Card = _hand_cards[card]
-	_hand_cards.erase(card)
-	player_hand.remove_card(card_node)
+	var card_node: Card = dict[card]
+	dict.erase(card)
+	_hand_node(player_id).remove_card(card_node)
 	card_node.queue_free()
 
 
-## Rebuilds the opponent's face-down card-back fan to reflect the current
-## hand count for [opponent_id].  Cards have no data and cannot be dragged.
-func _rebuild_opponent_hand_visual(opponent_id: int) -> void:
-	if _opponent_hand == null:
-		return
-	_opponent_hand.clear_cards()
-	_opponent_hand_cards.clear()
-
-	var count: int = (manager.game_position.hands[opponent_id] as Array).size()
-	for _i in count:
-		var card_node := card_scene.instantiate() as Card
-		card_node.back_texture = CARD_BACK
-		card_node.face_down = true
-		_opponent_hand.add_card(card_node)
-		_opponent_hand_cards.append(card_node)
-
-
 func _on_hand_changed(player_id: int) -> void:
-	if player_id == _visible_hand_player():
-		_sync_new_hand_cards(player_id)
-	else:
-		_rebuild_opponent_hand_visual(player_id)
+	_sync_new_hand_cards(player_id)
 
 
 ## ---------------------------------------------------------------------------
@@ -761,15 +748,18 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 	var card := _raycast_card(screen_pos)
 	if card == null or not card._is_in_hand:
 		return  ## Only hand cards are draggable; board/pile cards snap back automatically.
-	if card.data == null:
+	## Face-down cards belong to the opponent in player mode and are never
+	## directly interactive.  In developer mode all cards are face-up.
+	if card.face_down or card.data == null:
+		return
+	## Only the current player's cards can be picked up.
+	var card_owner: int = 0 if card.get_parent() == player_hand else 1
+	if card_owner != _authority.current_player_id():
 		return
 	## Clear any hover lift before the card enters drag mode so the two
 	## animations don't fight each other.
 	if _hovered_node == card:
 		_hovered_node = null
-	## All concrete CardData subclasses (PokemonCardData, TrainerCardData,
-	## EnergyCardData) are playable from hand — the action-specific validator
-	## decides legality when the drop lands.
 	dragged_card = card
 	card.start_drag()
 
@@ -988,8 +978,8 @@ func _on_end_turn_pressed() -> void:
 func _on_turn_started(pid: int, _turn_num: int) -> void:
 	if is_developer_mode:
 		_apply_perspective(pid)
-	_rebuild_hand_visual(pid)
-	_rebuild_opponent_hand_visual(1 - pid)
+	_rebuild_hand_visual(0)
+	_rebuild_hand_visual(1)
 	_update_phase_label()
 
 
@@ -1002,18 +992,16 @@ func _board_rotation_y() -> float:
 	return 0.0 if _controlling_player == 0 else PI
 
 
-## Flips the camera, player hand anchor, and every in-play PokemonInstance
-## to the [pid] side of the table.  Prizes, deck, and discard piles are left
-## alone — they're face-down stacks whose orientation doesn't matter.
+## Moves the camera to [pid]'s side of the table and re-orients every
+## in-play PokemonInstance so cards read right-side-up from that perspective.
+## The two Hand nodes are fixed in world space at their respective player's
+## side — the camera flip naturally brings each player's hand to the near side
+## without needing to move the nodes themselves.
 func _apply_perspective(pid: int) -> void:
 	if pid == _controlling_player:
 		return
 	_controlling_player = pid
 	camera.transform = _p0_cam_transform if pid == 0 else _p1_cam_transform
-	player_hand.transform   = _p0_hand_transform if pid == 0 else _p1_hand_transform
-	if _opponent_hand != null:
-		_opponent_hand.transform = _p1_hand_transform if pid == 0 else _p0_hand_transform
-
 	var y_rot := _board_rotation_y()
 	for sid in BoardPosition.all_slot_ids():
 		var inst: PokemonInstance = manager.board_position.get_instance(sid)
