@@ -6,7 +6,11 @@ signal card_played(card: Card)
 
 const CARD_SPACING := 0.7
 const MAX_FAN_ANGLE := 5.0  ## Degrees of rotation at edges
-const CURVE_HEIGHT := 0.05  ## Vertical curve in the fan
+## Must stay below CARD_SPACING * tan(HAND_TILT_DEG) ≈ 0.049 so the Y drop
+## between any two adjacent cards never exceeds the tilt-induced depth
+## separation — if it does, Godot's transparent-object distance sort inverts
+## at the overlap and produces clipping.
+const CURVE_HEIGHT := 0.04  ## Vertical arc in the fan (V-shape, centre lowest)
 const MAX_HAND_WIDTH := 6.5  ## World-unit cap before spacing compresses
 const MIN_CARD_SPACING := 0.2  ## Never overlap cards more than this
 ## Each card tilts so its right side is slightly lower than its left.

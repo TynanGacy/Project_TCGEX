@@ -22,6 +22,9 @@ const MAX_PRIZES := 6
 
 signal deck_changed(player_id: int)
 signal hand_changed(player_id: int)
+## Fired immediately after a card is removed from a player's hand so listeners
+## can target the exact departing card without diffing the full hand array.
+signal card_left_hand(player_id: int, card: CardData)
 signal discard_changed(player_id: int)
 signal prizes_changed(player_id: int)
 
@@ -114,6 +117,7 @@ func take_from_hand(player_id: int, card: CardData) -> bool:
 	if idx < 0:
 		return false
 	hand.remove_at(idx)
+	card_left_hand.emit(player_id, card)
 	hand_changed.emit(player_id)
 	return true
 

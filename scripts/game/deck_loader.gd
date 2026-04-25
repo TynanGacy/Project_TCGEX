@@ -92,8 +92,14 @@ static func _load_from_file(path: String) -> Array[CardData]:
 		if not pool.has(cid):
 			push_warning("DeckLoader: unknown card_id '%s' — skipping." % cid)
 			continue
+		## Duplicate so every copy is its own CardData instance.  Identity is
+		## the system-wide unique key for "this physical card", and Resources
+		## are shared by default — without this, four copies of the same card
+		## would all point at one object, collapsing _hand_cards entries and
+		## breaking single-location tracking.
+		var template: CardData = pool[cid] as CardData
 		for _i in cnt:
-			deck.append(pool[cid] as CardData)
+			deck.append(template.duplicate() as CardData)
 
 	if deck.is_empty():
 		push_warning("DeckLoader: deck from '%s' resolved to 0 cards — using random deck." % path)

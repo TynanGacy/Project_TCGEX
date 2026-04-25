@@ -38,6 +38,8 @@ signal board_slot_changed(slot_id: String, instance: PokemonInstance)
 signal pokemon_state_changed(slot_id: String, instance: PokemonInstance)
 signal overflow_escalation(player_id: int, instance: PokemonInstance)
 signal hand_changed(player_id: int)
+## Fired immediately after a card departs a player's hand (before hand_changed).
+signal card_left_hand(player_id: int, card: CardData)
 signal deck_changed(player_id: int)
 signal discard_changed(player_id: int)
 signal prizes_changed(player_id: int)
@@ -89,6 +91,7 @@ func _ready() -> void:
 
 	game_position.deck_changed.connect(func(pid): deck_changed.emit(pid))
 	game_position.hand_changed.connect(func(pid): hand_changed.emit(pid))
+	game_position.card_left_hand.connect(func(pid, card): card_left_hand.emit(pid, card))
 	game_position.discard_changed.connect(func(pid): discard_changed.emit(pid))
 	game_position.prizes_changed.connect(func(pid): prizes_changed.emit(pid))
 
