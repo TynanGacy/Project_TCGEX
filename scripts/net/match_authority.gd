@@ -57,6 +57,14 @@ func draw_one(_pid: int) -> void:
 	push_error("MatchAuthority.draw_one is not implemented.")
 
 
+func begin_setup_placement(_pid: int) -> void:
+	push_error("MatchAuthority.begin_setup_placement is not implemented.")
+
+
+func end_setup_placement() -> void:
+	push_error("MatchAuthority.end_setup_placement is not implemented.")
+
+
 func begin_game(_starting_player: int = 0) -> void:
 	push_error("MatchAuthority.begin_game is not implemented.")
 

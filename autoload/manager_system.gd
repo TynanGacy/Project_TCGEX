@@ -73,6 +73,10 @@ var turn_number:    int = 0
 ## The player who won the opening coin flip and goes first.  Set by begin_game().
 var first_player: int = 0
 
+## The player currently in the pre-game placement phase (-1 = not placing).
+## Set by begin_setup_placement(); cleared by end_setup_placement().
+var setup_placing_player: int = -1
+
 ## Per-player turn flags.  Cleared at the start of each player's turn.
 var supporter_played_this_turn: Array[bool] = [false, false]
 var energy_attached_this_turn:  Array[bool] = [false, false]
@@ -173,7 +177,25 @@ func begin_game(starting_player: int = 0) -> void:
 	_begin_turn(starting_player)
 
 
-## --- Public API: setup helpers -----------------------------------------------
+## --- Public API: setup placement / helpers ----------------------------------
+
+## Enters the placement phase for [pid]: records who is placing so
+## ActionSetupPlayBasic can validate correctly, and sets current_player so
+## the scene layer's current_player_id() returns the right value.
+func begin_setup_placement(pid: int) -> void:
+	setup_placing_player = pid
+	current_player       = pid
+
+
+## Exits the placement phase.
+func end_setup_placement() -> void:
+	setup_placing_player = -1
+
+
+## True when [pid] is currently in the pre-game placement phase.
+func is_setup_placement_for(pid: int) -> bool:
+	return current_phase == Phase.SETUP and setup_placing_player == pid
+
 
 ## True if [pid]'s current hand contains at least one Basic Pokémon.
 func has_basic_in_hand(pid: int) -> bool:
@@ -217,6 +239,7 @@ func end_turn() -> void:
 ## / BoardPosition) are rebuilt separately by the scene layer.
 func reset_game_state() -> void:
 	first_player         = 0
+	setup_placing_player = -1
 	current_player       = 0
 	current_phase        = Phase.SETUP
 	turn_number          = 0

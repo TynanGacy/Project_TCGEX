@@ -90,6 +90,14 @@ func draw_one(pid: int) -> void:
 	_manager.draw_one(pid)
 
 
+func begin_setup_placement(pid: int) -> void:
+	_manager.begin_setup_placement(pid)
+
+
+func end_setup_placement() -> void:
+	_manager.end_setup_placement()
+
+
 func begin_game(starting_player: int = 0) -> void:
 	_manager.begin_game(starting_player)
 

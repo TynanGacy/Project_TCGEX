@@ -342,10 +342,10 @@ func _start_game() -> void:
 	_authority.draw_starting_hand(0, 7)
 	_authority.draw_starting_hand(1, 7)
 
-	_authority.deal_prizes(0, _prize_count)
-	_authority.deal_prizes(1, _prize_count)
+	## Prizes are dealt after the mulligan phase so a deck with few basics
+	## cannot softlock by prizing all of them before the hand is drawn.
 
-	## Run mulligan loop then coin flip; begin_game() is called at the end.
+	## Run mulligan loop, placement, then coin flip; begin_game() is called at the end.
 	_run_setup_sequence()
 
 
@@ -355,8 +355,11 @@ func _start_game() -> void:
 
 ## Async coroutine that drives the full RS-PK pre-game setup:
 ##   1. Mulligan loop until both players have at least one Basic in hand.
-##   2. Coin flip to decide who goes first (winner must go first).
-##   3. Call begin_game() with the starting player.
+##   2. Prize cards dealt (after mulligans so basics can't be prized out).
+##   3. Each player places their starting Pokémon (active required, bench optional).
+##      Opponent's side is hidden while the other player places.
+##   4. Coin flip — winner must go first; first-turn restrictions apply to them.
+##   5. Call begin_game() with the starting player.
 func _run_setup_sequence() -> void:
 	var mulligan_counts: Array[int] = [0, 0]
 
@@ -400,7 +403,23 @@ func _run_setup_sequence() -> void:
 			_authority.draw_one(other_pid)
 			_log("[Setup] P%d draws an extra card (mulligan bonus)." % other_pid)
 
-	## Both players have at least one Basic — flip to decide who goes first.
+	## Prizes are dealt after the mulligan phase (RS-PK rule).
+	_authority.deal_prizes(0, _prize_count)
+	_authority.deal_prizes(1, _prize_count)
+	_log("[Setup] Prize cards dealt.")
+
+	## Placement phase — each player places their starting Pokémon in turn.
+	## The other player's side is hidden while they place.
+	for placing_pid: int in [0, 1]:
+		_authority.begin_setup_placement(placing_pid)
+		_apply_perspective(placing_pid)
+		_in_setup_phase = false   ## allow drag input during placement
+		await _show_placement_phase(placing_pid)
+		_in_setup_phase = true    ## block drag again between phases
+		_authority.end_setup_placement()
+		_log("[Setup] P%d finished placing starting Pokémon." % placing_pid)
+
+	## Both players have set up — flip to decide who goes first.
 	var flip_result:    int = randi() % 2  ## 0 = Heads → P0 first, 1 = Tails → P1 first
 	var starting_player: int = flip_result
 	_log("[Setup] Coin flip: %s — P%d goes first." \
@@ -434,6 +453,48 @@ func _make_setup_panel() -> PanelContainer:
 	vbox.add_theme_constant_override("separation", 12)
 	panel.add_child(vbox)
 	return panel
+
+
+## True if [pid] has at least one Pokémon in any of their active slots.
+func _has_active_pokemon(pid: int) -> bool:
+	for i in range(1, _active_slots + 1):
+		if manager.board_position.get_instance("p%d_active%d" % [pid, i]) != null:
+			return true
+	return false
+
+
+## Placement phase for [placing_pid]: shows a "Ready" panel anchored to the
+## top of the screen, unblocks drag so the player can place Basics from their
+## hand, and enables Ready only once the active slot contains a Pokémon.
+## The opponent's hand is already shown face-down; perspective has been flipped
+## by the caller so the placing player is at the near side.
+func _show_placement_phase(placing_pid: int) -> void:
+	var panel := _make_setup_panel()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	panel.position.y += 8
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var lbl := Label.new()
+	lbl.text = "Player %d: Place your starting Pokémon.\nActive slot required; bench is optional." \
+			% placing_pid
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl)
+
+	var ready_btn := Button.new()
+	ready_btn.text    = "Ready"
+	ready_btn.disabled = true
+	vbox.add_child(ready_btn)
+
+	## Re-evaluate the Ready button whenever a board slot changes.
+	var refresh := func(_sid: String, _inst: PokemonInstance) -> void:
+		ready_btn.disabled = not _has_active_pokemon(placing_pid)
+	_authority.board_slot_changed.connect(refresh)
+
+	$HUD.add_child(panel)
+	await ready_btn.pressed
+	_authority.board_slot_changed.disconnect(refresh)
+	panel.queue_free()
 
 
 ## Shows an informational panel with a "Continue" button and awaits it.
@@ -809,6 +870,16 @@ func _try_drop_card() -> void:
 ## can be dropped anywhere on the table.
 func _build_action_for_drop(data: CardData, slot_id: String) -> GameAction:
 	var PLAYER_ID: int = _authority.current_player_id()
+
+	## During the setup placement phase only Basics may be placed, using the
+	## setup-specific action that skips the main-phase requirement.
+	if manager.setup_placing_player >= 0:
+		if data is PokemonCardData and slot_id != "":
+			var p := data as PokemonCardData
+			if p.stage == PokemonCardData.Stage.BASIC:
+				return ActionSetupPlayBasic.new(PLAYER_ID, p, slot_id)
+		return null
+
 	if data is EnergyCardData:
 		if slot_id == "":
 			return null
