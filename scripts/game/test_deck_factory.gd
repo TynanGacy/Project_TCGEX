@@ -17,7 +17,9 @@ static func build_deck(size: int = 60) -> Array[CardData]:
 		return []
 	var deck: Array[CardData] = []
 	for i in size:
-		deck.append(pool[randi() % pool.size()])
+		## Each card copy gets its own CardData instance so identity tracking
+		## (e.g. _hand_cards keyed by CardData) stays one-to-one.
+		deck.append((pool[randi() % pool.size()] as CardData).duplicate() as CardData)
 	return deck
 
 static func _load_art(card_id: String) -> Texture2D:
