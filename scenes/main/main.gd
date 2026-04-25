@@ -81,6 +81,10 @@ var _setup_selected_mode: String = ""
 ## Blocks drag input so cards can't be moved before the game starts.
 var _in_setup_phase: bool = false
 
+## True while a player is in the "place starting Pokémon" step.  The End Turn
+## button is relabelled "Ready" and guarded against calling end_turn().
+var _in_placement_phase: bool = false
+
 ## Used by choice dialogs during the setup sequence to relay a yes/no answer.
 signal _setup_choice_made(chose_yes: bool)
 
@@ -412,6 +416,10 @@ func _run_setup_sequence() -> void:
 	for placing_pid: int in [0, 1]:
 		_authority.begin_setup_placement(placing_pid)
 		_apply_perspective(placing_pid)
+		## Rebuild both hands so the placing player's cards are face-up and
+		## the waiting player's cards are face-down from this perspective.
+		_rebuild_hand_visual(0)
+		_rebuild_hand_visual(1)
 		_in_setup_phase = false   ## allow drag input during placement
 		await _show_placement_phase(placing_pid)
 		_in_setup_phase = true    ## block drag again between phases
@@ -462,38 +470,26 @@ func _has_active_pokemon(pid: int) -> bool:
 	return false
 
 
-## Placement phase for [placing_pid]: shows a "Ready" panel anchored to the
-## top of the screen, unblocks drag so the player can place Basics from their
-## hand, and enables Ready only once the active slot contains a Pokémon.
-## The opponent's hand is already shown face-down; perspective has been flipped
-## by the caller so the placing player is at the near side.
+## Placement phase for [placing_pid]: repurposes the End Turn button as
+## "Ready", enables it only once the active slot contains a Pokémon, and
+## awaits the press.  No popup — the phase label and button label carry all
+## the needed context.
 func _show_placement_phase(placing_pid: int) -> void:
-	var panel := _make_setup_panel()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	panel.position.y += 8
-	var vbox := panel.get_child(0) as VBoxContainer
+	_in_placement_phase      = true
+	end_turn_button.text     = "Ready"
+	end_turn_button.disabled = not _has_active_pokemon(placing_pid)
+	_update_phase_label()
 
-	var lbl := Label.new()
-	lbl.text = "Player %d: Place your starting Pokémon.\nActive slot required; bench is optional." \
-			% placing_pid
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(lbl)
-
-	var ready_btn := Button.new()
-	ready_btn.text    = "Ready"
-	ready_btn.disabled = true
-	vbox.add_child(ready_btn)
-
-	## Re-evaluate the Ready button whenever a board slot changes.
 	var refresh := func(_sid: String, _inst: PokemonInstance) -> void:
-		ready_btn.disabled = not _has_active_pokemon(placing_pid)
+		end_turn_button.disabled = not _has_active_pokemon(placing_pid)
 	_authority.board_slot_changed.connect(refresh)
 
-	$HUD.add_child(panel)
-	await ready_btn.pressed
+	await end_turn_button.pressed
 	_authority.board_slot_changed.disconnect(refresh)
-	panel.queue_free()
+
+	end_turn_button.text     = "End Turn"
+	end_turn_button.disabled = false
+	_in_placement_phase      = false
 
 
 ## Shows an informational panel with a "Continue" button and awaits it.
@@ -655,7 +651,7 @@ func _rebuild_hand_visual(player_id: int) -> void:
 			(card as Card).queue_free()
 	(_hand_cards[player_id] as Dictionary).clear()
 
-	var face_up: bool = is_developer_mode or (player_id == 0)
+	var face_up: bool = (player_id == _authority.current_player_id())
 	var hand: Array = manager.game_position.hands[player_id]
 	for data in hand:
 		var card_node := card_scene.instantiate() as Card
@@ -676,7 +672,7 @@ func _rebuild_hand_visual(player_id: int) -> void:
 func _sync_new_hand_cards(player_id: int) -> void:
 	if _hand_node(player_id) == null:
 		return
-	var face_up: bool = is_developer_mode or (player_id == 0)
+	var face_up: bool = (player_id == _authority.current_player_id())
 	var dict: Dictionary = _hand_cards[player_id]
 	for data: CardData in manager.game_position.hands[player_id]:
 		if not dict.has(data):
@@ -972,6 +968,8 @@ func _on_stadium_changed(stadium: TrainerCardData, owner_id: int) -> void:
 ## ---------------------------------------------------------------------------
 
 func _on_end_turn_pressed() -> void:
+	if _in_placement_phase:
+		return  ## Button is acting as "Ready" — handled by _show_placement_phase.
 	_authority.end_turn()
 
 

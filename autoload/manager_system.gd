@@ -143,10 +143,20 @@ func is_main_phase_for(pid: int) -> bool:
 ## the phase label (avoids cross-script enum lookups).
 func phase_name() -> String:
 	match current_phase:
-		Phase.SETUP: return "Setup"
+		Phase.SETUP:
+			if setup_placing_player >= 0:
+				return "Place Pokémon"
+			return "Setup"
 		Phase.MAIN:  return "Main"
 		Phase.ENDED: return "Cleanup"
 	return "?"
+
+
+## True if [pid] is on their very first turn of the game.
+## The first player's first turn is turn 1; the second player's is turn 2.
+func is_first_turn_for(pid: int) -> bool:
+	return (pid == first_player and turn_number == 1) \
+		or (pid != first_player and turn_number == 2)
 
 
 ## --- Public API: setup / turn flow ------------------------------------------

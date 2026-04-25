@@ -58,6 +58,9 @@ func validate(manager) -> ActionResult:
 	## (whether by play-from-hand or by a prior evolution this turn).
 	if (manager.pokemon_entered_play_this_turn[player_id] as Array).has(inst):
 		return ActionResult.fail("That Pokemon just came into play this turn.")
+	## Classic rule: cannot evolve on your first turn of the game.
+	if manager.is_first_turn_for(player_id):
+		return ActionResult.fail("You cannot evolve on your first turn.")
 	return ActionResult.success()
 
 
