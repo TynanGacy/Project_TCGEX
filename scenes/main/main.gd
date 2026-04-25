@@ -840,7 +840,7 @@ func _try_pick_setup_instance(card: Card) -> void:
 	if inst == null or inst.owner_id != manager.setup_placing_player:
 		return
 	## Locate the source slot.
-	var pid := manager.setup_placing_player
+	var pid: int = manager.setup_placing_player
 	for sid: String in BoardPosition.all_slot_ids(pid):
 		if manager.board_position.get_instance(sid) == inst:
 			_setup_dragged_from_slot = sid
@@ -869,7 +869,7 @@ func _try_drop_setup_drag() -> void:
 	var from_slot := _setup_dragged_from_slot
 	_setup_dragged_instance = null
 	_setup_dragged_from_slot = ""
-	var pid := manager.setup_placing_player
+	var pid: int = manager.setup_placing_player
 
 	var zone     := board.get_slot_zone_at(inst.global_position)
 	var to_slot  := board.slot_id_for_zone(zone) if zone != null else ""
