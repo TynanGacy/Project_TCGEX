@@ -93,7 +93,10 @@ func _layout_cards() -> void:
 		## Normalised position: -1 (left) to 1 (right)
 		var t := 0.0 if count == 1 else (float(i) / (count - 1)) * 2.0 - 1.0
 
-		var home := Vector3(start_x + i * spacing, absf(t) * CURVE_HEIGHT, 0.0)
+		## Dome curve: centre is highest, edges are at Y=0.  Maximises the Y gap
+		## between adjacent overlapping card meshes, preventing Z-fighting on
+		## small hand sizes where the V-curve (absf(t)) shrank the gap to ~1 mm.
+		var home := Vector3(start_x + i * spacing, CURVE_HEIGHT * (1.0 - t * t), 0.0)
 		## All cards share the same tilt: left side up, right side down.
 		## Where cards overlap, each card's left portion rises above its left
 		## neighbour's right portion — like a spread physical hand.

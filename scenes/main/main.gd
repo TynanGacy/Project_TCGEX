@@ -871,6 +871,8 @@ func _refresh_discard_visual(pid: int) -> void:
 		node = card_scene.instantiate() as Card
 		zone.add_child(node)
 		node.position = Vector3.ZERO
+		if pid == 1:
+			node.rotation.y = PI
 		_pile_nodes[zone_name] = node
 	node.face_down = false
 	node.set_data(discard.back() as CardData)
