@@ -78,6 +78,13 @@ var _opponent_deck_path: String = ""
 var _setup_dialog: Control = null
 var _setup_selected_mode: String = ""
 
+## True while the pre-game setup sequence (mulligans / coin flip) is running.
+## Blocks drag input so cards can't be moved before the game starts.
+var _in_setup_phase: bool = false
+
+## Used by choice dialogs during the setup sequence to relay a yes/no answer.
+signal _setup_choice_made(chose_yes: bool)
+
 
 ## Programmatically-added Reset button lives next to the End-Turn button
 ## in the TopBar.
@@ -318,9 +325,9 @@ func _on_setup_confirmed(
 ## ---------------------------------------------------------------------------
 
 func _start_game() -> void:
+	_in_setup_phase = true
 	board.configure_slots(_active_slots, _bench_slots, _prize_count)
 
-	## Create a second Hand for the opponent's face-down cards.
 	_opponent_hand = _HAND_SCENE.instantiate() as Hand
 	_opponent_hand.name = "OpponentHand"
 	board.add_child(_opponent_hand)
@@ -331,17 +338,183 @@ func _start_game() -> void:
 	_authority.load_deck(0, p0_deck)
 	_authority.load_deck(1, p1_deck)
 
+	## Both players draw 7 before the coin flip (RS-PK setup rule).
 	_authority.draw_starting_hand(0, 7)
 	_authority.draw_starting_hand(1, 7)
 
 	_authority.deal_prizes(0, _prize_count)
 	_authority.deal_prizes(1, _prize_count)
 
-	## Start turn 1.  _on_turn_started handles the hand rebuild and phase label.
-	_authority.begin_game(0)
+	## Run mulligan loop then coin flip; begin_game() is called at the end.
+	_run_setup_sequence()
+
+
+## ---------------------------------------------------------------------------
+## Setup sequence (mulligans + coin flip)
+## ---------------------------------------------------------------------------
+
+## Async coroutine that drives the full RS-PK pre-game setup:
+##   1. Mulligan loop until both players have at least one Basic in hand.
+##   2. Coin flip to decide who goes first (winner must go first).
+##   3. Call begin_game() with the starting player.
+func _run_setup_sequence() -> void:
+	var mulligan_counts: Array[int] = [0, 0]
+
+	while true:
+		var p0_ok := _authority.has_basic_in_hand(0)
+		var p1_ok := _authority.has_basic_in_hand(1)
+		if p0_ok and p1_ok:
+			break
+
+		## Both have no basics — both mulligan simultaneously, no bonus draws.
+		if not p0_ok and not p1_ok:
+			mulligan_counts[0] += 1
+			mulligan_counts[1] += 1
+			_log("[Setup] Both players have no Basic Pokémon — both take a mulligan.")
+			_authority.return_hand_to_deck(0)
+			_authority.return_hand_to_deck(1)
+			_authority.draw_starting_hand(0, 7)
+			_authority.draw_starting_hand(1, 7)
+			await _show_setup_info(
+				"Both players had no Basic Pokémon.\nBoth shuffled and drew 7 new cards."
+			)
+			continue
+
+		## Exactly one player has no basics — they mulligan; opponent may draw.
+		var mulligan_pid: int = 0 if not p0_ok else 1
+		var other_pid:    int = 1 - mulligan_pid
+		mulligan_counts[mulligan_pid] += 1
+		_log("[Setup] P%d has no Basic Pokémon — taking mulligan #%d." \
+				% [mulligan_pid, mulligan_counts[mulligan_pid]])
+		_authority.return_hand_to_deck(mulligan_pid)
+		_authority.draw_starting_hand(mulligan_pid, 7)
+
+		await _show_setup_info(
+			"Player %d had no Basic Pokémon\nand took mulligan #%d.\nThey shuffled and drew 7 new cards." \
+			% [mulligan_pid, mulligan_counts[mulligan_pid]]
+		)
+
+		## Opponent decides whether to draw a bonus card for this mulligan.
+		var wants_draw: bool = await _show_mulligan_card_offer(other_pid)
+		if wants_draw:
+			_authority.draw_one(other_pid)
+			_log("[Setup] P%d draws an extra card (mulligan bonus)." % other_pid)
+
+	## Both players have at least one Basic — flip to decide who goes first.
+	var flip_result:    int = randi() % 2  ## 0 = Heads → P0 first, 1 = Tails → P1 first
+	var starting_player: int = flip_result
+	_log("[Setup] Coin flip: %s — P%d goes first." \
+			% ["Heads" if flip_result == 0 else "Tails", starting_player])
+
+	await _show_coin_flip_result(starting_player, flip_result)
+
+	_in_setup_phase = false
+	## _on_turn_started handles the hand rebuild and phase label.
+	_authority.begin_game(starting_player)
+
+
+## ---------------------------------------------------------------------------
+## Setup-phase dialog helpers
+## ---------------------------------------------------------------------------
+
+## Builds a centred modal panel and returns it with an empty VBoxContainer
+## child ready for content.  Caller adds to $HUD.
+func _make_setup_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(380, 120)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.12, 0.18, 0.97)
+	style.corner_radius_top_left     = 8
+	style.corner_radius_top_right    = 8
+	style.corner_radius_bottom_left  = 8
+	style.corner_radius_bottom_right = 8
+	panel.add_theme_stylebox_override("panel", style)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+	return panel
+
+
+## Shows an informational panel with a "Continue" button and awaits it.
+func _show_setup_info(message: String) -> void:
+	var panel := _make_setup_panel()
+	var vbox := panel.get_child(0) as VBoxContainer
+	var lbl := Label.new()
+	lbl.text = message
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl)
+	var btn := Button.new()
+	btn.text = "Continue"
+	vbox.add_child(btn)
+	$HUD.add_child(panel)
+	await btn.pressed
+	panel.queue_free()
+
+
+## Asks [offer_pid] whether they want a bonus mulligan draw card.
+## Returns true if they click "Yes".
+func _show_mulligan_card_offer(offer_pid: int) -> bool:
+	var panel := _make_setup_panel()
+	var vbox := panel.get_child(0) as VBoxContainer
+	var lbl := Label.new()
+	lbl.text = "Player %d: Draw a bonus card\nfor your opponent's mulligan?" % offer_pid
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	vbox.add_child(row)
+	var yes_btn := Button.new()
+	yes_btn.text = "Yes"
+	var no_btn := Button.new()
+	no_btn.text  = "No"
+	row.add_child(yes_btn)
+	row.add_child(no_btn)
+	yes_btn.pressed.connect(func() -> void: _setup_choice_made.emit(true))
+	no_btn.pressed.connect(func() -> void:  _setup_choice_made.emit(false))
+	$HUD.add_child(panel)
+	var result: bool = await _setup_choice_made
+	panel.queue_free()
+	return result
+
+
+## Shows the coin-flip outcome and first-turn restriction note, then awaits
+## the "Begin Game" button.
+func _show_coin_flip_result(starting_player: int, flip_result: int) -> void:
+	var panel := _make_setup_panel()
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var flip_lbl := Label.new()
+	flip_lbl.text = "%s!" % ("Heads" if flip_result == 0 else "Tails")
+	flip_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	flip_lbl.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(flip_lbl)
+
+	var result_lbl := Label.new()
+	result_lbl.text = "Player %d goes first." % starting_player
+	result_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(result_lbl)
+
+	var note_lbl := Label.new()
+	note_lbl.text = "First-turn restrictions: no draw, no Supporters."
+	note_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note_lbl.add_theme_color_override("font_color", Color(0.65, 0.65, 0.5))
+	vbox.add_child(note_lbl)
+
+	var btn := Button.new()
+	btn.text = "Begin Game"
+	vbox.add_child(btn)
+	$HUD.add_child(panel)
+	await btn.pressed
+	panel.queue_free()
 
 
 func _reset_game() -> void:
+	_in_setup_phase = false
 	## Clear pile visuals.  Deck entries are Array[Card] (layered stack);
 	## discard / prize entries are single Card nodes.
 	for entry in _pile_nodes.values():
@@ -494,8 +667,8 @@ func _on_hand_changed(player_id: int) -> void:
 ## ---------------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
-	## Block game input while setup dialog is open.
-	if _setup_dialog != null:
+	## Block game input while setup dialog or setup sequence is active.
+	if _setup_dialog != null or _in_setup_phase:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton

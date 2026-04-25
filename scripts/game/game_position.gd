@@ -152,3 +152,28 @@ func discard_all(player_id: int, cards: Array[CardData]) -> void:
 		if c != null:
 			discard.append(c)
 	discard_changed.emit(player_id)
+
+
+## --- Setup helpers -----------------------------------------------------------
+
+## Returns true if [player_id]'s hand contains at least one Basic Pokémon.
+func has_basic_pokemon(player_id: int) -> bool:
+	for card in (hands[player_id] as Array):
+		if card is PokemonCardData and (card as PokemonCardData).stage == PokemonCardData.Stage.BASIC:
+			return true
+	return false
+
+
+## Returns every card in [player_id]'s hand to the deck, then shuffles.
+## Fires card_left_hand for each departing card so the scene layer can remove
+## individual card visuals, then fires hand_changed once to signal completion.
+func return_hand_to_deck(player_id: int) -> void:
+	var hand: Array = hands[player_id]
+	var deck: Array = decks[player_id]
+	var snapshot: Array = hand.duplicate()
+	for card in snapshot:
+		hand.erase(card)
+		card_left_hand.emit(player_id, card)
+		deck.append(card)
+	shuffle_deck(player_id)
+	hand_changed.emit(player_id)

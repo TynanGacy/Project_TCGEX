@@ -78,6 +78,18 @@ func deal_prizes(player_id: int, count: int = 6) -> void:
 	_manager.deal_prizes(player_id, count)
 
 
+func has_basic_in_hand(pid: int) -> bool:
+	return _manager.has_basic_in_hand(pid)
+
+
+func return_hand_to_deck(pid: int) -> void:
+	_manager.return_hand_to_deck(pid)
+
+
+func draw_one(pid: int) -> void:
+	_manager.draw_one(pid)
+
+
 func begin_game(starting_player: int = 0) -> void:
 	_manager.begin_game(starting_player)
 
