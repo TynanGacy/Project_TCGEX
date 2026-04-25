@@ -102,6 +102,11 @@ var _attack_dialog: Control = null
 ## selection and promotion both resolve so we don't end the turn too early.
 var _attack_end_turn_pending: bool = false
 
+## Setup-phase board drag.  During placement, Basic Pokémon can be dragged
+## between active, bench, and hand.  Only one instance is dragged at a time.
+var _setup_dragged_instance: PokemonInstance = null
+var _setup_dragged_from_slot: String = ""
+
 
 func _ready() -> void:
 	phase_label.text = ""
@@ -487,26 +492,43 @@ func _make_setup_panel() -> PanelContainer:
 	return panel
 
 
-## True if [pid] has at least one Pokémon in any of their active slots.
-func _has_active_pokemon(pid: int) -> bool:
+## True if [pid]'s board satisfies both Ready conditions:
+##   1. At least one active slot has a Pokémon.
+##   2. No empty active slot exists alongside any bench Pokémon
+##      (i.e. if the bench is occupied, all active slots must be filled).
+func _is_placement_ready(pid: int) -> bool:
+	var has_active := false
 	for i in range(1, _active_slots + 1):
 		if manager.board_position.get_instance("p%d_active%d" % [pid, i]) != null:
-			return true
-	return false
+			has_active = true
+			break
+	if not has_active:
+		return false
+	var has_bench := false
+	for i in range(1, _bench_slots + 1):
+		if manager.board_position.get_instance("p%d_bench%d" % [pid, i]) != null:
+			has_bench = true
+			break
+	if not has_bench:
+		return true  ## No bench Pokémon → condition 2 is trivially satisfied.
+	## Bench is occupied — every active slot must also be filled.
+	for i in range(1, _active_slots + 1):
+		if manager.board_position.get_instance("p%d_active%d" % [pid, i]) == null:
+			return false
+	return true
 
 
 ## Placement phase for [placing_pid]: repurposes the End Turn button as
-## "Ready", enables it only once the active slot contains a Pokémon, and
-## awaits the press.  No popup — the phase label and button label carry all
-## the needed context.
+## "Ready", enables it only once both placement conditions are met, and
+## awaits the press.
 func _show_placement_phase(placing_pid: int) -> void:
 	_in_placement_phase      = true
 	end_turn_button.text     = "Ready"
-	end_turn_button.disabled = not _has_active_pokemon(placing_pid)
+	end_turn_button.disabled = not _is_placement_ready(placing_pid)
 	_update_phase_label()
 
 	var refresh := func(_sid: String, _inst: PokemonInstance) -> void:
-		end_turn_button.disabled = not _has_active_pokemon(placing_pid)
+		end_turn_button.disabled = not _is_placement_ready(placing_pid)
 	_authority.board_slot_changed.connect(refresh)
 
 	await end_turn_button.pressed
@@ -597,6 +619,10 @@ func _show_coin_flip_result(starting_player: int, flip_result: int) -> void:
 func _reset_game() -> void:
 	_in_setup_phase = false
 	_attack_end_turn_pending = false
+	if _setup_dragged_instance != null:
+		_setup_dragged_instance.queue_free()
+		_setup_dragged_instance = null
+	_setup_dragged_from_slot = ""
 	if _attack_dialog != null:
 		_attack_dialog.queue_free()
 		_attack_dialog = null
@@ -753,7 +779,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			if mb.pressed:
 				_try_pick_card(mb.position)
 			else:
-				_try_drop_card()
+				if _setup_dragged_instance != null:
+					_try_drop_setup_drag()
+				else:
+					_try_drop_card()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			_handle_right_click(mb.position)
 	elif event is InputEventKey:
@@ -765,14 +794,23 @@ func _unhandled_input(event: InputEvent) -> void:
 		if dragged_card != null:
 			var world := _screen_to_table(mm.position)
 			dragged_card.move_to_drag_position(world)
+		elif _setup_dragged_instance != null:
+			var world := _screen_to_table(mm.position)
+			_setup_dragged_instance.global_position = Vector3(world.x, Card.HOVER_LIFT * 2.0, world.z)
 		else:
 			_update_hover(mm.position)
 
 
 func _try_pick_card(screen_pos: Vector2) -> void:
 	var card := _raycast_card(screen_pos)
-	if card == null or not card._is_in_hand:
-		return  ## Only hand cards are draggable; board/pile cards snap back automatically.
+	if card == null:
+		return
+	if not card._is_in_hand:
+		## During setup placement, Basic Pokémon already on the board can be
+		## freely repositioned — pick them up as a setup drag.
+		if manager.setup_placing_player >= 0:
+			_try_pick_setup_instance(card)
+		return  ## Otherwise board/pile cards are not draggable.
 	## Face-down cards belong to the opponent in player mode and are never
 	## directly interactive.  In developer mode all cards are face-up.
 	if card.face_down or card.data == null:
@@ -787,6 +825,79 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 		_hovered_node = null
 	dragged_card = card
 	card.start_drag()
+
+
+## During setup, lifts a board Pokémon so it can be repositioned or returned
+## to hand.  Only Basic Pokémon are movable (evolved Pokémon stay put).
+func _try_pick_setup_instance(card: Card) -> void:
+	if card.face_down or card.data == null:
+		return
+	## Only Basic Pokémon may be freely repositioned.
+	if not (card.data is PokemonCardData) \
+			or (card.data as PokemonCardData).stage != PokemonCardData.Stage.BASIC:
+		return
+	var inst := card.get_parent() as PokemonInstance
+	if inst == null or inst.owner_id != manager.setup_placing_player:
+		return
+	## Locate the source slot.
+	var pid := manager.setup_placing_player
+	for sid: String in BoardPosition.all_slot_ids(pid):
+		if manager.board_position.get_instance(sid) == inst:
+			_setup_dragged_from_slot = sid
+			break
+	if _setup_dragged_from_slot == "":
+		return
+	## Release any hover state, then reparent the instance to the board node
+	## so it can be moved freely in world space.
+	if _hovered_node == inst:
+		_release_hover()
+	var world_pos := inst.global_position
+	if inst.get_parent() != null:
+		inst.get_parent().remove_child(inst)
+	board.add_child(inst)
+	inst.global_position = Vector3(world_pos.x, Card.HOVER_LIFT * 2.0, world_pos.z)
+	_setup_dragged_instance = inst
+
+
+## Resolves a setup-phase board drag on mouse-up.
+## – Dropped on same slot or off-board but near original → snap back.
+## – Dropped off-board (no zone) → return Pokémon to hand.
+## – Dropped on another slot belonging to this player → move or swap.
+## – Dropped on opponent's slot or out-of-range → snap back.
+func _try_drop_setup_drag() -> void:
+	var inst      := _setup_dragged_instance
+	var from_slot := _setup_dragged_from_slot
+	_setup_dragged_instance = null
+	_setup_dragged_from_slot = ""
+	var pid := manager.setup_placing_player
+
+	var zone     := board.get_slot_zone_at(inst.global_position)
+	var to_slot  := board.slot_id_for_zone(zone) if zone != null else ""
+
+	if to_slot == from_slot:
+		## Dropped back on the origin → snap back.
+		manager.board_position.place(from_slot, inst)
+		return
+
+	if to_slot == "":
+		## Dropped off all zones → return to hand.
+		manager.board_position.clear(from_slot)
+		var released: Array[CardData] = inst.release_cards()
+		for c: CardData in released:
+			manager.game_position.put_in_hand(pid, c)
+		inst.queue_free()
+		return
+
+	if manager.board_position.player_of(to_slot) != pid:
+		## Opponent's slot → snap back.
+		manager.board_position.place(from_slot, inst)
+		return
+
+	## Same player's slot: move (if empty) or swap (if occupied).
+	if manager.board_position.get_instance(to_slot) == null:
+		manager.board_position.move(from_slot, to_slot)
+	else:
+		manager.board_position.swap(from_slot, to_slot)
 
 
 ## Returns the node that should lift when the cursor is over [card].
