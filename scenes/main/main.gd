@@ -1229,11 +1229,11 @@ func _show_attack_dialog() -> void:
 		if not can:
 			btn.modulate = Color(0.55, 0.55, 0.55)
 
-		btn.pressed.connect(func(s: String, i: int) -> void:
+		var fn: Callable = func(s: String, i: int) -> void:
 			panel.queue_free()
 			_attack_dialog = null
 			_pick_target_then_attack(pid, s, i, opp_actives)
-		.bind(slot, idx))
+		btn.pressed.connect(fn.bind(slot, idx))
 		vbox.add_child(btn)
 
 	var cancel := Button.new()
@@ -1271,11 +1271,11 @@ func _pick_target_then_attack(pid: int, atk_slot: String, atk_idx: int, opp_acti
 		var hp_str := " (%d/%d HP)" % [inst.current_hp, inst.max_hp] if inst != null else ""
 		var btn := Button.new()
 		btn.text = "%s%s" % [name, hp_str]
-		btn.pressed.connect(func(ts: String) -> void:
+		var fn: Callable = func(ts: String) -> void:
 			panel.queue_free()
 			_attack_dialog = null
 			_submit_attack(pid, atk_slot, atk_idx, ts)
-		.bind(tgt_slot))
+		btn.pressed.connect(fn.bind(tgt_slot))
 		vbox.add_child(btn)
 
 	var cancel := Button.new()
