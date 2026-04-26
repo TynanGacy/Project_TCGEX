@@ -63,6 +63,13 @@ signal phase_changed(phase: int)
 var board_position: BoardPosition = null
 var game_position:  GamePosition = null
 
+## --- Slot configuration ------------------------------------------------------
+## Set once per game via configure_slots() before begin_game().
+## active_slot_count never changes mid-game; bench_slot_count can change via
+## set_bench_count() and may return a list of Pokemon that need to be discarded.
+var active_slot_count: int = 1
+var bench_slot_count:  int = 5
+
 ## --- Board-state CSV logging -------------------------------------------------
 var _board_log_file: FileAccess = null
 
@@ -141,13 +148,62 @@ func _log_state(action_label: String) -> void:
 		return
 	var row: PackedStringArray = PackedStringArray([action_label])
 	for slot_id in _LOG_SLOTS:
+		if not is_valid_slot(slot_id):
+			row.append("[invalid]")
+			continue
 		var inst: PokemonInstance = board_position.get_instance(slot_id)
 		if inst == null:
-			row.append("n/a")
+			row.append("[empty]")
 		else:
 			var pname := inst.card.display_name if inst.card != null else "???"
 			row.append("%s (%d/%d)" % [pname, inst.current_hp, inst.max_hp])
 	_board_log_file.store_csv_line(row)
+
+
+func configure_slots(active: int, bench: int) -> void:
+	active_slot_count = clampi(active, 1, 2)
+	bench_slot_count  = clampi(bench,  3, 5)
+
+
+## True when slot_id is within the currently configured active/bench limits.
+## Overflow slots are always invalid; prize/deck/discard are always valid.
+func is_valid_slot(slot_id: String) -> bool:
+	if "overflow" in slot_id:
+		return false
+	if "active" in slot_id:
+		return int(slot_id.right(1)) <= active_slot_count
+	if "bench" in slot_id:
+		return int(slot_id.right(1)) <= bench_slot_count
+	return true
+
+
+## Lowers or raises the bench slot limit mid-game.
+## On decrease, auto-relocates Pokemon from now-invalid slots to the lowest
+## available valid bench slot.  Returns an Array of {pid, slot_id} Dictionaries
+## for any Pokemon that could not be relocated (caller must arrange discards).
+func set_bench_count(new_count: int) -> Array:
+	new_count = clampi(new_count, 3, 5)
+	if new_count == bench_slot_count:
+		return []
+	bench_slot_count = new_count
+	var overflow: Array = []
+	## Process highest ordinals first so relocations land in the lowest free slot.
+	for n in range(5, new_count, -1):
+		for pid in [0, 1]:
+			var invalid_slot := "p%d_bench%d" % [pid, n]
+			var inst: PokemonInstance = board_position.get_instance(invalid_slot)
+			if inst == null:
+				continue
+			var moved := false
+			for m in range(1, new_count + 1):
+				var target := "p%d_bench%d" % [pid, m]
+				if board_position.get_instance(target) == null:
+					board_position.move(invalid_slot, target)
+					moved = true
+					break
+			if not moved:
+				overflow.append({"pid": pid, "slot_id": invalid_slot})
+	return overflow
 
 
 func _ready() -> void:
@@ -457,7 +513,8 @@ func _check_promotion_needed(defender: int) -> void:
 	var empty_actives: Array[String] = []
 	for s: String in BoardPosition.ACTIVE_SLOTS:
 		var sid := "p%d_%s" % [defender, s]
-		if board_position.has_slot(sid) and board_position.get_instance(sid) == null:
+		if is_valid_slot(sid) and board_position.has_slot(sid) \
+				and board_position.get_instance(sid) == null:
 			empty_actives.append(sid)
 	if empty_actives.is_empty():
 		_log_state("[Promo Check P%d] active slots full — no promotion" % defender)

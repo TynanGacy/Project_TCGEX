@@ -94,6 +94,11 @@ signal _setup_choice_made(chose_yes: bool)
 var _reset_button:  Button = null
 var _attack_button: Button = null
 var _retreat_button: Button = null
+var _bench_button:  Button = null
+
+## Queue of {pid, slot_id} dicts for Pokemon that couldn't be auto-relocated
+## when the bench slot count was reduced.  Processed one at a time.
+var _bench_overflow_queue: Array = []
 
 ## Active attack/retreat/prize/promotion dialog (at most one open at a time).
 var _attack_dialog: Control = null
@@ -127,6 +132,11 @@ func _ready() -> void:
 	_retreat_button.text = "Retreat"
 	_retreat_button.pressed.connect(_on_retreat_pressed)
 	end_turn_button.get_parent().add_child(_retreat_button)
+
+	_bench_button = Button.new()
+	_bench_button.text = "Modify Bench"
+	_bench_button.pressed.connect(_on_modify_bench_pressed)
+	end_turn_button.get_parent().add_child(_bench_button)
 
 	_authority = LocalMatchAuthority.new(manager)
 	_authority.action_committed.connect(_on_action_committed)
@@ -359,6 +369,7 @@ func _on_setup_confirmed(
 
 func _start_game() -> void:
 	_in_setup_phase = true
+	manager.configure_slots(_active_slots, _bench_slots)
 	board.configure_slots(_active_slots, _bench_slots, _prize_count)
 
 	_opponent_hand = _HAND_SCENE.instantiate() as Hand
@@ -1595,6 +1606,110 @@ func _submit_retreat(pid: int, active_slot: String, bench_slot: String) -> void:
 
 
 ## ---------------------------------------------------------------------------
+## Modify Bench dialog
+## ---------------------------------------------------------------------------
+
+func _on_modify_bench_pressed() -> void:
+	if _setup_dialog != null or _in_setup_phase:
+		return
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+		return
+	_show_modify_bench_dialog()
+
+
+func _show_modify_bench_dialog() -> void:
+	var panel := _make_setup_panel()
+	panel.custom_minimum_size = Vector2(320, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var title := Label.new()
+	title.text = "Modify Bench Slots"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(title)
+
+	var row := HBoxContainer.new()
+	var lbl := Label.new()
+	lbl.text = "Bench Slots (3–5):"
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var spin := SpinBox.new()
+	spin.min_value = 3
+	spin.max_value = 5
+	spin.value     = manager.bench_slot_count
+	row.add_child(lbl)
+	row.add_child(spin)
+	vbox.add_child(row)
+
+	var apply_btn := Button.new()
+	apply_btn.text = "Apply"
+	apply_btn.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+		_apply_bench_count_change(int(spin.value))
+	)
+	vbox.add_child(apply_btn)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+	)
+	vbox.add_child(cancel)
+
+	$HUD.add_child(panel)
+	_attack_dialog = panel
+
+
+func _apply_bench_count_change(new_count: int) -> void:
+	_bench_slots = new_count
+	_bench_overflow_queue = manager.set_bench_count(new_count)
+	board.set_bench_count(new_count)
+	_process_bench_overflow()
+
+
+## Shows a discard-confirmation dialog for the first queued overflow Pokemon,
+## then recurses until the queue is empty.
+func _process_bench_overflow() -> void:
+	if _bench_overflow_queue.is_empty():
+		return
+	var entry: Dictionary = _bench_overflow_queue.pop_front()
+	var pid: int = entry["pid"]
+	var slot_id: String = entry["slot_id"]
+	var inst: PokemonInstance = manager.board_position.get_instance(slot_id)
+	if inst == null:
+		_process_bench_overflow()
+		return
+	var pname := inst.card.display_name if inst.card != null else "Pokémon"
+
+	var panel := _make_setup_panel()
+	panel.custom_minimum_size = Vector2(360, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var lbl := Label.new()
+	lbl.text = "P%d: %s has no valid bench slot\nand must be discarded." % [pid, pname]
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(lbl)
+
+	var btn := Button.new()
+	btn.text = "Discard %s" % pname
+	btn.pressed.connect(func() -> void:
+		panel.queue_free()
+		manager.board_position.clear(slot_id)
+		var released: Array[CardData] = inst.release_cards()
+		manager.game_position.discard_all(pid, released)
+		inst.queue_free()
+		_log("[Bench] P%d: %s discarded — bench reduced." % [pid, pname])
+		_process_bench_overflow()
+	)
+	vbox.add_child(btn)
+	$HUD.add_child(panel)
+
+
+## ---------------------------------------------------------------------------
 ## Prize selection dialog
 ## ---------------------------------------------------------------------------
 
@@ -1749,6 +1864,7 @@ func _on_game_won(player_id: int) -> void:
 	end_turn_button.disabled  = true
 	if _attack_button  != null: _attack_button.disabled  = true
 	if _retreat_button != null: _retreat_button.disabled = true
+	if _bench_button   != null: _bench_button.disabled   = true
 
 	var panel := _make_setup_panel()
 	var vbox := panel.get_child(0) as VBoxContainer
@@ -1764,6 +1880,7 @@ func _on_game_won(player_id: int) -> void:
 		end_turn_button.disabled  = false
 		if _attack_button  != null: _attack_button.disabled  = false
 		if _retreat_button != null: _retreat_button.disabled = false
+		if _bench_button   != null: _bench_button.disabled   = false
 		_reset_game()
 	)
 	vbox.add_child(btn)

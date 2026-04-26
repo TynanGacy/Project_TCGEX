@@ -99,6 +99,21 @@ const DISCARD_X:     Array[float] = [ 4.2, -4.2]
 const PRIZE_INNER_X: Array[float] = [-3.5,  3.5]
 const PRIZE_OUTER_X: Array[float] = [-4.2,  4.2]
 
+## Updates bench zone visibility and positions only.  Called mid-game when the
+## bench slot count changes (see manager.set_bench_count).
+func set_bench_count(bench_count: int) -> void:
+	bench_count = clampi(bench_count, 3, 5)
+	for pid in range(2):
+		for i in range(1, 6):
+			var zone := get_zone_for_slot("p%d_bench%d" % [pid, i])
+			if zone == null:
+				continue
+			zone.visible = (i <= bench_count)
+			if zone.visible:
+				var half := (bench_count - 1) / 2.0
+				zone.position = Vector3((i - 1 - half) * BENCH_SPACING, 0.0, BENCH_Z[pid])
+
+
 ## Hides excess zones, centres the visible ones around x = 0, and hides
 ## unused prize slots.  BoardPosition's logical slots are untouched.
 func configure_slots(active_count: int, bench_count: int, prize_count: int = 6) -> void:

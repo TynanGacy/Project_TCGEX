@@ -32,6 +32,8 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Target slot does not belong to you.")
 	if "active" not in to_slot:
 		return ActionResult.fail("Must promote to an active slot.")
+	if not manager.is_valid_slot(to_slot):
+		return ActionResult.fail("Active slot '%s' is not in use this game." % to_slot)
 	if manager.board_position.get_instance(to_slot) != null:
 		return ActionResult.fail("Target active slot is not empty.")
 	return ActionResult.success()
