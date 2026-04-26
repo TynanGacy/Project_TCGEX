@@ -202,7 +202,7 @@ func set_bench_count(new_count: int) -> Array:
 					moved = true
 					break
 			if not moved:
-				overflow.append({"pid": pid, "slot_id": invalid_slot})
+				overflow.append({"pid": pid, "displaced_slot": invalid_slot})
 	return overflow
 
 

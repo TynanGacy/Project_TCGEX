@@ -1670,42 +1670,79 @@ func _apply_bench_count_change(new_count: int) -> void:
 	_process_bench_overflow()
 
 
-## Shows a discard-confirmation dialog for the first queued overflow Pokemon,
-## then recurses until the queue is empty.
+## Processes the bench overflow queue one entry at a time.
+## Each entry is a Pokemon sitting in a now-invalid slot that couldn't be
+## auto-relocated.  On each call we first re-attempt the move (a previous
+## discard may have freed a slot), then if still stuck show a dialog listing
+## all occupied valid bench slots so the player can choose which to discard.
+## After any discard the entry is pushed back to the front and we recurse so
+## the move is retried before prompting again.
 func _process_bench_overflow() -> void:
 	if _bench_overflow_queue.is_empty():
 		return
 	var entry: Dictionary = _bench_overflow_queue.pop_front()
 	var pid: int = entry["pid"]
-	var slot_id: String = entry["slot_id"]
-	var inst: PokemonInstance = manager.board_position.get_instance(slot_id)
-	if inst == null:
+	var displaced_slot: String = entry["displaced_slot"]
+
+	## The displaced Pokemon may have been removed already (e.g. by a prior
+	## discard dialog that picked the displaced Pokemon itself — not possible
+	## here, but guard for safety).
+	var displaced_inst: PokemonInstance = manager.board_position.get_instance(displaced_slot)
+	if displaced_inst == null:
 		_process_bench_overflow()
 		return
-	var pname := inst.card.display_name if inst.card != null else "Pokémon"
+
+	## Retry auto-move — a previous discard may have freed a valid slot.
+	for m in range(1, _bench_slots + 1):
+		var target := "p%d_bench%d" % [pid, m]
+		if manager.board_position.get_instance(target) == null:
+			manager.board_position.move(displaced_slot, target)
+			_process_bench_overflow()
+			return
+
+	## Still no room.  Collect the occupied valid bench slots the player can
+	## choose to discard (bench 1..new_count only — invalid slots excluded).
+	var discard_options: Array[String] = []
+	for m in range(1, _bench_slots + 1):
+		var sid := "p%d_bench%d" % [pid, m]
+		if manager.board_position.get_instance(sid) != null:
+			discard_options.append(sid)
+
+	var dname := displaced_inst.card.display_name if displaced_inst.card != null else "Pokémon"
 
 	var panel := _make_setup_panel()
-	panel.custom_minimum_size = Vector2(360, 80)
+	panel.custom_minimum_size = Vector2(400, 80)
 	var vbox := panel.get_child(0) as VBoxContainer
 
-	var lbl := Label.new()
-	lbl.text = "P%d: %s has no valid bench slot\nand must be discarded." % [pid, pname]
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(lbl)
+	var title := Label.new()
+	title.text = "P%d: %s needs a bench spot.\nDiscard a Pokémon to make room:" % [pid, dname]
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(title)
 
-	var btn := Button.new()
-	btn.text = "Discard %s" % pname
-	btn.pressed.connect(func() -> void:
-		panel.queue_free()
-		manager.board_position.clear(slot_id)
-		var released: Array[CardData] = inst.release_cards()
-		manager.game_position.discard_all(pid, released)
-		inst.queue_free()
-		_log("[Bench] P%d: %s discarded — bench reduced." % [pid, pname])
-		_process_bench_overflow()
-	)
-	vbox.add_child(btn)
+	for discard_slot in discard_options:
+		var discard_inst: PokemonInstance = manager.board_position.get_instance(discard_slot)
+		var pname := discard_inst.card.display_name \
+				if discard_inst != null and discard_inst.card != null else discard_slot
+		var hp_str := " (%d/%d HP)" % [discard_inst.current_hp, discard_inst.max_hp] \
+				if discard_inst != null else ""
+		var btn := Button.new()
+		btn.text = "%s%s" % [pname, hp_str]
+		btn.pressed.connect(func(ds: String, dn: String) -> void:
+			panel.queue_free()
+			var chosen: PokemonInstance = manager.board_position.get_instance(ds)
+			if chosen != null:
+				manager.board_position.clear(ds)
+				var released := chosen.release_cards()
+				manager.game_position.discard_all(pid, released)
+				chosen.queue_free()
+				_log("[Bench] P%d: %s discarded — bench reduced." % [pid, dn])
+			## Push the entry back so we retry the move on the next call.
+			_bench_overflow_queue.push_front(entry)
+			_process_bench_overflow()
+		.bind(discard_slot, pname))
+		vbox.add_child(btn)
+
 	$HUD.add_child(panel)
 
 
