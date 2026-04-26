@@ -72,15 +72,13 @@ const MAX_VISIBLE_ENERGY := 5
 ## then add an entry to ENERGY_CARD_PROFILE keyed by card_id.
 
 const ENERGY_SPHERE_PROFILES: Dictionary = {
-	## Basic energies (RS set — Grass/Fire/Water/Lightning/Psychic/Fighting).
-	## Large sphere in the lower portion of the art, below the triangular glow.
-	## All six cards share the same template.
+	## Basic energies from RS.
 	"rs_basic": {
 		"center": Vector2(0.750, 0.450),
-		"radius": 0.500,
+		"radius": 0.490,
 	},
 	## Special energies based on RS Darkness/Metal Energy.
-	"rs_pseudo_special": {
+	"pseudo_special": {
 		"center": Vector2(0.700, 0.375),
 		"radius": 0.385,
 	},
@@ -104,8 +102,8 @@ const ENERGY_CARD_PROFILE: Dictionary = {
 	"RS_107_psychic_energy":   "rs_basic",
 	"RS_108_fire_energy":      "rs_basic",
 	"RS_109_lightning_energy": "rs_basic",
-	"RS_93_darkness_energy":   "rs_pseudo_special",
-	"RS_94_metal_energy":      "rs_pseudo_special",
+	"RS_93_darkness_energy":   "pseudo_special",
+	"RS_94_metal_energy":      "pseudo_special",
 	"RS_95_rainbow_energy":    "rainbow",
 	"SS_93_multi_energy":      "multi",
 }
