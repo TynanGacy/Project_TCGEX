@@ -56,6 +56,54 @@ const TOOL_NORM_START_Y := 0.216
 ## Maximum energy icons rendered individually; any excess collapses to a "+N" label.
 const MAX_VISIBLE_ENERGY := 5
 
+## ---------------------------------------------------------------------------
+## Energy sphere crop profiles
+## ---------------------------------------------------------------------------
+## Each profile defines where the energy sphere sits on the card art so the
+## attachment disc can be cropped and centred on it.
+##
+##   center : Vector2  Normalised UV position of the sphere centre on the card
+##                     image.  (0,0) = top-left, (1,1) = bottom-right.
+##   radius : float    Fraction of card width covered by the sphere's radius.
+##                     The rendered disc shows a square crop of side (2*radius)
+##                     centred on 'center', so smaller = more zoomed in.
+##
+## To add a new card: pick or create a profile that matches its art layout,
+## then add an entry to ENERGY_CARD_PROFILE keyed by card_id.
+
+const ENERGY_SPHERE_PROFILES: Dictionary = {
+	## Basic energies (RS set — Grass/Fire/Water/Lightning/Psychic/Fighting).
+	## Large sphere in the lower portion of the art, below the triangular glow.
+	## All six cards share the same template.
+	"basic": {
+		"center": Vector2(0.500, 0.640),
+		"radius": 0.250,
+	},
+	## Special energies with a rules-text box — darker sphere (Darkness/Metal).
+	"special_dark": {
+		"center": Vector2(0.500, 0.380),
+		"radius": 0.185,
+	},
+	## Special energies with a rules-text box — colourful sphere (Rainbow/Multi).
+	"special_colorful": {
+		"center": Vector2(0.500, 0.370),
+		"radius": 0.175,
+	},
+}
+
+const ENERGY_CARD_PROFILE: Dictionary = {
+	"RS_104_grass_energy":     "basic",
+	"RS_105_fighting_energy":  "basic",
+	"RS_106_water_energy":     "basic",
+	"RS_107_psychic_energy":   "basic",
+	"RS_108_fire_energy":      "basic",
+	"RS_109_lightning_energy": "basic",
+	"RS_93_darkness_energy":   "special_dark",
+	"RS_94_metal_energy":      "special_dark",
+	"RS_95_rainbow_energy":    "special_colorful",
+	"SS_93_multi_energy":      "special_colorful",
+}
+
 
 ## Returns the display colour for [card_data] if it is an EnergyCardData.
 static func energy_color(card_data: CardData) -> Color:
@@ -101,3 +149,11 @@ static func sort_energy(energy: Array[CardData]) -> Array[CardData]:
 		return energy_sort_key(a) < energy_sort_key(b)
 	)
 	return sorted
+
+
+## Returns the sphere-crop profile for [card_data] as a Dictionary with
+## keys "center" (Vector2) and "radius" (float).  Falls back to "basic" if
+## the card has no registered profile.
+static func sphere_crop(card_data: CardData) -> Dictionary:
+	var profile_name: String = ENERGY_CARD_PROFILE.get(card_data.card_id, "basic")
+	return ENERGY_SPHERE_PROFILES.get(profile_name, ENERGY_SPHERE_PROFILES["basic"])
