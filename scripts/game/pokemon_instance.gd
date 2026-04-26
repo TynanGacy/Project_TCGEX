@@ -325,16 +325,12 @@ func _refresh_attachments() -> void:
 
 	for i in range(AttachmentDisplay.MAX_VISIBLE_ENERGY):
 		var disc := _energy_icon_discs[i]
-		var lbl := _energy_icon_labels[i]
+		var lbl  := _energy_icon_labels[i]
 		if i < visible_count:
-			var color := AttachmentDisplay.energy_color(sorted[i])
-			(disc.get_surface_override_material(0) as StandardMaterial3D).albedo_color = color
-			lbl.text = AttachmentDisplay.energy_label(sorted[i])
-			disc.visible = true
-			lbl.visible = true
+			_apply_disc_to_energy(disc, lbl, sorted[i])
 		else:
 			disc.visible = false
-			lbl.visible = false
+			lbl.visible  = false
 
 	var show_overflow := overflow_count > 0
 	if _energy_overflow_disc != null:
@@ -347,6 +343,29 @@ func _refresh_attachments() -> void:
 	if _tool_icon_label != null:
 		_tool_icon_label.text = attached_tools[0].display_name.substr(0, 1) if has_tool else ""
 		_tool_icon_label.visible = has_tool
+
+
+## Applies either a cropped-art texture or the fallback solid-colour+letter
+## to one energy attachment disc.
+func _apply_disc_to_energy(disc: MeshInstance3D, lbl: Label3D, card_data: CardData) -> void:
+	var mat := disc.get_surface_override_material(0) as StandardMaterial3D
+	disc.visible = true
+	if card_data.art != null:
+		var crop: Dictionary = AttachmentDisplay.sphere_crop(card_data)
+		var center: Vector2 = crop["center"]
+		var r: float        = crop["radius"]
+		mat.albedo_texture = card_data.art
+		mat.albedo_color   = Color.WHITE
+		mat.uv1_scale      = Vector3(2.0 * r, 2.0 * r, 1.0)
+		mat.uv1_offset     = Vector3(center.x - r, center.y - r, 0.0)
+		lbl.visible = false
+	else:
+		mat.albedo_texture = null
+		mat.albedo_color   = AttachmentDisplay.energy_color(card_data)
+		mat.uv1_scale      = Vector3(1.0, 1.0, 1.0)
+		mat.uv1_offset     = Vector3.ZERO
+		lbl.text    = AttachmentDisplay.energy_label(card_data)
+		lbl.visible = true
 
 
 static func _make_disc_mesh(color: Color) -> MeshInstance3D:
