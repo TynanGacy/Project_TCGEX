@@ -834,7 +834,7 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 ## During prize selection, claims the prize card that was clicked on the board.
 ## Prize zone names are "Prize 1"–"Prize N" (player 0) or "Opp Prize 1"–"Opp Prize N" (player 1).
 func _try_pick_prize_card(card: Card) -> void:
-	var pid := manager.prize_selection_phase_for
+	var pid: int = manager.prize_selection_phase_for
 	var prefix := _zone_prefix(pid)
 	var parent := card.get_parent()
 	if not (parent is DropZone):
