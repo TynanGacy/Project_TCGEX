@@ -83,5 +83,3 @@ func _layout_cards() -> void:
 		move_child(card, i)
 		if not card.is_dragging:
 			card.return_to_home()
-
-
