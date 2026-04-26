@@ -2,8 +2,6 @@ class_name Hand
 extends Node3D
 ## Manages a fan of cards in 3D space.
 
-signal card_played(card: Card)
-
 const CARD_SPACING := 0.7
 const MAX_FAN_ANGLE := 5.0  ## Degrees of rotation at edges
 ## Must stay below CARD_SPACING * tan(HAND_TILT_DEG) ≈ 0.049 so the Y drop
@@ -25,32 +23,13 @@ func add_card(card: Card) -> void:
 	add_child(card)
 	card._is_in_hand = true
 	card.scale = Vector3.ONE * Card.HAND_BASE_SCALE
-	card.card_dropped.connect(_on_card_dropped)
 	_layout_cards()
-
-
-func add_card_animated(card: Card, from_global: Vector3) -> void:
-	cards.append(card)
-	add_child(card)
-	card._is_in_hand = true
-	card.scale = Vector3.ONE * Card.HAND_BASE_SCALE
-	card.card_dropped.connect(_on_card_dropped)
-	## Flag as dragging so _layout_cards sets home positions without
-	## immediately calling return_to_home on this card.
-	card.is_dragging = true
-	_layout_cards()
-	card.is_dragging = false
-	## Place at the deck start position (in Hand local space) then arc to home.
-	card.position = to_local(from_global)
-	card.animate_draw()
 
 
 func remove_card(card: Card) -> void:
 	cards.erase(card)
 	card._is_in_hand = false
 	card.scale = Vector3.ONE
-	if card.card_dropped.is_connected(_on_card_dropped):
-		card.card_dropped.disconnect(_on_card_dropped)
 	if card.get_parent() == self:
 		remove_child(card)
 	_layout_cards()
@@ -60,8 +39,6 @@ func clear_cards() -> void:
 	for card in cards:
 		card._is_in_hand = false
 		card.scale = Vector3.ONE
-		if card.card_dropped.is_connected(_on_card_dropped):
-			card.card_dropped.disconnect(_on_card_dropped)
 		if card.get_parent() == self:
 			remove_child(card)
 	cards.clear()
@@ -106,7 +83,3 @@ func _layout_cards() -> void:
 		move_child(card, i)
 		if not card.is_dragging:
 			card.return_to_home()
-
-
-func _on_card_dropped(card: Card) -> void:
-	card_played.emit(card)

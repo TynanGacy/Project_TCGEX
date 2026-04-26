@@ -8,7 +8,6 @@ extends Node3D
 ## its own visual including HP / conditions / attachments.
 
 signal drag_started(card: Card)
-signal drag_ended(card: Card)
 signal card_dropped(card: Card)
 
 @export var card_name: String = "Card"
@@ -230,7 +229,6 @@ func end_drag() -> void:
 		return
 	is_dragging = false
 	card_dropped.emit(self)
-	drag_ended.emit(self)
 
 
 func move_to_drag_position(world_pos: Vector3) -> void:

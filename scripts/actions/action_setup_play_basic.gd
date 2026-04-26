@@ -29,6 +29,8 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Card is not in your hand.")
 	if not manager.board_position.has_slot(target_slot):
 		return ActionResult.fail("Unknown slot '%s'." % target_slot)
+	if not manager.is_valid_slot(target_slot):
+		return ActionResult.fail("Slot '%s' is not in use this game." % target_slot)
 	if manager.board_position.player_of(target_slot) != player_id:
 		return ActionResult.fail("Slot does not belong to you.")
 	if not manager.board_position.is_empty(target_slot):

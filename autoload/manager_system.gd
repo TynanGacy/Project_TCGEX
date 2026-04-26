@@ -63,6 +63,26 @@ signal phase_changed(phase: int)
 var board_position: BoardPosition = null
 var game_position:  GamePosition = null
 
+## --- Slot configuration ------------------------------------------------------
+## Set once per game via configure_slots() before begin_game().
+## active_slot_count never changes mid-game; bench_slot_count can change via
+## set_bench_count() and may return a list of Pokemon that need to be discarded.
+var active_slot_count: int = 1
+var bench_slot_count:  int = 5
+
+## --- Board-state CSV logging -------------------------------------------------
+var _board_log_file: FileAccess = null
+
+## All slot ids in the order they appear as CSV columns.
+const _LOG_SLOTS: Array[String] = [
+	"p0_active1", "p0_active2",
+	"p0_bench1",  "p0_bench2",  "p0_bench3",  "p0_bench4",  "p0_bench5",
+	"p0_overflow1", "p0_overflow2",
+	"p1_active1", "p1_active2",
+	"p1_bench1",  "p1_bench2",  "p1_bench3",  "p1_bench4",  "p1_bench5",
+	"p1_overflow1", "p1_overflow2",
+]
+
 ## --- Global board state owned by the Manager --------------------------------
 ##
 ## These pieces of state are neither per-PokemonInstance nor per-hand/deck;
@@ -102,6 +122,88 @@ var _ko_defender: int = -1
 ## (via play-from-hand or evolution).  Prevents "evolve on the same turn you
 ## played this Pokemon" and "evolve twice on the same turn".
 var pokemon_entered_play_this_turn: Array = [[], []]
+
+
+func _open_board_log() -> void:
+	if _board_log_file != null:
+		_board_log_file.close()
+		_board_log_file = null
+	var dt := Time.get_datetime_dict_from_system()
+	var fname := "board_log_%04d%02d%02d_%02d%02d%02d.csv" % [
+		dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second,
+	]
+	_board_log_file = FileAccess.open("user://" + fname, FileAccess.WRITE)
+	if _board_log_file == null:
+		push_error("BoardLog: cannot open user://%s" % fname)
+		return
+	var header: PackedStringArray = PackedStringArray(["action"])
+	for s in _LOG_SLOTS:
+		header.append(s)
+	_board_log_file.store_csv_line(header)
+	print("BoardLog: logging to ", ProjectSettings.globalize_path("user://" + fname))
+
+
+func _log_state(action_label: String) -> void:
+	if _board_log_file == null or board_position == null:
+		return
+	var row: PackedStringArray = PackedStringArray([action_label])
+	for slot_id in _LOG_SLOTS:
+		if not is_valid_slot(slot_id):
+			row.append("[invalid]")
+			continue
+		var inst: PokemonInstance = board_position.get_instance(slot_id)
+		if inst == null:
+			row.append("[empty]")
+		else:
+			var pname := inst.card.display_name if inst.card != null else "???"
+			row.append("%s (%d/%d)" % [pname, inst.current_hp, inst.max_hp])
+	_board_log_file.store_csv_line(row)
+
+
+func configure_slots(active: int, bench: int) -> void:
+	active_slot_count = clampi(active, 1, 2)
+	bench_slot_count  = clampi(bench,  3, 5)
+
+
+## True when slot_id is within the currently configured active/bench limits.
+## Overflow slots are always invalid; prize/deck/discard are always valid.
+func is_valid_slot(slot_id: String) -> bool:
+	if "overflow" in slot_id:
+		return false
+	if "active" in slot_id:
+		return int(slot_id.right(1)) <= active_slot_count
+	if "bench" in slot_id:
+		return int(slot_id.right(1)) <= bench_slot_count
+	return true
+
+
+## Lowers or raises the bench slot limit mid-game.
+## On decrease, auto-relocates Pokemon from now-invalid slots to the lowest
+## available valid bench slot.  Returns an Array of {pid, slot_id} Dictionaries
+## for any Pokemon that could not be relocated (caller must arrange discards).
+func set_bench_count(new_count: int) -> Array:
+	new_count = clampi(new_count, 3, 5)
+	if new_count == bench_slot_count:
+		return []
+	bench_slot_count = new_count
+	var overflow: Array = []
+	## Process highest ordinals first so relocations land in the lowest free slot.
+	for n in range(5, new_count, -1):
+		for pid in [0, 1]:
+			var invalid_slot := "p%d_bench%d" % [pid, n]
+			var inst: PokemonInstance = board_position.get_instance(invalid_slot)
+			if inst == null:
+				continue
+			var moved := false
+			for m in range(1, new_count + 1):
+				var target := "p%d_bench%d" % [pid, m]
+				if board_position.get_instance(target) == null:
+					board_position.move(invalid_slot, target)
+					moved = true
+					break
+			if not moved:
+				overflow.append({"pid": pid, "displaced_slot": invalid_slot})
+	return overflow
 
 
 func _ready() -> void:
@@ -156,6 +258,7 @@ func request_action(action: GameAction) -> ActionResult:
 		if inst != null:
 			pokemon_state_changed.emit(slot_id, inst)
 	_check_all_promotions_needed()
+	_log_state("[Action] " + action.description())
 	return ActionResult.success()
 
 
@@ -214,6 +317,7 @@ func begin_game(starting_player: int = 0) -> void:
 	current_phase  = Phase.SETUP
 	for pid in range(2):
 		_reset_turn_flags(pid)
+	_open_board_log()
 	_begin_turn(starting_player)
 
 
@@ -269,6 +373,7 @@ func end_turn() -> void:
 		return  ## already between turns / not yet started
 	var finishing_player := current_player
 	_run_cleanup(finishing_player)
+	_log_state("[Cleanup] P%d end of turn %d" % [finishing_player, turn_number])
 	log_message.emit("[End Turn] P%d ends turn %d." % [finishing_player, turn_number])
 	turn_ended.emit(finishing_player)
 	_begin_turn(1 - finishing_player)
@@ -309,6 +414,7 @@ func _begin_turn(pid: int) -> void:
 	else:
 		log_message.emit("[Turn %d] P%d begins." % [turn_number, pid])
 	turn_started.emit(pid, turn_number)
+	_log_state("[Turn Start] P%d turn %d%s" % [pid, turn_number, " (no draw)" if skip_draw else ""])
 
 
 func _reset_turn_flags(pid: int) -> void:
@@ -385,6 +491,7 @@ func resolve_knockout(defending_slot: String, attacking_player: int) -> void:
 		current_phase = Phase.ENDED
 		phase_changed.emit(current_phase)
 		game_won.emit(attacking_player)
+		_log_state("[KO] %s KO'd — P%d wins" % [ko_name, attacking_player])
 		return
 
 	## Begin prize selection for the attacking player.
@@ -393,7 +500,9 @@ func resolve_knockout(defending_slot: String, attacking_player: int) -> void:
 		prize_selection_phase_for = attacking_player
 		phase_changed.emit(current_phase)
 		prize_selection_required.emit(attacking_player)
+		_log_state("[KO] %s KO'd — prize selection for P%d" % [ko_name, attacking_player])
 	else:
+		_log_state("[KO] %s KO'd — no prizes left, checking promotion" % ko_name)
 		_check_promotion_needed(defender_player)
 
 
@@ -404,9 +513,11 @@ func _check_promotion_needed(defender: int) -> void:
 	var empty_actives: Array[String] = []
 	for s: String in BoardPosition.ACTIVE_SLOTS:
 		var sid := "p%d_%s" % [defender, s]
-		if board_position.has_slot(sid) and board_position.get_instance(sid) == null:
+		if is_valid_slot(sid) and board_position.has_slot(sid) \
+				and board_position.get_instance(sid) == null:
 			empty_actives.append(sid)
 	if empty_actives.is_empty():
+		_log_state("[Promo Check P%d] active slots full — no promotion" % defender)
 		return
 
 	var bench_occupied: Array[String] = []
@@ -415,19 +526,23 @@ func _check_promotion_needed(defender: int) -> void:
 		if board_position.has_slot(sid) and board_position.get_instance(sid) != null:
 			bench_occupied.append(sid)
 	if bench_occupied.is_empty():
+		_log_state("[Promo Check P%d] bench empty — no promotion" % defender)
 		return
 
 	## Exactly one bench Pokémon — auto-promote to the first empty active slot.
 	if bench_occupied.size() == 1:
 		var from_slot := bench_occupied[0]
 		var to_slot   := empty_actives[0]
+		_log_state("[Promo Check P%d] auto-promoting %s → %s" % [defender, from_slot, to_slot])
 		board_position.move(from_slot, to_slot)
 		var promoted: PokemonInstance = board_position.get_instance(to_slot)
 		var pname := promoted.card.display_name if promoted != null and promoted.card != null else "Pokémon"
 		log_message.emit("[Promote] %s auto-promoted to active." % pname)
 		promotion_done.emit(defender, to_slot)
+		_log_state("[Auto-Promote P%d] %s now in %s" % [defender, pname, to_slot])
 		return
 
+	_log_state("[Promo Check P%d] multiple bench options — player must choose" % defender)
 	promotion_phase_for = defender
 	phase_changed.emit(current_phase)
 	promotion_required.emit(defender)
