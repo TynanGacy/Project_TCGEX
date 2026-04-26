@@ -1700,10 +1700,10 @@ func _process_bench_overflow() -> void:
 			_process_bench_overflow()
 			return
 
-	## Still no room.  Collect the occupied valid bench slots the player can
-	## choose to discard (bench 1..new_count only — invalid slots excluded).
+	## Still no room.  Any benched Pokemon (bench1–5) may be discarded,
+	## including those in now-invalid slots.
 	var discard_options: Array[String] = []
-	for m in range(1, _bench_slots + 1):
+	for m in range(1, 6):
 		var sid := "p%d_bench%d" % [pid, m]
 		if manager.board_position.get_instance(sid) != null:
 			discard_options.append(sid)
