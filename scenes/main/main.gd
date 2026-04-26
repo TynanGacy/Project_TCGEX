@@ -810,6 +810,10 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 		## freely repositioned — pick them up as a setup drag.
 		if manager.setup_placing_player >= 0:
 			_try_pick_setup_instance(card)
+			return
+		## During prize selection the player clicks a prize card on the board.
+		if manager.prize_selection_phase_for >= 0:
+			_try_pick_prize_card(card)
 		return  ## Otherwise board/pile cards are not draggable.
 	## Face-down cards belong to the opponent in player mode and are never
 	## directly interactive.  In developer mode all cards are face-up.
@@ -825,6 +829,22 @@ func _try_pick_card(screen_pos: Vector2) -> void:
 		_hovered_node = null
 	dragged_card = card
 	card.start_drag()
+
+
+## During prize selection, claims the prize card that was clicked on the board.
+## Prize zone names are "Prize 1"–"Prize N" (player 0) or "Opp Prize 1"–"Opp Prize N" (player 1).
+func _try_pick_prize_card(card: Card) -> void:
+	var pid: int = manager.prize_selection_phase_for
+	var prefix := _zone_prefix(pid)
+	var parent := card.get_parent()
+	if not (parent is DropZone):
+		return
+	var zone := parent as DropZone
+	for i in range(1, _prize_count + 1):
+		if zone.zone_name == "%sPrize %d" % [prefix, i]:
+			var action := ActionTakePrize.new(pid, i - 1)
+			_authority.request_action(action)
+			return
 
 
 ## During setup, lifts a board Pokémon so it can be repositioned or returned
@@ -1589,33 +1609,27 @@ func _show_prize_selection_dialog(player_id: int) -> void:
 		_attack_dialog = null
 
 	var panel := _make_setup_panel()
-	panel.custom_minimum_size = Vector2(380, 80)
+	panel.custom_minimum_size = Vector2(320, 50)
 	var vbox := panel.get_child(0) as VBoxContainer
 
 	var title := Label.new()
-	title.text = "P%d: Take a Prize Card" % player_id
+	title.text = "P%d: Choose a prize card from the board" % player_id
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 16)
 	vbox.add_child(title)
 
-	var prizes: Array = manager.game_position.prizes[player_id]
-	for i in range(prizes.size()):
-		if prizes[i] == null:
-			continue
-		var card := prizes[i] as CardData
-		var card_name := card.display_name if card != null else "Card"
-		var btn := Button.new()
-		btn.text = "Prize %d — %s" % [i + 1, card_name]
-		var fn: Callable = func(idx: int) -> void:
-			panel.queue_free()
-			_attack_dialog = null
-			var action := ActionTakePrize.new(player_id, idx)
-			_authority.request_action(action)
-		btn.pressed.connect(fn.bind(i))
-		vbox.add_child(btn)
-
 	$HUD.add_child(panel)
 	_attack_dialog = panel
+
+	_highlight_prize_zones(player_id, true)
+
+
+func _highlight_prize_zones(player_id: int, on: bool) -> void:
+	var prefix := _zone_prefix(player_id)
+	for i in range(1, _prize_count + 1):
+		var zone: DropZone = board.get_named_zone("%sPrize %d" % [prefix, i])
+		if zone != null:
+			zone.set_highlighted(on)
 
 
 ## ---------------------------------------------------------------------------
@@ -1709,7 +1723,11 @@ func _on_pokemon_knocked_out(_slot_id: String) -> void:
 	_update_phase_label()
 
 
-func _on_prize_taken(_player_id: int) -> void:
+func _on_prize_taken(player_id: int) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	_highlight_prize_zones(player_id, false)
 	_update_phase_label()
 	## If no promotion is pending after this prize, the attacking turn can end.
 	_try_end_turn_after_attack()
@@ -1725,6 +1743,8 @@ func _on_game_won(player_id: int) -> void:
 	if _attack_dialog != null:
 		_attack_dialog.queue_free()
 		_attack_dialog = null
+	_highlight_prize_zones(0, false)
+	_highlight_prize_zones(1, false)
 	_log("[GAME OVER] Player %d wins!" % player_id)
 	end_turn_button.disabled  = true
 	if _attack_button  != null: _attack_button.disabled  = true

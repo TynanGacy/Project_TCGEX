@@ -155,6 +155,7 @@ func request_action(action: GameAction) -> ActionResult:
 		var inst: PokemonInstance = board_position.get_instance(slot_id)
 		if inst != null:
 			pokemon_state_changed.emit(slot_id, inst)
+	_check_all_promotions_needed()
 	return ActionResult.success()
 
 
@@ -397,7 +398,8 @@ func resolve_knockout(defending_slot: String, attacking_player: int) -> void:
 
 
 ## Checks whether [defender] has an empty active slot that needs filling and
-## either fills it automatically (one choice) or emits promotion_required.
+## either fills it automatically (exactly one bench option) or emits
+## promotion_required (two or more bench options).
 func _check_promotion_needed(defender: int) -> void:
 	var empty_actives: Array[String] = []
 	for s: String in BoardPosition.ACTIVE_SLOTS:
@@ -415,7 +417,8 @@ func _check_promotion_needed(defender: int) -> void:
 	if bench_occupied.is_empty():
 		return
 
-	if empty_actives.size() == 1 and bench_occupied.size() == 1:
+	## Exactly one bench Pokémon — auto-promote to the first empty active slot.
+	if bench_occupied.size() == 1:
 		var from_slot := bench_occupied[0]
 		var to_slot   := empty_actives[0]
 		board_position.move(from_slot, to_slot)
@@ -428,6 +431,20 @@ func _check_promotion_needed(defender: int) -> void:
 	promotion_phase_for = defender
 	phase_changed.emit(current_phase)
 	promotion_required.emit(defender)
+
+
+## Enforces the invariant that no empty active slot exists while a bench
+## Pokémon is available to fill it.  Called after every successful action
+## during the MAIN phase so the check covers play-to-bench as well as KOs.
+func _check_all_promotions_needed() -> void:
+	if current_phase != Phase.MAIN:
+		return
+	if promotion_phase_for >= 0 or prize_selection_phase_for >= 0:
+		return
+	for pid: int in [0, 1]:
+		if promotion_phase_for >= 0:
+			return  ## One pending promotion at a time.
+		_check_promotion_needed(pid)
 
 
 ## --- Internal: dispatch -----------------------------------------------------
