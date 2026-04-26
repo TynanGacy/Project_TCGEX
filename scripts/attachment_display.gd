@@ -76,8 +76,8 @@ const ENERGY_SPHERE_PROFILES: Dictionary = {
 	## Large sphere in the lower portion of the art, below the triangular glow.
 	## All six cards share the same template.
 	"basic": {
-		"center": Vector2(0.500, 0.640),
-		"radius": 0.250,
+		"center": Vector2(0.650, 0.400),
+		"radius": 0.450,
 	},
 	## Special energies with a rules-text box — darker sphere (Darkness/Metal).
 	"special_dark": {
