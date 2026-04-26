@@ -75,33 +75,39 @@ const ENERGY_SPHERE_PROFILES: Dictionary = {
 	## Basic energies (RS set — Grass/Fire/Water/Lightning/Psychic/Fighting).
 	## Large sphere in the lower portion of the art, below the triangular glow.
 	## All six cards share the same template.
-	"basic": {
-		"center": Vector2(0.650, 0.400),
-		"radius": 0.450,
+	"rs_basic": {
+		"center": Vector2(0.750, 0.450),
+		"radius": 0.500,
 	},
-	## Special energies with a rules-text box — darker sphere (Darkness/Metal).
-	"special_dark": {
-		"center": Vector2(0.500, 0.380),
-		"radius": 0.185,
+	## Special energies based on RS Darkness/Metal Energy.
+	"rs_pseudo_special": {
+		"center": Vector2(0.700, 0.375),
+		"radius": 0.385,
 	},
-	## Special energies with a rules-text box — colourful sphere (Rainbow/Multi).
-	"special_colorful": {
-		"center": Vector2(0.500, 0.370),
-		"radius": 0.175,
+	## Special energies based on Rainbow Energy.
+	"rainbow": {
+		"center": Vector2(0.605, 0.320),
+		"radius": 0.210,
 	},
+	## Special energies based on Multi Energy.
+	"multi": {
+		"center": Vector2(0.750, 0.288),
+		"radius": 0.500,
+	},
+
 }
 
 const ENERGY_CARD_PROFILE: Dictionary = {
-	"RS_104_grass_energy":     "basic",
-	"RS_105_fighting_energy":  "basic",
-	"RS_106_water_energy":     "basic",
-	"RS_107_psychic_energy":   "basic",
-	"RS_108_fire_energy":      "basic",
-	"RS_109_lightning_energy": "basic",
-	"RS_93_darkness_energy":   "special_dark",
-	"RS_94_metal_energy":      "special_dark",
-	"RS_95_rainbow_energy":    "special_colorful",
-	"SS_93_multi_energy":      "special_colorful",
+	"RS_104_grass_energy":     "rs_basic",
+	"RS_105_fighting_energy":  "rs_basic",
+	"RS_106_water_energy":     "rs_basic",
+	"RS_107_psychic_energy":   "rs_basic",
+	"RS_108_fire_energy":      "rs_basic",
+	"RS_109_lightning_energy": "rs_basic",
+	"RS_93_darkness_energy":   "rs_pseudo_special",
+	"RS_94_metal_energy":      "rs_pseudo_special",
+	"RS_95_rainbow_energy":    "rainbow",
+	"SS_93_multi_energy":      "multi",
 }
 
 
@@ -155,5 +161,5 @@ static func sort_energy(energy: Array[CardData]) -> Array[CardData]:
 ## keys "center" (Vector2) and "radius" (float).  Falls back to "basic" if
 ## the card has no registered profile.
 static func sphere_crop(card_data: CardData) -> Dictionary:
-	var profile_name: String = ENERGY_CARD_PROFILE.get(card_data.card_id, "basic")
-	return ENERGY_SPHERE_PROFILES.get(profile_name, ENERGY_SPHERE_PROFILES["basic"])
+	var profile_name: String = ENERGY_CARD_PROFILE.get(card_data.card_id, "rs_basic")
+	return ENERGY_SPHERE_PROFILES.get(profile_name, ENERGY_SPHERE_PROFILES["rs_basic"])
