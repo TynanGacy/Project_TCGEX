@@ -129,7 +129,7 @@ func _open_board_log() -> void:
 	if _board_log_file == null:
 		push_error("BoardLog: cannot open user://%s" % fname)
 		return
-	var header: PackedStringArray = PackedStringArray(["turn", "player", "phase", "action"])
+	var header: PackedStringArray = PackedStringArray(["action"])
 	for s in _LOG_SLOTS:
 		header.append(s)
 	_board_log_file.store_csv_line(header)
@@ -139,16 +139,11 @@ func _open_board_log() -> void:
 func _log_state(action_label: String) -> void:
 	if _board_log_file == null or board_position == null:
 		return
-	var row: PackedStringArray = PackedStringArray([
-		str(turn_number),
-		str(current_player),
-		phase_name(),
-		action_label,
-	])
+	var row: PackedStringArray = PackedStringArray([action_label])
 	for slot_id in _LOG_SLOTS:
 		var inst: PokemonInstance = board_position.get_instance(slot_id)
 		if inst == null:
-			row.append("")
+			row.append("n/a")
 		else:
 			var pname := inst.card.display_name if inst.card != null else "???"
 			row.append("%s (%d/%d)" % [pname, inst.current_hp, inst.max_hp])
