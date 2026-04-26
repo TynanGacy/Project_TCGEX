@@ -1728,19 +1728,21 @@ func _process_bench_overflow() -> void:
 				if discard_inst != null else ""
 		var btn := Button.new()
 		btn.text = "%s%s" % [pname, hp_str]
-		btn.pressed.connect(func(ds: String, dn: String) -> void:
+		var _ds := discard_slot
+		var _dn := pname
+		btn.pressed.connect(func() -> void:
 			panel.queue_free()
-			var chosen: PokemonInstance = manager.board_position.get_instance(ds)
+			var chosen: PokemonInstance = manager.board_position.get_instance(_ds)
 			if chosen != null:
-				manager.board_position.clear(ds)
+				manager.board_position.clear(_ds)
 				var released := chosen.release_cards()
 				manager.game_position.discard_all(pid, released)
 				chosen.queue_free()
-				_log("[Bench] P%d: %s discarded — bench reduced." % [pid, dn])
+				_log("[Bench] P%d: %s discarded — bench reduced." % [pid, _dn])
 			## Push the entry back so we retry the move on the next call.
 			_bench_overflow_queue.push_front(entry)
 			_process_bench_overflow()
-		.bind(discard_slot, pname))
+		)
 		vbox.add_child(btn)
 
 	$HUD.add_child(panel)
