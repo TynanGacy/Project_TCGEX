@@ -354,10 +354,15 @@ func _apply_disc_to_energy(disc: MeshInstance3D, lbl: Label3D, card_data: CardDa
 		var crop: Dictionary = AttachmentDisplay.sphere_crop(card_data)
 		var center: Vector2 = crop["center"]
 		var r: float        = crop["radius"]
+		## r is defined as a fraction of card WIDTH.  The y UV axis spans the
+		## full card height, so we scale it down by the aspect ratio to keep
+		## the crop square in pixel space (and the sphere circular on the disc).
+		var aspect: float = (card_data.art.get_width() as float) \
+				/ (card_data.art.get_height() as float)
 		mat.albedo_texture = card_data.art
 		mat.albedo_color   = Color.WHITE
-		mat.uv1_scale      = Vector3(2.0 * r, 2.0 * r, 1.0)
-		mat.uv1_offset     = Vector3(center.x - r, center.y - r, 0.0)
+		mat.uv1_scale      = Vector3(2.0 * r, 2.0 * r * aspect, 1.0)
+		mat.uv1_offset     = Vector3(center.x - r, center.y - r * aspect, 0.0)
 		lbl.visible = false
 	else:
 		mat.albedo_texture = null
