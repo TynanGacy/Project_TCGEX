@@ -319,7 +319,8 @@ func _layout_attachments() -> void:
 func _refresh_attachments() -> void:
 	if _attachment_node == null:
 		return
-	var sorted: Array[CardData] = AttachmentDisplay.sort_energy(attached_energy)
+	var pokemon_type := card.pokemon_type if card != null else PokemonCardData.EnergyType.NONE
+	var sorted: Array[CardData] = AttachmentDisplay.sort_energy(attached_energy, pokemon_type)
 	var visible_count: int = mini(sorted.size(), AttachmentDisplay.MAX_VISIBLE_ENERGY)
 	var overflow_count: int = sorted.size() - visible_count
 
