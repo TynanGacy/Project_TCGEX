@@ -67,14 +67,34 @@ func apply(manager) -> void:
 	var target: PokemonInstance   = manager.board_position.get_instance(target_slot)
 	var attack: AttackData        = attacker.card.attacks[attack_index]
 
-	var damage := _compute_damage(attack.base_damage, attacker, target)
-	if damage > 0:
-		target.apply_damage(damage)
+	## Build the context that effect handlers operate on.
+	var ctx := AttackContext.new()
+	ctx.manager       = manager
+	ctx.attacker      = attacker
+	ctx.target        = target
+	ctx.attack        = attack
+	ctx.player_id     = player_id
+	ctx.attacker_slot = attacker_slot
+	ctx.target_slot   = target_slot
+	ctx.base_damage   = attack.base_damage
+	ctx.bonus_damage  = 0
+
+	## Pre-damage dispatch: handlers may set ctx.bonus_damage (which will be
+	## included in the W/R calculation) and/or queue post-actions.
+	EffectRegistry.dispatch(attack.effect_key, ctx)
+
+	## Apply weakness and resistance to (base + bonus), then deal damage.
+	ctx.final_damage = _compute_damage(ctx.base_damage + ctx.bonus_damage, attacker, target)
+	if ctx.final_damage > 0:
+		target.apply_damage(ctx.final_damage)
 
 	manager.attack_used_this_turn[player_id] = true
 
 	if target.is_knocked_out():
 		manager.resolve_knockout(target_slot, player_id)
+
+	## Post-damage dispatch: status conditions, bench damage, self-heal, etc.
+	ctx.run_post_actions()
 
 
 func description() -> String:
