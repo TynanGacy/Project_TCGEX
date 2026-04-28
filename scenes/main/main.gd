@@ -91,10 +91,12 @@ signal _setup_choice_made(chose_yes: bool)
 
 ## Programmatically-added Reset button lives next to the End-Turn button
 ## in the TopBar.
-var _reset_button:  Button = null
-var _attack_button: Button = null
-var _retreat_button: Button = null
-var _bench_button:  Button = null
+var _reset_button:      Button = null
+var _attack_button:     Button = null
+var _retreat_button:    Button = null
+var _bench_button:      Button = null
+var _save_state_button: Button = null
+var _load_state_button: Button = null
 
 ## Queue of {pid, slot_id} dicts for Pokemon that couldn't be auto-relocated
 ## when the bench slot count was reduced.  Processed one at a time.
@@ -137,6 +139,16 @@ func _ready() -> void:
 	_bench_button.text = "Modify Bench"
 	_bench_button.pressed.connect(_on_modify_bench_pressed)
 	end_turn_button.get_parent().add_child(_bench_button)
+
+	_save_state_button = Button.new()
+	_save_state_button.text = "Save State"
+	_save_state_button.pressed.connect(_on_save_state_pressed)
+	end_turn_button.get_parent().add_child(_save_state_button)
+
+	_load_state_button = Button.new()
+	_load_state_button.text = "Load State"
+	_load_state_button.pressed.connect(_on_load_state_pressed)
+	end_turn_button.get_parent().add_child(_load_state_button)
 
 	_authority = LocalMatchAuthority.new(manager)
 	_authority.action_committed.connect(_on_action_committed)
@@ -1928,3 +1940,235 @@ func _on_game_won(player_id: int) -> void:
 
 func _log(text: String) -> void:
 	game_log.append_text(text + "\n")
+
+
+## ---------------------------------------------------------------------------
+## Save / Load state
+## ---------------------------------------------------------------------------
+
+func _on_save_state_pressed() -> void:
+	## Show a name-entry dialog pre-filled with a timestamp.
+	var default_name := Time.get_datetime_string_from_system(false, true).replace(":", "-")
+	var panel := _make_setup_panel()
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var title := Label.new()
+	title.text = "Save Game State"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	vbox.add_child(title)
+
+	var name_lbl := Label.new()
+	name_lbl.text = "Save Name:"
+	vbox.add_child(name_lbl)
+
+	var name_edit := LineEdit.new()
+	name_edit.text = default_name
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(name_edit)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	vbox.add_child(row)
+
+	var cancel_btn := Button.new()
+	cancel_btn.text = "Cancel"
+	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(cancel_btn)
+
+	var save_btn := Button.new()
+	save_btn.text = "Save"
+	save_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(save_btn)
+
+	$HUD.add_child(panel)
+	name_edit.grab_focus()
+	name_edit.select_all()
+
+	cancel_btn.pressed.connect(func() -> void: panel.queue_free())
+	save_btn.pressed.connect(func() -> void:
+		var save_name: String = name_edit.text.strip_edges()
+		panel.queue_free()
+		var state := GameStateSerializer.serialize(
+			manager,
+			is_developer_mode,
+			_prize_count,
+			_active_slots,
+			_bench_slots,
+			_controlling_player
+		)
+		state["name"] = save_name
+		var path := GameStateSerializer.save_to_file(state, save_name)
+		if path != "":
+			_log("[Save] State saved: %s" % save_name)
+		else:
+			_log("[Save] ERROR: could not write save file.")
+	)
+
+
+func _on_load_state_pressed() -> void:
+	var saves := GameStateSerializer.list_saves()
+
+	var panel := _make_setup_panel()
+	panel.custom_minimum_size = Vector2(480, 380)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var title := Label.new()
+	title.text = "Load Game State"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	vbox.add_child(title)
+
+	if saves.is_empty():
+		var empty_lbl := Label.new()
+		empty_lbl.text = "No saved states found."
+		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(empty_lbl)
+	else:
+		var scroll := ScrollContainer.new()
+		scroll.custom_minimum_size = Vector2(0, 220)
+		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		vbox.add_child(scroll)
+
+		var list := VBoxContainer.new()
+		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(list)
+
+		for entry: Dictionary in saves:
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 6)
+			list.add_child(row)
+
+			var lbl := Label.new()
+			var disp_name: String = entry.get("name", "") as String
+			var disp_time: String = entry.get("saved_at", "") as String
+			lbl.text = "%s  [%s]" % [disp_name, disp_time]
+			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(lbl)
+
+			var load_btn := Button.new()
+			load_btn.text = "Load"
+			var captured_path: String = entry.get("path", "") as String
+			load_btn.pressed.connect(func() -> void:
+				panel.queue_free()
+				_load_game_state(captured_path)
+			)
+			row.add_child(load_btn)
+
+	vbox.add_child(HSeparator.new())
+
+	var cancel_btn := Button.new()
+	cancel_btn.text = "Cancel"
+	cancel_btn.pressed.connect(func() -> void: panel.queue_free())
+	vbox.add_child(cancel_btn)
+
+	$HUD.add_child(panel)
+
+
+func _load_game_state(path: String) -> void:
+	var state := GameStateSerializer.load_from_file(path)
+	if state.is_empty():
+		_log("[Load] ERROR: could not read save file.")
+		return
+
+	## Restore setup params from the save so the board rebuilds correctly.
+	is_developer_mode = (state.get("mode", "developer") as String) == "developer"
+	_prize_count       = int(state.get("prize_count",        6))
+	_active_slots      = int(state.get("active_slots",       1))
+	_bench_slots       = int(state.get("bench_slots",        5))
+	_controlling_player = int(state.get("controlling_player", 0))
+
+	## Tear down everything, then rebuild board geometry with the saved params.
+	_in_setup_phase = false
+	_attack_end_turn_pending = false
+	if _setup_dragged_instance != null:
+		_setup_dragged_instance.queue_free()
+		_setup_dragged_instance = null
+	_setup_dragged_from_slot = ""
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	if _setup_dialog != null:
+		_setup_dialog.queue_free()
+		_setup_dialog = null
+
+	## Clear pile visuals.
+	for entry in _pile_nodes.values():
+		if entry is Array:
+			for layer in entry:
+				if is_instance_valid(layer):
+					(layer as Node).queue_free()
+		elif is_instance_valid(entry):
+			(entry as Node).queue_free()
+	_pile_nodes.clear()
+
+	## Clear hand visuals.
+	player_hand.clear_cards()
+	for pid in range(2):
+		for card in (_hand_cards[pid] as Dictionary).values():
+			if is_instance_valid(card):
+				(card as Card).queue_free()
+	_hand_cards = [{}, {}]
+
+	if _opponent_hand != null:
+		_opponent_hand.queue_free()
+		_opponent_hand = null
+
+	## Clear board instances.
+	for sid in BoardPosition.all_slot_ids():
+		var inst: PokemonInstance = manager.board_position.clear(sid)
+		if inst != null:
+			inst.queue_free()
+
+	## Rebuild manager subsystems.
+	manager.game_position  = GamePosition.new()
+	manager.board_position.queue_free()
+	manager.board_position = BoardPosition.new()
+	manager.add_child(manager.board_position)
+	manager.board_position.slot_changed.connect(manager._on_slot_changed)
+	manager.board_position.overflow_escalation.connect(manager._on_overflow_escalation)
+	manager.game_position.deck_changed.connect(func(pid): manager.deck_changed.emit(pid))
+	manager.game_position.hand_changed.connect(func(pid): manager.hand_changed.emit(pid))
+	manager.game_position.card_left_hand.connect(func(pid, card): manager.card_left_hand.emit(pid, card))
+	manager.game_position.discard_changed.connect(func(pid): manager.discard_changed.emit(pid))
+	manager.game_position.prizes_changed.connect(func(pid): manager.prizes_changed.emit(pid))
+
+	## Reconfigure board geometry for the saved slot counts.
+	manager.configure_slots(_active_slots, _bench_slots)
+	board.configure_slots(_active_slots, _bench_slots, _prize_count)
+
+	_opponent_hand = _HAND_SCENE.instantiate() as Hand
+	_opponent_hand.name = "OpponentHand"
+	board.add_child(_opponent_hand)
+	_opponent_hand.transform = _p1_hand_transform
+
+	manager.attach_board_anchors(board.collect_slot_anchors())
+	manager.reset_game_state()
+
+	## Restore game data using art-loaded card pool.
+	var pool_by_id := TestDeckFactory._build_card_pool_by_id()
+	GameStateSerializer.restore_turn_state(state, manager)
+	GameStateSerializer.restore_positions(state, manager, pool_by_id)
+	GameStateSerializer.restore_board(state, manager, pool_by_id)
+
+	## Restore camera perspective.
+	if _controlling_player == 1:
+		camera.transform = _p1_cam_transform
+		player_hand.transform = _p1_hand_transform
+	else:
+		camera.transform = _p0_cam_transform
+		player_hand.transform = _p0_hand_transform
+
+	## Trigger visual refreshes.
+	for pid in range(2):
+		manager.game_position.deck_changed.emit(pid)
+		manager.game_position.hand_changed.emit(pid)
+		manager.game_position.discard_changed.emit(pid)
+		manager.game_position.prizes_changed.emit(pid)
+
+	## Rebuild hand visuals.
+	_rebuild_hand_visual(0)
+	_rebuild_hand_visual(1)
+
+	_update_phase_label()
+	_log("[Load] State '%s' loaded." % state.get("name", path))
