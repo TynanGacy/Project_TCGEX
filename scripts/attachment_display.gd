@@ -127,30 +127,40 @@ static func energy_label(card_data: CardData) -> String:
 	return "?"
 
 
-## Returns a lexicographically-sortable key for canonical energy ordering:
-##   "0_N" — basic energy (N = index in BASIC_ENERGY_NAMES, Grass…Fighting)
-##   "1_"  — Darkness special energy
-##   "2_"  — Metal special energy
-##   "3_X" — all other special energy, alphabetical by display_name
-static func energy_sort_key(card_data: CardData) -> String:
+## Returns a lexicographically-sortable key for canonical energy ordering.
+## When match_type is provided, energy whose type matches is prefixed with "0_"
+## so it sorts before all canonical tiers (tier "1_" onward).
+##   "0_<tier>" — energy matching the Pokemon's own type (shown first)
+##   "1_N"      — basic energy (N = index in BASIC_ENERGY_NAMES, Grass…Fighting)
+##   "2_"       — Darkness special energy
+##   "3_"       — Metal special energy
+##   "4_X"      — all other special energy, alphabetical by display_name
+static func energy_sort_key(card_data: CardData, match_type: PokemonCardData.EnergyType = PokemonCardData.EnergyType.NONE) -> String:
 	if not (card_data is EnergyCardData):
 		return "9_"
 	var n := card_data.display_name
 	var basic_idx := BASIC_ENERGY_NAMES.find(n)
+	var tier: String
 	if basic_idx >= 0:
-		return "0_%d" % basic_idx
-	if "Darkness" in n:
-		return "1_"
-	if "Metal" in n:
-		return "2_"
-	return "3_" + n
+		tier = "1_%d" % basic_idx
+	elif "Darkness" in n:
+		tier = "2_"
+	elif "Metal" in n:
+		tier = "3_"
+	else:
+		tier = "4_" + n
+	var energy_type := (card_data as EnergyCardData).energy_type
+	if match_type != PokemonCardData.EnergyType.NONE and energy_type == match_type:
+		return "0_" + tier
+	return tier
 
 
 ## Returns a new Array[CardData] sorted in canonical energy order.
-static func sort_energy(energy: Array[CardData]) -> Array[CardData]:
+## Energy matching pokemon_type is displayed first within that ordering.
+static func sort_energy(energy: Array[CardData], pokemon_type: PokemonCardData.EnergyType = PokemonCardData.EnergyType.NONE) -> Array[CardData]:
 	var sorted: Array[CardData] = energy.duplicate()
 	sorted.sort_custom(func(a: CardData, b: CardData) -> bool:
-		return energy_sort_key(a) < energy_sort_key(b)
+		return energy_sort_key(a, pokemon_type) < energy_sort_key(b, pokemon_type)
 	)
 	return sorted
 

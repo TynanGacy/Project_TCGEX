@@ -19,6 +19,8 @@ config/icon="res://icon.svg"
 
 ManagerSystemSingleton="*res://autoload/manager_system.gd"
 SleevesManager="*res://autoload/sleeves_manager.gd"
+_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
+MCPInputServer="*res://autoload/mcp_input_server.gd"
 
 [display]
 
@@ -33,7 +35,7 @@ version_control/autoload_on_startup=true
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg", "res://addons/gut/plugin.cfg")
 
 [rendering]
 

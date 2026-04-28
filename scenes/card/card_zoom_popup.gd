@@ -91,7 +91,8 @@ func _refresh_attachments(instance: PokemonInstance) -> void:
 		_attachment_section.visible = false
 		return
 
-	var sorted: Array[CardData] = AttachmentDisplay.sort_energy(instance.attached_energy)
+	var pokemon_type := instance.card.pokemon_type if instance.card != null else PokemonCardData.EnergyType.NONE
+	var sorted: Array[CardData] = AttachmentDisplay.sort_energy(instance.attached_energy, pokemon_type)
 
 	if not sorted.is_empty():
 		var i := 0
