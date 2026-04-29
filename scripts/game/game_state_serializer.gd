@@ -203,16 +203,20 @@ static func restore_turn_state(state: Dictionary, manager) -> void:
 	manager.first_player    = int(t.get("first_player",   0))
 
 	var sup: Array = t.get("supporter_played", [false, false]) as Array
-	manager.supporter_played_this_turn = [bool(sup[0]), bool(sup[1])]
+	manager.supporter_played_this_turn[0] = bool(sup[0])
+	manager.supporter_played_this_turn[1] = bool(sup[1])
 
 	var en: Array = t.get("energy_attached", [false, false]) as Array
-	manager.energy_attached_this_turn = [bool(en[0]), bool(en[1])]
+	manager.energy_attached_this_turn[0] = bool(en[0])
+	manager.energy_attached_this_turn[1] = bool(en[1])
 
 	var ret: Array = t.get("retreat_used", [false, false]) as Array
-	manager.retreat_used_this_turn = [bool(ret[0]), bool(ret[1])]
+	manager.retreat_used_this_turn[0] = bool(ret[0])
+	manager.retreat_used_this_turn[1] = bool(ret[1])
 
 	var atk: Array = t.get("attack_used", [false, false]) as Array
-	manager.attack_used_this_turn = [bool(atk[0]), bool(atk[1])]
+	manager.attack_used_this_turn[0] = bool(atk[0])
+	manager.attack_used_this_turn[1] = bool(atk[1])
 
 	manager.active_stadium         = null
 	manager.active_stadium_owner   = int(t.get("active_stadium_owner", -1))
