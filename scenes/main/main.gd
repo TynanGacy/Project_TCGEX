@@ -2080,7 +2080,10 @@ func _load_game_state(path: String) -> void:
 
 	## Tear down everything, then rebuild board geometry with the saved params.
 	_in_setup_phase = false
+	_in_placement_phase = false
 	_attack_end_turn_pending = false
+	end_turn_button.text = "End Turn"
+	end_turn_button.disabled = false
 	if _setup_dragged_instance != null:
 		_setup_dragged_instance.queue_free()
 		_setup_dragged_instance = null
@@ -2152,12 +2155,11 @@ func _load_game_state(path: String) -> void:
 	GameStateSerializer.restore_board(state, manager, pool_by_id)
 
 	## Restore camera perspective.
-	if _controlling_player == 1:
-		camera.transform = _p1_cam_transform
-		player_hand.transform = _p1_hand_transform
-	else:
-		camera.transform = _p0_cam_transform
-		player_hand.transform = _p0_hand_transform
+	## Hand nodes are fixed in world space at their respective sides;
+	## only the camera moves (matching _apply_perspective behaviour).
+	## Always reset player_hand to P0's side in case a prior load moved it.
+	player_hand.transform = _p0_hand_transform
+	camera.transform = _p1_cam_transform if _controlling_player == 1 else _p0_cam_transform
 
 	## Trigger visual refreshes.
 	for pid in range(2):
