@@ -5,3 +5,4 @@
 # Claude Code working files
 .claude/worktrees/
 .claude/settings.local.json
+.mcp.json
