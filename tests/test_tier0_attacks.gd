@@ -20,7 +20,7 @@ func before_all() -> void:
 ## Returns a fresh manager + builder pair for one test case.
 ## Each call creates an independent ManagerSystem so tests cannot bleed state.
 func _make_builder() -> TestBoardBuilder:
-	var mgr = load("res://autoload/manager_system.gd").new()
+	var mgr: ManagerSystem = load("res://autoload/manager_system.gd").new()
 	add_child_autoqfree(mgr)
 	return TestBoardBuilder.new(mgr, _lib)
 
@@ -112,7 +112,7 @@ func test_weakness_doubles_damage() -> void:
 	## Pikachu (LIGHTNING) Pika Bolt: base_damage=40, vs Lotad (W=LIGHTNING).
 	## 40 × 2 = 80.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	## Pika Bolt costs 1 Lightning + 2 Colorless
 	b.set_turn(0)
 	b.place_active(0, "SS_72_pikachu", {
@@ -137,7 +137,7 @@ func test_weakness_applies_to_matching_type() -> void:
 	## Attacker type matches the defender's weakness → damage × 2.
 	## Lunge Out base=20, so expected = 40.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "RS_56_makuhita", {
 		"energy": ["RS_104_grass_energy", "RS_104_grass_energy"]
@@ -164,7 +164,7 @@ func test_resistance_reduces_damage_by_30() -> void:
 	## Attacker needs to be METAL type. Lairon (METAL) Ram=20 vs Electrike (R=METAL).
 	## 20 - 30 = -10 → clamped to 0.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	## Ram costs 2 Colorless
 	b.place_active(0, "RS_36_lairon", {
@@ -188,7 +188,7 @@ func test_resistance_does_not_apply_to_wrong_type() -> void:
 	## Grovyle (GRASS) Slash vs Swellow (R=FIGHTING).
 	## GRASS ≠ FIGHTING → resistance does not apply, full 20 damage lands.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "RS_32_grovyle", {
 		"energy": ["RS_104_grass_energy", "RS_104_grass_energy"]
@@ -211,7 +211,7 @@ func test_both_weakness_and_resistance_can_combine() -> void:
 	## GRASS ≠ FIRE so weakness does not apply.
 	## GRASS = GRASS so resistance -30 applies → max(0, 20-30) = 0.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "RS_32_grovyle", {
 		"energy": ["RS_104_grass_energy", "RS_104_grass_energy"]
@@ -235,7 +235,7 @@ func test_ko_clears_defending_slot() -> void:
 	## Armaldo Blade Arms (60dmg) vs Trapinch at exactly 60 HP → KO.
 	## Opponent has Poochyena on bench to avoid game-over signal.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "SS_1_armaldo", {
 		"energy": ["RS_105_fighting_energy", "RS_105_fighting_energy", "RS_104_grass_energy"]
@@ -254,7 +254,7 @@ func test_ko_clears_defending_slot() -> void:
 
 func test_ko_removes_one_prize() -> void:
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "SS_1_armaldo", {
 		"energy": ["RS_105_fighting_energy", "RS_105_fighting_energy", "RS_104_grass_energy"]
@@ -273,7 +273,7 @@ func test_ko_removes_one_prize() -> void:
 func test_partial_damage_does_not_ko() -> void:
 	## Electrike Headbutt (10dmg) vs Poochyena at 40 HP → survives with 30 HP.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	TestFixtures.basic_combat(b)
 
 	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
@@ -290,7 +290,7 @@ func test_partial_damage_does_not_ko() -> void:
 
 func test_attack_rejected_with_no_energy() -> void:
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "RS_52_electrike")   ## no energy
 	b.place_active(1, "RS_63_poochyena")
@@ -305,7 +305,7 @@ func test_attack_rejected_with_wrong_typed_energy() -> void:
 	## Crawdaunt Guillotine needs 1 Water + 2 Colorless.
 	## Attacker has 3 Grass energy — colorless cost met, but Water cost is not.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "DR_3_crawdaunt", {
 		"energy": ["RS_104_grass_energy", "RS_104_grass_energy", "RS_104_grass_energy"]
@@ -323,7 +323,7 @@ func test_attack_rejected_with_wrong_typed_energy() -> void:
 func test_attack_rejected_with_insufficient_colorless() -> void:
 	## Shelgon Rollout needs 2 Colorless; attacker only has 1 energy.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "DR_41_shelgon", {"energy": ["RS_104_grass_energy"]})
 	b.place_active(1, "SS_66_lotad", {"hp": 200})
@@ -338,7 +338,7 @@ func test_attack_accepted_with_exact_typed_plus_colorless() -> void:
 	## Lairon Metal Claw needs 1 Metal + 2 Colorless.
 	## Giving exactly 1 Metal + 2 Grass should succeed.
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	TestFixtures.typed_plus_colorless_cost(b)
 
 	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
@@ -354,7 +354,7 @@ func test_attack_accepted_with_exact_typed_plus_colorless() -> void:
 
 func test_paralyzed_attacker_cannot_attack() -> void:
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	TestFixtures.paralyzed_cannot_attack(b)
 
 	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
@@ -364,7 +364,7 @@ func test_paralyzed_attacker_cannot_attack() -> void:
 
 func test_asleep_attacker_cannot_attack() -> void:
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	TestFixtures.asleep_cannot_attack(b)
 
 	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
@@ -376,7 +376,7 @@ func test_asleep_attacker_cannot_attack() -> void:
 
 func test_cannot_attack_twice_in_one_turn() -> void:
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	TestFixtures.basic_combat(b)
 
 	var first  := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
@@ -388,7 +388,7 @@ func test_cannot_attack_twice_in_one_turn() -> void:
 
 func test_cannot_attack_during_opponents_turn() -> void:
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	TestFixtures.basic_combat(b)
 	## Turn is set to P0; P1 tries to attack from their own slot → wrong player.
 	var result := mgr.request_action(ActionAttack.new(1, "p1_active1", 0, "p0_active1"))
@@ -397,7 +397,7 @@ func test_cannot_attack_during_opponents_turn() -> void:
 
 func test_cannot_attack_from_bench() -> void:
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "RS_52_electrike", {"energy": ["RS_109_lightning_energy"]})
 	b.place_bench(0,  "RS_63_poochyena", {"energy": ["RS_104_grass_energy"]})
@@ -419,7 +419,7 @@ func test_tier0_attack_dispatches_no_effect_key() -> void:
 	EffectRegistry.register("", func(_ctx): called = true)
 
 	var b   := _make_builder()
-	var mgr = b._manager
+	var mgr: ManagerSystem = b._manager
 	TestFixtures.basic_combat(b)
 	mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 

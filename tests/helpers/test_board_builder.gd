@@ -11,11 +11,11 @@ class_name TestBoardBuilder
 ## Phase constants (ManagerSystem.Phase enum values):
 ##   SETUP = 0  |  MAIN = 1  |  ENDED = 2
 
-var _manager   ## ManagerSystem node
+var _manager: ManagerSystem
 var _lib: CardLibrary
 
 
-func _init(manager, lib: CardLibrary) -> void:
+func _init(manager: ManagerSystem, lib: CardLibrary) -> void:
 	_manager = manager
 	_lib     = lib
 

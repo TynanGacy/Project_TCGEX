@@ -1,4 +1,5 @@
 extends Node
+class_name ManagerSystem
 ## Central Manager.  Mediates every Game_Action that mutates the game state
 ## and owns the turn / phase flow.
 ##
