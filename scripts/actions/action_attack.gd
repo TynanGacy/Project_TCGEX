@@ -83,15 +83,31 @@ func apply(manager) -> void:
 	## included in the W/R calculation) and/or queue post-actions.
 	EffectRegistry.dispatch(attack.effect_key, ctx)
 
-	## Apply weakness and resistance to (base + bonus), then deal damage.
-	ctx.final_damage = _compute_damage(ctx.base_damage + ctx.bonus_damage, attacker, target)
-	if ctx.final_damage > 0:
-		target.apply_damage(ctx.final_damage)
-
 	manager.attack_used_this_turn[player_id] = true
 
-	if target.is_knocked_out():
-		manager.resolve_knockout(target_slot, player_id)
+	## Collect the slots to damage: single target normally, all opponent actives
+	## when the attack flag is set (e.g. "does 20 damage to each Defending Pokémon").
+	var opp_id := 1 - player_id
+	var hit_slots: Array[String] = []
+	if attack.hits_each_defending:
+		for s in BoardPosition.ACTIVE_SLOTS:
+			var sid := "p%d_%s" % [opp_id, s]
+			if not manager.board_position.is_empty(sid):
+				hit_slots.append(sid)
+	else:
+		hit_slots.append(target_slot)
+
+	for sid in hit_slots:
+		var hit_target: PokemonInstance = manager.board_position.get_instance(sid)
+		if hit_target == null:
+			continue
+		var dmg := _compute_damage(ctx.base_damage + ctx.bonus_damage, attacker, hit_target)
+		if sid == target_slot:
+			ctx.final_damage = dmg
+		if dmg > 0:
+			hit_target.apply_damage(dmg)
+		if hit_target.is_knocked_out():
+			manager.resolve_knockout(sid, player_id)
 
 	## Post-damage dispatch: status conditions, bench damage, self-heal, etc.
 	ctx.run_post_actions()

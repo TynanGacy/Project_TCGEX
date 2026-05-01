@@ -60,6 +60,13 @@ signal turn_started(player_id: int, turn_number: int)
 signal turn_ended(player_id: int)
 signal phase_changed(phase: int)
 
+## Coin flip signal — emitted for every coin flip in the game.
+## [result] is true for heads; [label] names the context (attack name, wake-up check, etc.).
+signal coin_flipped(result: bool, label: String)
+## Emitted when an attack effect requires the player to choose which energy
+## card(s) to discard and the attacker has non-identical energy attached.
+signal energy_discard_choice_required(player_id: int, eligible: Array[CardData], count: int, attacker_slot: String)
+
 var board_position: BoardPosition = null
 var game_position:  GamePosition = null
 
@@ -100,6 +107,14 @@ var turn_number:    int = 0
 
 ## The player who won the opening coin flip and goes first.  Set by begin_game().
 var first_player: int = 0
+
+## --- Energy discard choice state --------------------------------------------
+## Set by an effect handler when the attacker has mixed energy and the player
+## must choose which card(s) to discard.  Cleared by resolve_energy_discard_choice().
+var energy_discard_pending: bool = false
+var energy_discard_player:  int  = -1
+var energy_discard_count:   int  = 0
+var energy_discard_slot:    String = ""
 
 ## The player currently in the pre-game placement phase (-1 = not placing).
 ## Set by begin_setup_placement(); cleared by end_setup_placement().
@@ -308,6 +323,46 @@ func deal_prizes(player_id: int, count: int = 6) -> void:
 	game_position.deal_prizes(player_id, count)
 
 
+## Flips a coin, emits coin_flipped, and returns true for heads.
+## All coin flips in the game must route through this method so the visual fires.
+func flip_coin(label: String) -> bool:
+	var heads: bool = (randi() % 2) == 0
+	coin_flipped.emit(heads, label)
+	return heads
+
+
+## Called by the UI after the player selects which energy card(s) to discard
+## when energy_discard_choice_required was emitted.
+## [indices] are indices into the attacker's attached_energy array.
+func resolve_energy_discard_choice(indices: Array[int]) -> void:
+	if not energy_discard_pending:
+		return
+	var attacker: PokemonInstance = board_position.get_instance(energy_discard_slot)
+	if attacker == null:
+		_clear_energy_discard_state()
+		return
+	var to_remove: Array[CardData] = []
+	var sorted_idx: Array[int] = indices.duplicate()
+	sorted_idx.sort()
+	sorted_idx.reverse()
+	for idx in sorted_idx:
+		if idx >= 0 and idx < attacker.attached_energy.size():
+			to_remove.append(attacker.attached_energy[idx])
+			attacker.attached_energy.remove_at(idx)
+	if not to_remove.is_empty():
+		game_position.discard_all(energy_discard_player, to_remove)
+		attacker.refresh_visual()
+		pokemon_state_changed.emit(energy_discard_slot, attacker)
+	_clear_energy_discard_state()
+
+
+func _clear_energy_discard_state() -> void:
+	energy_discard_pending = false
+	energy_discard_player  = -1
+	energy_discard_count   = 0
+	energy_discard_slot    = ""
+
+
 ## Starts the match.  Called once after the setup sequence (mulligans + coin
 ## flip) is complete.  [starting_player] is the coin-flip winner, who goes
 ## first and has first-turn restrictions applied.
@@ -393,6 +448,7 @@ func reset_game_state() -> void:
 	prize_selection_phase_for = -1
 	promotion_phase_for       = -1
 	_ko_defender              = -1
+	_clear_energy_discard_state()
 	for pid in range(2):
 		_reset_turn_flags(pid)
 
@@ -448,13 +504,13 @@ func _cleanup_instance(inst: PokemonInstance) -> void:
 		inst.remove_condition(PokemonInstance.SpecialCondition.PARALYZED)
 		log_message.emit("[Cleanup] %s is no longer Paralyzed." % name)
 	if inst.special_conditions.has(PokemonInstance.SpecialCondition.ASLEEP):
-		if randi() % 2 == 0:
+		if flip_coin("%s wake-up" % name):
 			inst.remove_condition(PokemonInstance.SpecialCondition.ASLEEP)
 			log_message.emit("[Cleanup] %s wakes up." % name)
 		else:
 			log_message.emit("[Cleanup] %s stays Asleep." % name)
 	if inst.special_conditions.has(PokemonInstance.SpecialCondition.BURNED):
-		if randi() % 2 == 0:
+		if flip_coin("%s burn check" % name):
 			inst.remove_condition(PokemonInstance.SpecialCondition.BURNED)
 			log_message.emit("[Cleanup] %s's Burn ends." % name)
 		else:

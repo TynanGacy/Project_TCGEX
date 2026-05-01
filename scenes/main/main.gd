@@ -77,6 +77,10 @@ var _opponent_deck_path: String = ""
 var _setup_dialog: Control = null
 var _setup_selected_mode: String = ""
 
+## Coin flip overlay — created in _ready(), shown for every coin flip.
+var _coin_flip_label: Label = null
+var _coin_flip_tween: Tween = null
+
 ## True while the pre-game setup sequence (mulligans / coin flip) is running.
 ## Blocks drag input so cards can't be moved before the game starts.
 var _in_setup_phase: bool = false
@@ -171,6 +175,11 @@ func _ready() -> void:
 	_authority.promotion_required.connect(_on_promotion_required)
 	_authority.promotion_done.connect(_on_promotion_done)
 	_authority.game_won.connect(_on_game_won)
+
+	## Coin flip overlay — shown briefly whenever any coin is flipped.
+	_coin_flip_label = _build_coin_flip_overlay()
+	manager.coin_flipped.connect(_on_coin_flipped)
+	manager.energy_discard_choice_required.connect(_on_energy_discard_choice_required)
 
 	## Capture both perspective transforms up front.  P0 takes the scene's
 	## default camera / hand placement; P1 is the same transforms rotated
@@ -480,7 +489,8 @@ func _run_setup_sequence() -> void:
 		_log("[Setup] P%d finished placing starting Pokémon." % placing_pid)
 
 	## Both players have set up — flip to decide who goes first.
-	var flip_result:    int = randi() % 2  ## 0 = Heads → P0 first, 1 = Tails → P1 first
+	var _heads: bool         = manager.flip_coin("Opening flip")
+	var flip_result: int     = 0 if _heads else 1  ## 0 = Heads → P0 first, 1 = Tails → P1 first
 	var starting_player: int = flip_result
 	_log("[Setup] Coin flip: %s — P%d goes first." \
 			% ["Heads" if flip_result == 0 else "Tails", starting_player])
@@ -1935,6 +1945,61 @@ func _on_game_won(player_id: int) -> void:
 		_reset_game()
 	)
 	vbox.add_child(btn)
+	$HUD.add_child(panel)
+
+
+## ---------------------------------------------------------------------------
+## Coin flip overlay
+## ---------------------------------------------------------------------------
+
+func _build_coin_flip_overlay() -> Label:
+	var lbl := Label.new()
+	lbl.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 56)
+	lbl.modulate     = Color(1.0, 0.85, 0.1, 0.0)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$HUD.add_child(lbl)
+	return lbl
+
+
+func _on_coin_flipped(result: bool, _label: String) -> void:
+	if _coin_flip_tween and _coin_flip_tween.is_running():
+		_coin_flip_tween.kill()
+	_coin_flip_label.text     = "HEADS!" if result else "TAILS!"
+	_coin_flip_label.modulate = Color(1.0, 0.85, 0.1, 0.0)
+	_coin_flip_tween = create_tween()
+	_coin_flip_tween.tween_property(_coin_flip_label, "modulate:a", 1.0, 0.15)
+	_coin_flip_tween.tween_interval(0.9)
+	_coin_flip_tween.tween_property(_coin_flip_label, "modulate:a", 0.0, 0.35)
+
+
+## ---------------------------------------------------------------------------
+## Energy discard choice dialog
+## ---------------------------------------------------------------------------
+
+func _on_energy_discard_choice_required(
+		player_id: int, eligible: Array, count: int, _attacker_slot: String) -> void:
+	var panel := _make_setup_panel()
+	var vbox  := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = "Choose %d energy card%s to discard:" % [count, "s" if count > 1 else ""]
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(header)
+
+	for i in eligible.size():
+		var card: CardData = eligible[i]
+		var btn := Button.new()
+		btn.text = card.display_name if card != null else "Energy"
+		var idx := i
+		btn.pressed.connect(func() -> void:
+			manager.resolve_energy_discard_choice([idx])
+			panel.queue_free()
+		)
+		vbox.add_child(btn)
+
 	$HUD.add_child(panel)
 
 

@@ -16,6 +16,7 @@
       "name": "Steel Headbutt",
       "base_damage": 20,
       "text": "Flip a coin. If heads, this attack does 20 damage plus 20 more damage.",
+      "effect_key": "coin_plus_20",
       "cost_metal": 1,
       "cost_colorless": 1
     }

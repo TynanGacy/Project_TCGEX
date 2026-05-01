@@ -45,9 +45,10 @@ func run_post_actions() -> void:
 		fn.call()
 
 
-## Flips a coin, logs the result, and returns true for heads.
+## Flips a coin, emits the game-wide coin_flipped signal, logs the result,
+## and returns true for heads.
 func flip_coin() -> bool:
-	var heads: bool = (randi() % 2) == 0
+	var heads: bool = manager.flip_coin(attack.name)
 	manager.log_message.emit(
 		"[Coin] %s — %s" % [attack.name, "Heads" if heads else "Tails"]
 	)
