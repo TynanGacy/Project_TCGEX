@@ -16,6 +16,7 @@
       "name": "Steady Punch",
       "base_damage": 20,
       "text": "Flip a coin. If heads, this attack does 20 damage plus 10 more damage.",
+      "effect_key": "coin_plus_10",
       "cost_colorless": 2
     },
     {

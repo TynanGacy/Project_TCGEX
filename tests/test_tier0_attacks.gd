@@ -132,9 +132,9 @@ func test_weakness_doubles_damage() -> void:
 			"Lotad: 120 - 80 (40×2 weakness) = 40")
 
 
-func test_weakness_does_not_apply_to_wrong_type() -> void:
+func test_weakness_applies_to_matching_type() -> void:
 	## Makuhita (FIGHTING) attacks Electrike (R=METAL, W=FIGHTING).
-	## FIGHTING type hits Electrike, which is weak to FIGHTING → damage × 2.
+	## Attacker type matches the defender's weakness → damage × 2.
 	## Lunge Out base=20, so expected = 40.
 	var b   := _make_builder()
 	var mgr = b._manager

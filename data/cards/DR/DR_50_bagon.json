@@ -16,6 +16,7 @@
       "name": "Risky Kick",
       "base_damage": 10,
       "text": "Flip a coin. If tails, this attack does nothing.",
+      "effect_key": "coin_fail",
       "cost_colorless": 1
     },
     {

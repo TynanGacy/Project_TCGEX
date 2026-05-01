@@ -23,6 +23,7 @@
       "name": "Giant Tail",
       "base_damage": 120,
       "text": "Flip a coin. If tails, this attack does nothing.",
+      "effect_key": "coin_fail",
       "cost_colorless": 4
     }
   ]

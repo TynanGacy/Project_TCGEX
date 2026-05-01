@@ -16,6 +16,7 @@
       "name": "Burn Up",
       "base_damage": 60,
       "text": "Flip a coin. If tails, discard all Fire Energy cards attached to Arcanine.",
+      "effect_key": "coin_discard_fire_all",
       "cost_fire": 1,
       "cost_colorless": 2
     }

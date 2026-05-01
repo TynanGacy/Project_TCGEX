@@ -22,6 +22,7 @@
       "name": "Quick Attack",
       "base_damage": 40,
       "text": "Flip a coin. If heads, this attack does 40 damage plus 20 more damage.",
+      "effect_key": "coin_plus_20",
       "cost_lightning": 2,
       "cost_colorless": 1
     }
