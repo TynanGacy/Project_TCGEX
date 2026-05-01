@@ -1,5 +1,4 @@
 extends Node
-class_name EffectHandlers
 ## Registers all EffectRegistry handlers for attack effects.
 ## Loaded as an autoload after ManagerSystemSingleton so EffectRegistry is ready.
 
