@@ -78,8 +78,7 @@ var _setup_dialog: Control = null
 var _setup_selected_mode: String = ""
 
 ## Coin flip overlay — created in _ready(), shown for every coin flip.
-var _coin_flip_label: Label = null
-var _coin_flip_tween: Tween = null
+var _coin_flip_overlay: Control = null
 
 ## True while the pre-game setup sequence (mulligans / coin flip) is running.
 ## Blocks drag input so cards can't be moved before the game starts.
@@ -112,6 +111,17 @@ var _attack_dialog: Control = null
 ## Deferred end-of-turn: set when an attack commits; cleared after prize
 ## selection and promotion both resolve so we don't end the turn too early.
 var _attack_end_turn_pending: bool = false
+var _anim_wait_active: bool = false
+
+## Animation delay — tracks engine-time (msec) when the last queued animation
+## will finish.  _try_end_turn_after_attack() waits until this time so visual
+## effects (coin flips, etc.) complete before the turn advances.  Updated by
+## signal handlers, NOT by polling visual state — no game-state dependency on
+## the overlay itself.
+var _anim_end_msec: int = 0
+
+## Animation duration is now computed dynamically by the overlay's static
+## total_anim_duration(count) method.  No hardcoded constant needed here.
 
 ## Setup-phase board drag.  During placement, Basic Pokémon can be dragged
 ## between active, bench, and hand.  Only one instance is dragged at a time.
@@ -177,8 +187,20 @@ func _ready() -> void:
 	_authority.game_won.connect(_on_game_won)
 
 	## Coin flip overlay — shown briefly whenever any coin is flipped.
-	_coin_flip_label = _build_coin_flip_overlay()
-	manager.coin_flipped.connect(_on_coin_flipped)
+	_coin_flip_overlay = preload("res://scenes/ui/coin_flip_overlay.gd").new()
+	$HUD.add_child(_coin_flip_overlay)
+	## Single coin flip (e.g. coin_plus_10, coin_fail).
+	manager.coin_flipped.connect(_coin_flip_overlay.show_flip)
+	manager.coin_flipped.connect(func(_r: bool, _l: String) -> void:
+		var dur_ms: int = int(_coin_flip_overlay.total_anim_duration(1) * 1000.0)
+		_anim_end_msec = maxi(_anim_end_msec, Time.get_ticks_msec() + dur_ms)
+	)
+	## Batch coin flip (e.g. coin_multiply_2, coin_multiply_3).
+	manager.coins_batch_flipped.connect(_coin_flip_overlay.show_batch)
+	manager.coins_batch_flipped.connect(func(results: Array[bool], _l: String) -> void:
+		var dur_ms: int = int(_coin_flip_overlay.total_anim_duration(results.size()) * 1000.0)
+		_anim_end_msec = maxi(_anim_end_msec, Time.get_ticks_msec() + dur_ms)
+	)
 	manager.energy_discard_choice_required.connect(_on_energy_discard_choice_required)
 
 	## Capture both perspective transforms up front.  P0 takes the scene's
@@ -1476,8 +1498,8 @@ func _submit_attack(pid: int, atk_slot: String, atk_idx: int, tgt_slot: String) 
 		_try_end_turn_after_attack()
 
 
-## Ends the attacker's turn only once prize selection and promotion are both
-## fully resolved so the turn doesn't advance mid-interaction.
+## Ends the attacker's turn only once prize selection, promotion, and any
+## queued animations are all resolved so the turn doesn't advance mid-visual.
 func _try_end_turn_after_attack() -> void:
 	if not _attack_end_turn_pending:
 		return
@@ -1485,6 +1507,22 @@ func _try_end_turn_after_attack() -> void:
 		return
 	if manager.promotion_phase_for >= 0:
 		return
+	## Wait for pending animations (coin flip, etc.) without referencing
+	## any overlay state — we only check the engine-time watermark.
+	if _anim_wait_active:
+		return
+	var wait_ms: int = _anim_end_msec - Time.get_ticks_msec()
+	if wait_ms > 0:
+		_anim_wait_active = true
+		await get_tree().create_timer(wait_ms / 1000.0).timeout
+		_anim_wait_active = false
+		## Re-check guards after the wait in case state changed.
+		if not _attack_end_turn_pending:
+			return
+		if manager.prize_selection_phase_for >= 0:
+			return
+		if manager.promotion_phase_for >= 0:
+			return
 	_attack_end_turn_pending = false
 	_authority.end_turn()
 
@@ -1951,28 +1989,8 @@ func _on_game_won(player_id: int) -> void:
 ## ---------------------------------------------------------------------------
 ## Coin flip overlay
 ## ---------------------------------------------------------------------------
-
-func _build_coin_flip_overlay() -> Label:
-	var lbl := Label.new()
-	lbl.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_size_override("font_size", 56)
-	lbl.modulate     = Color(1.0, 0.85, 0.1, 0.0)
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$HUD.add_child(lbl)
-	return lbl
-
-
-func _on_coin_flipped(result: bool, _label: String) -> void:
-	if _coin_flip_tween and _coin_flip_tween.is_running():
-		_coin_flip_tween.kill()
-	_coin_flip_label.text     = "HEADS!" if result else "TAILS!"
-	_coin_flip_label.modulate = Color(1.0, 0.85, 0.1, 0.0)
-	_coin_flip_tween = create_tween()
-	_coin_flip_tween.tween_property(_coin_flip_label, "modulate:a", 1.0, 0.15)
-	_coin_flip_tween.tween_interval(0.9)
-	_coin_flip_tween.tween_property(_coin_flip_label, "modulate:a", 0.0, 0.35)
+## Handled by CoinFlipOverlay (scenes/ui/coin_flip_overlay.gd).
+## Connected in _ready(): manager.coin_flipped → _coin_flip_overlay.show_flip
 
 
 ## ---------------------------------------------------------------------------

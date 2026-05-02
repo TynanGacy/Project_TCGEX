@@ -12,19 +12,19 @@
   "retreat_cost": 1,
   "rules_text": "",
   "attacks": [
-    {
-      "name": "Risky Kick",
-      "base_damage": 10,
-      "text": "Flip a coin. If tails, this attack does nothing.",
-      "effect_key": "coin_fail",
-      "cost_colorless": 1
-    },
-    {
-      "name": "Dragon Eye",
-      "base_damage": 20,
-      "text": "The Defending Pokémon is now Asleep.",
-      "cost_fire": 1,
-      "cost_water": 1
-    }
+	{
+	  "name": "Risky Kick",
+	  "base_damage": 10,
+	  "text": "Flip a coin. If tails, this attack does nothing.",
+	  "effect_key": "coin_fail",
+	  "cost_colorless": 1
+	},
+	{
+	  "name": "Dragon Eye",
+	  "base_damage": 20,
+	  "text": "The Defending Pokémon is now Asleep.",
+	  "cost_fire": 1,
+	  "cost_water": 1
+	}
   ]
 }

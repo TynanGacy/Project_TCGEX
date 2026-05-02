@@ -51,6 +51,19 @@ func _register_handlers() -> void:
 			)
 	)
 
+	## ── Group F: multi-coin damage multiplier ─────────────────────────────────
+	## Flip N coins; final damage = base_damage × number of heads.
+	## base_damage is zeroed and the total is applied as bonus_damage so that
+	## weakness/resistance still applies correctly through the normal path.
+	EffectRegistry.register("coin_multiply_2", func(ctx: AttackContext) -> void:
+		var heads: int = ctx.flip_coins(2).count(true)
+		ctx.bonus_damage += ctx.base_damage * heads - ctx.base_damage
+	)
+	EffectRegistry.register("coin_multiply_3", func(ctx: AttackContext) -> void:
+		var heads: int = ctx.flip_coins(3).count(true)
+		ctx.bonus_damage += ctx.base_damage * heads - ctx.base_damage
+	)
+
 
 ## Removes [count] energy cards of [energy_type] from the attacker and
 ## moves them to the player's discard pile.  count = -1 removes all of that type.

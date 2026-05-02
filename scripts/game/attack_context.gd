@@ -55,11 +55,14 @@ func flip_coin() -> bool:
 	return heads
 
 
-## Flips [count] coins and returns them as Array[bool].
+## Flips [count] coins as a batch, emits the batch signal for staggered
+## animation, logs each result individually, and returns the array.
 func flip_coins(count: int) -> Array[bool]:
-	var results: Array[bool] = []
-	for _i in range(count):
-		results.append(flip_coin())
+	var results: Array[bool] = manager.flip_coins_batch(count, attack.name)
+	for i in range(results.size()):
+		manager.log_message.emit(
+			"[Coin] %s (#%d) — %s" % [attack.name, i + 1, "Heads" if results[i] else "Tails"]
+		)
 	return results
 
 
