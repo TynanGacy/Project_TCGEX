@@ -22,6 +22,7 @@
       "name": "Double Scratch",
       "base_damage": 40,
       "text": "Flip 2 coins. This attack does 40 damage times the number of heads.",
+      "effect_key": "coin_multiply_2",
       "cost_colorless": 3
     }
   ]

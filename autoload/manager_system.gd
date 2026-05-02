@@ -64,6 +64,9 @@ signal phase_changed(phase: int)
 ## Coin flip signal — emitted for every coin flip in the game.
 ## [result] is true for heads; [label] names the context (attack name, wake-up check, etc.).
 signal coin_flipped(result: bool, label: String)
+## Emitted when multiple coins are flipped at once (e.g. coin_multiply_2/3).
+## The overlay uses this to display staggered coin animations.
+signal coins_batch_flipped(results: Array[bool], label: String)
 ## Emitted when an attack effect requires the player to choose which energy
 ## card(s) to discard and the attacker has non-identical energy attached.
 signal energy_discard_choice_required(player_id: int, eligible: Array[CardData], count: int, attacker_slot: String)
@@ -330,6 +333,17 @@ func flip_coin(label: String) -> bool:
 	var heads: bool = (randi() % 2) == 0
 	coin_flipped.emit(heads, label)
 	return heads
+
+
+## Flips [count] coins at once, emits coins_batch_flipped, and returns results.
+## Used by multi-coin effects (coin_multiply_2, coin_multiply_3, etc.) so the
+## overlay can display a staggered animation for all coins simultaneously.
+func flip_coins_batch(count: int, label: String) -> Array[bool]:
+	var results: Array[bool] = []
+	for _i in range(count):
+		results.append((randi() % 2) == 0)
+	coins_batch_flipped.emit(results, label)
+	return results
 
 
 ## Called by the UI after the player selects which energy card(s) to discard
