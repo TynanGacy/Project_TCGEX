@@ -43,6 +43,14 @@ const _CARD_SCENE := preload("res://scenes/card/card.tscn")
 const NAMEPLATE_H_RATIO   := 0.18   ## strip height, as a fraction of card height
 const NAMEPLATE_Y_LIFT    := 0.014  ## world-space lift above the card surface
 const NAMEPLATE_BG_COLOR  := Color(0.05, 0.05, 0.05, 0.90)
+
+## Group B (Sleep / Paralyzed / Confused) — translucent halo around the card.
+const HALO_MARGIN := 0.030  ## extra world units on each side beyond card edge
+const HALO_Y_LIFT := 0.007  ## just above the card top face
+const HALO_ALPHA  := 0.38
+## Group A (Poison / Burn) — coloured badge discs.
+const PSN_BADGE_COLOR := Color(0.55, 0.18, 0.82)  ## purple
+const BRN_BADGE_COLOR := Color(0.95, 0.32, 0.08)  ## orange-red
 const TYPE_SYMBOL_COLORS: Array[Color] = [
 	Color(0.70, 0.70, 0.70),  # NONE
 	Color(0.95, 0.40, 0.10),  # FIRE
@@ -69,6 +77,14 @@ var _hp_label: Label3D = null
 var _type_symbol_mesh: MeshInstance3D = null
 var _type_symbol_mat: StandardMaterial3D = null
 var _condition_label: Label3D = null
+## Group B halo — a translucent plane slightly larger than the card.
+var _status_halo_mesh: MeshInstance3D = null
+var _status_halo_mat: StandardMaterial3D = null
+## Group A badge discs — one each for Poison and Burn.
+var _psn_badge_disc: MeshInstance3D = null
+var _psn_badge_label: Label3D = null
+var _brn_badge_disc: MeshInstance3D = null
+var _brn_badge_label: Label3D = null
 
 ## Attachment icon pool — built once, updated on every refresh_visual().
 var _attachment_node: Node3D = null
@@ -103,6 +119,8 @@ func _build_visual() -> void:
 
 	_build_nameplate()
 	_build_attachments()
+	_build_status_halo()
+	_build_condition_badges()
 
 	_condition_label = Label3D.new()
 	_condition_label.name = "ConditionLabel"
@@ -116,6 +134,135 @@ func _build_visual() -> void:
 	add_child(_condition_label)
 
 
+## --- Group B halo (Sleep / Paralyzed / Confused) ----------------------------
+
+func _build_status_halo() -> void:
+	_status_halo_mesh = MeshInstance3D.new()
+	_status_halo_mesh.name = "StatusHalo"
+	_status_halo_mesh.mesh = PlaneMesh.new()
+	_status_halo_mat = StandardMaterial3D.new()
+	_status_halo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_status_halo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_status_halo_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_status_halo_mat.albedo_color = Color(0.0, 0.0, 0.0, 0.0)
+	_status_halo_mesh.set_surface_override_material(0, _status_halo_mat)
+	_status_halo_mesh.visible = false
+	add_child(_status_halo_mesh)
+	_layout_status_halo()
+
+
+func _layout_status_halo() -> void:
+	if _status_halo_mesh == null:
+		return
+	var card_w: float = display_width
+	var card_h: float = display_width / Card.BOARD_ART_RATIO
+	(_status_halo_mesh.mesh as PlaneMesh).size = Vector2(
+		card_w + HALO_MARGIN * 2.0,
+		card_h + HALO_MARGIN * 2.0
+	)
+	_status_halo_mesh.position = Vector3(0.0, HALO_Y_LIFT, 0.0)
+
+
+## --- Group A badges (Poison / Burn) -----------------------------------------
+
+func _build_condition_badges() -> void:
+	_psn_badge_disc = _make_disc_mesh(PSN_BADGE_COLOR)
+	_psn_badge_disc.name = "PsnBadgeDisc"
+	add_child(_psn_badge_disc)
+	_psn_badge_label = _make_condition_badge_label("PSN")
+	add_child(_psn_badge_label)
+
+	_brn_badge_disc = _make_disc_mesh(BRN_BADGE_COLOR)
+	_brn_badge_disc.name = "BrnBadgeDisc"
+	add_child(_brn_badge_disc)
+	_brn_badge_label = _make_condition_badge_label("BRN")
+	add_child(_brn_badge_label)
+
+	_psn_badge_disc.visible = false
+	_psn_badge_label.visible = false
+	_brn_badge_disc.visible = false
+	_brn_badge_label.visible = false
+	_layout_condition_badges()
+
+
+func _layout_condition_badges() -> void:
+	var card_w: float = display_width
+	var card_h: float = display_width / Card.BOARD_ART_RATIO
+	var badge_r: float = card_h * 0.09
+	var badge_y: float = 0.015
+	var label_y: float = 0.027
+	## Right side of card, upper half — below the nameplate strip.
+	var bx: float = card_w * 0.32
+	var psn_z: float = -card_h * 0.22
+	var brn_z: float = psn_z + badge_r * 2.6
+
+	for pair in [
+		[_psn_badge_disc, _psn_badge_label, psn_z],
+		[_brn_badge_disc, _brn_badge_label, brn_z],
+	]:
+		var disc: MeshInstance3D = pair[0]
+		var lbl: Label3D = pair[1]
+		var bz: float = pair[2]
+		if disc == null:
+			continue
+		var cyl := disc.mesh as CylinderMesh
+		cyl.top_radius = badge_r
+		cyl.bottom_radius = badge_r
+		disc.position = Vector3(bx, badge_y, bz)
+		if lbl != null:
+			lbl.position = Vector3(bx, label_y, bz)
+
+
+## --- Condition visual refresh ------------------------------------------------
+
+func _refresh_condition_visuals() -> void:
+	## Group B: only one of Sleep / Paralyzed / Confused can be active at once.
+	var group_b: int = -1
+	for c in special_conditions:
+		if c == SpecialCondition.ASLEEP or c == SpecialCondition.PARALYZED \
+				or c == SpecialCondition.CONFUSED:
+			group_b = c
+			break
+	if _status_halo_mesh != null and _status_halo_mat != null:
+		if group_b == -1:
+			_status_halo_mesh.visible = false
+		else:
+			_status_halo_mat.albedo_color = _group_b_halo_color(group_b)
+			_status_halo_mesh.visible = true
+
+	## Group A: Poison and Burn are independent.
+	var has_psn: bool = special_conditions.has(SpecialCondition.POISONED)
+	var has_brn: bool = special_conditions.has(SpecialCondition.BURNED)
+	if _psn_badge_disc != null:
+		_psn_badge_disc.visible = has_psn
+	if _psn_badge_label != null:
+		_psn_badge_label.visible = has_psn
+	if _brn_badge_disc != null:
+		_brn_badge_disc.visible = has_brn
+	if _brn_badge_label != null:
+		_brn_badge_label.visible = has_brn
+
+
+static func _group_b_halo_color(c: int) -> Color:
+	match c:
+		SpecialCondition.ASLEEP:    return Color(0.35, 0.40, 0.95, HALO_ALPHA)
+		SpecialCondition.PARALYZED: return Color(0.95, 0.85, 0.10, HALO_ALPHA)
+		SpecialCondition.CONFUSED:  return Color(0.90, 0.25, 0.80, HALO_ALPHA)
+	return Color(0.0, 0.0, 0.0, 0.0)
+
+
+static func _make_condition_badge_label(abbrev: String) -> Label3D:
+	var lbl := Label3D.new()
+	lbl.pixel_size = 0.0009
+	lbl.font_size = 20
+	lbl.modulate = Color.WHITE
+	lbl.outline_size = 5
+	lbl.outline_modulate = Color.BLACK
+	lbl.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
+	lbl.text = abbrev
+	return lbl
+
+
 ## Pushes current state to the visual.  Call after any mutation.
 func refresh_visual() -> void:
 	if _card_visual != null:
@@ -125,6 +272,7 @@ func refresh_visual() -> void:
 	_refresh_attachments()
 	if _condition_label != null:
 		_condition_label.text = _conditions_text()
+	_refresh_condition_visuals()
 
 
 ## --- Nameplate --------------------------------------------------------------
@@ -400,10 +548,11 @@ static func _make_icon_label() -> Label3D:
 ## --- Conditions text ---------------------------------------------------------
 
 func _conditions_text() -> String:
-	if special_conditions.is_empty():
-		return ""
+	## PSN and BRN are covered by badge disc visuals; only emit Group B text.
 	var parts: Array[String] = []
 	for c in special_conditions:
+		if c == SpecialCondition.POISONED or c == SpecialCondition.BURNED:
+			continue
 		parts.append(_cond_abbrev(c))
 	return " ".join(parts)
 
@@ -519,5 +668,7 @@ func set_display_width(w: float) -> void:
 		_card_visual.set_board_mode(true)
 	_layout_nameplate()
 	_layout_attachments()
+	_layout_status_halo()
+	_layout_condition_badges()
 	if _condition_label != null:
 		_condition_label.position = Vector3(w * 0.30, 0.03, w * 0.18)

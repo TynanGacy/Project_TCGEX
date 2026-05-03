@@ -111,17 +111,6 @@ var _attack_dialog: Control = null
 ## Deferred end-of-turn: set when an attack commits; cleared after prize
 ## selection and promotion both resolve so we don't end the turn too early.
 var _attack_end_turn_pending: bool = false
-var _anim_wait_active: bool = false
-
-## Animation delay — tracks engine-time (msec) when the last queued animation
-## will finish.  _try_end_turn_after_attack() waits until this time so visual
-## effects (coin flips, etc.) complete before the turn advances.  Updated by
-## signal handlers, NOT by polling visual state — no game-state dependency on
-## the overlay itself.
-var _anim_end_msec: int = 0
-
-## Animation duration is now computed dynamically by the overlay's static
-## total_anim_duration(count) method.  No hardcoded constant needed here.
 
 ## Setup-phase board drag.  During placement, Basic Pokémon can be dragged
 ## between active, bench, and hand.  Only one instance is dragged at a time.
@@ -187,20 +176,10 @@ func _ready() -> void:
 	_authority.game_won.connect(_on_game_won)
 
 	## Coin flip overlay — shown briefly whenever any coin is flipped.
+	## AnimationManager auto-connects to coin signals and drives the overlay.
 	_coin_flip_overlay = preload("res://scenes/ui/coin_flip_overlay.gd").new()
 	$HUD.add_child(_coin_flip_overlay)
-	## Single coin flip (e.g. coin_plus_10, coin_fail).
-	manager.coin_flipped.connect(_coin_flip_overlay.show_flip)
-	manager.coin_flipped.connect(func(_r: bool, _l: String) -> void:
-		var dur_ms: int = int(_coin_flip_overlay.total_anim_duration(1) * 1000.0)
-		_anim_end_msec = maxi(_anim_end_msec, Time.get_ticks_msec() + dur_ms)
-	)
-	## Batch coin flip (e.g. coin_multiply_2, coin_multiply_3).
-	manager.coins_batch_flipped.connect(_coin_flip_overlay.show_batch)
-	manager.coins_batch_flipped.connect(func(results: Array[bool], _l: String) -> void:
-		var dur_ms: int = int(_coin_flip_overlay.total_anim_duration(results.size()) * 1000.0)
-		_anim_end_msec = maxi(_anim_end_msec, Time.get_ticks_msec() + dur_ms)
-	)
+	AnimationManagerSingleton.set_coin_overlay(_coin_flip_overlay)
 	manager.energy_discard_choice_required.connect(_on_energy_discard_choice_required)
 
 	## Capture both perspective transforms up front.  P0 takes the scene's
@@ -1184,8 +1163,8 @@ func _on_stadium_changed(stadium: TrainerCardData, owner_id: int) -> void:
 
 func _on_end_turn_pressed() -> void:
 	if _in_placement_phase:
-		return  ## Button is acting as "Ready" — handled by _show_placement_phase.
-	_authority.end_turn()
+		return
+	await _authority.end_turn_async()
 
 
 func _on_turn_started(pid: int, _turn_num: int) -> void:
@@ -1492,7 +1471,7 @@ func _pick_target_then_attack(pid: int, atk_slot: String, atk_idx: int, opp_acti
 
 func _submit_attack(pid: int, atk_slot: String, atk_idx: int, tgt_slot: String) -> void:
 	var action := ActionAttack.new(pid, atk_slot, atk_idx, tgt_slot)
-	var result := _authority.request_action(action)
+	var result := await _authority.request_action_async(action)
 	if result.ok:
 		_attack_end_turn_pending = true
 		_try_end_turn_after_attack()
@@ -1507,24 +1486,8 @@ func _try_end_turn_after_attack() -> void:
 		return
 	if manager.promotion_phase_for >= 0:
 		return
-	## Wait for pending animations (coin flip, etc.) without referencing
-	## any overlay state — we only check the engine-time watermark.
-	if _anim_wait_active:
-		return
-	var wait_ms: int = _anim_end_msec - Time.get_ticks_msec()
-	if wait_ms > 0:
-		_anim_wait_active = true
-		await get_tree().create_timer(wait_ms / 1000.0).timeout
-		_anim_wait_active = false
-		## Re-check guards after the wait in case state changed.
-		if not _attack_end_turn_pending:
-			return
-		if manager.prize_selection_phase_for >= 0:
-			return
-		if manager.promotion_phase_for >= 0:
-			return
 	_attack_end_turn_pending = false
-	_authority.end_turn()
+	await _authority.end_turn_async()
 
 
 ## Returns a bracketed string of single-letter energy symbols for [atk]'s cost.

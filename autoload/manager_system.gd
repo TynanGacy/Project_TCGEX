@@ -73,6 +73,7 @@ signal energy_discard_choice_required(player_id: int, eligible: Array[CardData],
 
 var board_position: BoardPosition = null
 var game_position:  GamePosition = null
+var attack_resolver: AttackResolver = null
 
 ## --- Slot configuration ------------------------------------------------------
 ## Set once per game via configure_slots() before begin_game().
@@ -229,6 +230,9 @@ func _ready() -> void:
 	game_position  = GamePosition.new()
 	board_position = BoardPosition.new()
 	add_child(board_position)
+	attack_resolver = AttackResolver.new()
+	attack_resolver.name = "AttackResolver"
+	add_child(attack_resolver)
 
 	board_position.slot_changed.connect(_on_slot_changed)
 	board_position.overflow_escalation.connect(_on_overflow_escalation)
@@ -279,6 +283,13 @@ func request_action(action: GameAction) -> ActionResult:
 	_check_all_promotions_needed()
 	_log_state("[Action] " + action.description())
 	return ActionResult.success()
+
+
+func request_action_async(action: GameAction) -> ActionResult:
+	var result := request_action(action)
+	if result.ok and action is ActionAttack and attack_resolver.is_resolving():
+		await attack_resolver.pipeline_completed
+	return result
 
 
 ## Convenience query for action validators: is it [pid]'s main phase?
@@ -440,9 +451,9 @@ func can_play_supporter(pid: int) -> bool:
 ## turn_ended, and passes control to the other player.
 func end_turn() -> void:
 	if current_phase != Phase.MAIN:
-		return  ## already between turns / not yet started
+		return
 	var finishing_player := current_player
-	_run_cleanup(finishing_player)
+	await _run_cleanup_async(finishing_player)
 	_log_state("[Cleanup] P%d end of turn %d" % [finishing_player, turn_number])
 	log_message.emit("[End Turn] P%d ends turn %d." % [finishing_player, turn_number])
 	turn_ended.emit(finishing_player)
@@ -498,38 +509,70 @@ func _reset_turn_flags(pid: int) -> void:
 	pokemon_entered_play_this_turn[pid] = []
 
 
-## Resolves between-turn condition effects for [pid]'s in-play Pokemon:
-##   - PARALYZED ends automatically at the end of its owner's turn.
-##   - ASLEEP flips a coin; heads wakes up.
-##   - BURNED flips a coin; heads ends the burn.  (Between-turn burn
-##     damage is intentionally not yet applied — damage lives in a later
-##     action, to be added alongside Attack resolution.)
-func _run_cleanup(pid: int) -> void:
+## Between-turn effects (step 12).  Iterates both players' active Pokemon.
+## Paralysis only clears at the end of the paralyzed Pokemon's controller's turn.
+## 2007 EX-era rules: burn tails = 20 damage (no cure); poison = 10 damage.
+## KOs are checked simultaneously after all effects resolve.
+func _run_cleanup_async(finishing_pid: int) -> void:
 	current_phase = Phase.ENDED
 	phase_changed.emit(current_phase)
-	for sid in BoardPosition.all_slot_ids(pid):
-		var inst: PokemonInstance = board_position.get_instance(sid)
-		if inst != null:
-			_cleanup_instance(inst)
+	var ko_candidates: Array[Dictionary] = []
+	for pid in range(2):
+		for sid in BoardPosition.all_slot_ids(pid):
+			var inst: PokemonInstance = board_position.get_instance(sid)
+			if inst == null:
+				continue
+			await _cleanup_instance_async(inst, sid, pid == finishing_pid, ko_candidates)
+	for entry: Dictionary in ko_candidates:
+		var inst: PokemonInstance = entry["instance"]
+		if inst.is_knocked_out():
+			resolve_knockout(entry["slot"], 1 - board_position.player_of(entry["slot"]))
 
 
-func _cleanup_instance(inst: PokemonInstance) -> void:
-	var name: String = inst.card.display_name if inst.card != null else "Pokemon"
-	if inst.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED):
+func _cleanup_instance_async(inst: PokemonInstance, slot_id: String,
+		clear_paralysis: bool, ko_candidates: Array[Dictionary]) -> void:
+	var pname: String = inst.card.display_name if inst.card != null else "Pokemon"
+	var anim_mgr := _get_animation_manager()
+
+	if clear_paralysis and inst.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED):
 		inst.remove_condition(PokemonInstance.SpecialCondition.PARALYZED)
-		log_message.emit("[Cleanup] %s is no longer Paralyzed." % name)
+		log_message.emit("[Cleanup] %s is no longer Paralyzed." % pname)
+		pokemon_state_changed.emit(slot_id, inst)
+
 	if inst.special_conditions.has(PokemonInstance.SpecialCondition.ASLEEP):
-		if flip_coin("%s wake-up" % name):
+		if flip_coin("%s wake-up" % pname):
+			if anim_mgr != null:
+				await anim_mgr.wait_until_drained()
 			inst.remove_condition(PokemonInstance.SpecialCondition.ASLEEP)
-			log_message.emit("[Cleanup] %s wakes up." % name)
+			log_message.emit("[Cleanup] %s wakes up." % pname)
 		else:
-			log_message.emit("[Cleanup] %s stays Asleep." % name)
+			if anim_mgr != null:
+				await anim_mgr.wait_until_drained()
+			log_message.emit("[Cleanup] %s stays Asleep." % pname)
+		pokemon_state_changed.emit(slot_id, inst)
+
+	if inst.special_conditions.has(PokemonInstance.SpecialCondition.POISONED):
+		inst.apply_damage(10)
+		log_message.emit("[Cleanup] %s takes 10 damage from Poison." % pname)
+		pokemon_state_changed.emit(slot_id, inst)
+		ko_candidates.append({"slot": slot_id, "instance": inst})
+
 	if inst.special_conditions.has(PokemonInstance.SpecialCondition.BURNED):
-		if flip_coin("%s burn check" % name):
-			inst.remove_condition(PokemonInstance.SpecialCondition.BURNED)
-			log_message.emit("[Cleanup] %s's Burn ends." % name)
+		if not flip_coin("%s burn check" % pname):
+			if anim_mgr != null:
+				await anim_mgr.wait_until_drained()
+			inst.apply_damage(20)
+			log_message.emit("[Cleanup] %s takes 20 damage from Burn (tails)." % pname)
+			pokemon_state_changed.emit(slot_id, inst)
+			ko_candidates.append({"slot": slot_id, "instance": inst})
 		else:
-			log_message.emit("[Cleanup] %s stays Burned." % name)
+			if anim_mgr != null:
+				await anim_mgr.wait_until_drained()
+			log_message.emit("[Cleanup] %s burn check: heads (no damage)." % pname)
+
+
+func _get_animation_manager() -> Node:
+	return get_node_or_null("/root/AnimationManagerSingleton")
 
 
 ## --- Combat resolution -------------------------------------------------------

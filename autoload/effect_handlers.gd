@@ -1,6 +1,10 @@
 extends Node
 ## Registers all EffectRegistry handlers for attack effects.
 ## Loaded as an autoload after ManagerSystemSingleton so EffectRegistry is ready.
+##
+## All handlers now use the phase-aware EffectDefinition API.  Each handler
+## receives (ctx: AttackContext, queue: Array[QueuedEffect]) and appends
+## QueuedEffect objects rather than mutating state directly.
 
 func _ready() -> void:
 	_register_handlers()
@@ -8,61 +12,93 @@ func _ready() -> void:
 
 func _register_handlers() -> void:
 	## ── Group C: coin flip adds bonus damage on heads ─────────────────────────
-	EffectRegistry.register("coin_plus_10", func(ctx: AttackContext) -> void:
-		if ctx.flip_coin():
-			ctx.bonus_damage += 10
-	)
-	EffectRegistry.register("coin_plus_20", func(ctx: AttackContext) -> void:
-		if ctx.flip_coin():
-			ctx.bonus_damage += 20
-	)
-	EffectRegistry.register("coin_plus_30", func(ctx: AttackContext) -> void:
-		if ctx.flip_coin():
-			ctx.bonus_damage += 30
-	)
+	_register_coin_bonus("coin_plus_10", 10)
+	_register_coin_bonus("coin_plus_20", 20)
+	_register_coin_bonus("coin_plus_30", 30)
 
 	## ── Group D: attack does nothing on tails ─────────────────────────────────
-	EffectRegistry.register("coin_fail", func(ctx: AttackContext) -> void:
-		if not ctx.flip_coin():
-			ctx.base_damage = 0
-	)
+	EffectRegistry.register_def("coin_fail", EffectDefinition.single(
+		AttackResolver.Phase.CONDITIONALS,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			if not ctx.flip_coin():
+				ctx.attack_blocked = true
+	))
 
 	## ── Group E: discard energy on tails ──────────────────────────────────────
-	## Discard 1 Fire energy on tails.
-	EffectRegistry.register("coin_discard_fire", func(ctx: AttackContext) -> void:
-		if not ctx.flip_coin():
-			ctx.add_post_action(func() -> void:
-				_discard_typed(ctx, PokemonCardData.EnergyType.FIRE, 1)
-			)
-	)
-	## Discard ALL Fire energy on tails.
-	EffectRegistry.register("coin_discard_fire_all", func(ctx: AttackContext) -> void:
-		if not ctx.flip_coin():
-			ctx.add_post_action(func() -> void:
-				_discard_typed(ctx, PokemonCardData.EnergyType.FIRE, -1)
-			)
-	)
-	## Discard 1 energy of any type on tails.  Auto-discards when all attached
-	## energy share the same card_id; otherwise prompts the player.
-	EffectRegistry.register("coin_discard_any", func(ctx: AttackContext) -> void:
-		if not ctx.flip_coin():
-			ctx.add_post_action(func() -> void:
-				_discard_any(ctx, 1)
-			)
-	)
+	EffectRegistry.register_def("coin_discard_fire", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			if not ctx.flip_coin():
+				var effect := QueuedEffect.new()
+				effect.category = QueuedEffect.Category.POST_DAMAGE
+				effect.source_key = "coin_discard_fire"
+				effect.description = "Discard 1 Fire energy (tails)"
+				effect.execute = func(_c: AttackContext) -> void:
+					_discard_typed(ctx, PokemonCardData.EnergyType.FIRE, 1)
+				queue.append(effect)
+	))
+
+	EffectRegistry.register_def("coin_discard_fire_all", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			if not ctx.flip_coin():
+				var effect := QueuedEffect.new()
+				effect.category = QueuedEffect.Category.POST_DAMAGE
+				effect.source_key = "coin_discard_fire_all"
+				effect.description = "Discard all Fire energy (tails)"
+				effect.execute = func(_c: AttackContext) -> void:
+					_discard_typed(ctx, PokemonCardData.EnergyType.FIRE, -1)
+				queue.append(effect)
+	))
+
+	EffectRegistry.register_def("coin_discard_any", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			if not ctx.flip_coin():
+				var effect := QueuedEffect.new()
+				effect.category = QueuedEffect.Category.POST_DAMAGE
+				effect.source_key = "coin_discard_any"
+				effect.description = "Discard 1 energy of any type (tails)"
+				effect.execute = func(_c: AttackContext) -> void:
+					_discard_any(ctx, 1)
+				queue.append(effect)
+	))
 
 	## ── Group F: multi-coin damage multiplier ─────────────────────────────────
-	## Flip N coins; final damage = base_damage × number of heads.
-	## base_damage is zeroed and the total is applied as bonus_damage so that
-	## weakness/resistance still applies correctly through the normal path.
-	EffectRegistry.register("coin_multiply_2", func(ctx: AttackContext) -> void:
-		var heads: int = ctx.flip_coins(2).count(true)
-		ctx.bonus_damage += ctx.base_damage * heads - ctx.base_damage
-	)
-	EffectRegistry.register("coin_multiply_3", func(ctx: AttackContext) -> void:
-		var heads: int = ctx.flip_coins(3).count(true)
-		ctx.bonus_damage += ctx.base_damage * heads - ctx.base_damage
-	)
+	_register_coin_multiply("coin_multiply_2", 2)
+	_register_coin_multiply("coin_multiply_3", 3)
+
+
+## Helper: registers a "flip coin, +N on heads" handler at DAMAGE_CALC phase.
+func _register_coin_bonus(key: String, amount: int) -> void:
+	EffectRegistry.register_def(key, EffectDefinition.single(
+		AttackResolver.Phase.DAMAGE_CALC,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			if ctx.flip_coin():
+				var effect := QueuedEffect.new()
+				effect.category = QueuedEffect.Category.ATTACKER_MODIFIER
+				effect.source_key = key
+				effect.description = "+%d damage (heads)" % amount
+				effect.execute = func(c: AttackContext) -> void:
+					c.bonus_damage += amount
+				queue.append(effect)
+	))
+
+
+## Helper: registers a "flip N coins, damage = base * heads" handler.
+func _register_coin_multiply(key: String, count: int) -> void:
+	EffectRegistry.register_def(key, EffectDefinition.single(
+		AttackResolver.Phase.DAMAGE_CALC,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			var heads: int = ctx.flip_coins(count).count(true)
+			var effect := QueuedEffect.new()
+			effect.category = QueuedEffect.Category.ATTACKER_MODIFIER
+			effect.source_key = key
+			effect.description = "%d/%d heads — damage x%d" % [heads, count, heads]
+			effect.execute = func(c: AttackContext) -> void:
+				c.bonus_damage += c.base_damage * heads - c.base_damage
+			queue.append(effect)
+	))
 
 
 ## Removes [count] energy cards of [energy_type] from the attacker and

@@ -124,8 +124,16 @@ func end_turn() -> void:
 	_manager.end_turn()
 
 
+func end_turn_async() -> void:
+	await _manager.end_turn()
+
+
 func request_action(action: GameAction) -> ActionResult:
 	return _manager.request_action(action)
+
+
+func request_action_async(action: GameAction) -> ActionResult:
+	return await _manager.request_action_async(action)
 
 
 func phase_name() -> String:
