@@ -22,7 +22,8 @@
       "name": "Sudden Flash",
       "base_damage": 10,
       "text": "Flip a coin. If heads, each Defending Pokémon is now Paralyzed.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_paralyzed"
     }
   ]
 }

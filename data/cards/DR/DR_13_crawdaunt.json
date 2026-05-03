@@ -16,7 +16,8 @@
       "name": "Poison Claws",
       "base_damage": 10,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Poisoned.",
-      "cost_water": 1
+      "cost_water": 1,
+      "effect_key": "coin_poisoned"
     },
     {
       "name": "Rend",

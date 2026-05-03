@@ -67,6 +67,23 @@ func apply(manager) -> void:
 	var target: PokemonInstance   = manager.board_position.get_instance(target_slot)
 	var attack: AttackData        = attacker.card.attacks[attack_index]
 
+	## Consume the attack for this turn regardless of what happens next.
+	manager.attack_used_this_turn[player_id] = true
+
+	## 2007 Confusion check: flip before attacking.
+	## Tails = attack fails, attacker takes 30 damage (deferred until animation completes).
+	if attacker.special_conditions.has(PokemonInstance.SpecialCondition.CONFUSED):
+		var pname: String = attacker.card.display_name if attacker.card != null else "Pokémon"
+		if not manager.flip_coin("%s confusion" % pname):
+			manager.queue_deferred_effect(func() -> void:
+				manager.log_message.emit("[Confused] %s is confused — attack fails! Takes 30 damage." % pname)
+				attacker.apply_damage(30)
+				manager.pokemon_state_changed.emit(attacker_slot, attacker)
+				if attacker.is_knocked_out():
+					manager.resolve_knockout(attacker_slot, 1 - player_id)
+			)
+			return
+
 	## Build the context that effect handlers operate on.
 	var ctx := AttackContext.new()
 	ctx.manager       = manager
@@ -82,8 +99,6 @@ func apply(manager) -> void:
 	## Pre-damage dispatch: handlers may set ctx.bonus_damage (which will be
 	## included in the W/R calculation) and/or queue post-actions.
 	EffectRegistry.dispatch(attack.effect_key, ctx)
-
-	manager.attack_used_this_turn[player_id] = true
 
 	## Collect the slots to damage: single target normally, all opponent actives
 	## when the attack flag is set (e.g. "does 20 damage to each Defending Pokémon").

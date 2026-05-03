@@ -16,13 +16,15 @@
       "name": "Lullaby",
       "base_damage": 10,
       "text": "The Defending Pokémon is now Asleep.",
-      "cost_water": 1
+      "cost_water": 1,
+      "effect_key": "inflict_asleep"
     },
     {
       "name": "Stifling Fluff",
       "base_damage": 10,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
-      "cost_lightning": 1
+      "cost_lightning": 1,
+      "effect_key": "coin_paralyzed"
     }
   ]
 }
