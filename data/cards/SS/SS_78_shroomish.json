@@ -23,7 +23,8 @@
       "base_damage": 10,
       "text": "The Defending Pokémon is now Poisoned.",
       "cost_grass": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "inflict_poisoned"
     }
   ]
 }

@@ -1,12 +1,132 @@
 extends Node
 ## Registers all EffectRegistry handlers for attack effects.
 ## Loaded as an autoload after ManagerSystemSingleton so EffectRegistry is ready.
+##
+## ── Effect key tier definitions ───────────────────────────────────────────────
+## Group A — Pure status conditions (29 attacks)
+##   Unconditional add_condition in a post-action.  No coin flip.
+##   inflict_asleep    — Hypnosis, Sleep Powder, Lullaby, Dragon Song, etc. (14)
+##   inflict_poisoned  — Poison Thread, Toxic Grip, Poison Barb, etc. (10)
+##   inflict_confused  — Confuse Ray (RS_99), Confusion Gas, Supersonic (SS_94) (3)
+##   inflict_burned    — Super Singe (RS_100), Ring of Fire [Group F, skip] (2)
+##
+## Group B — Coin flip → status condition (42 attacks)
+##   coin_paralyzed          — heads → PARALYZED (most common, ~22 attacks)
+##   coin_confused           — heads → CONFUSED (10 attacks)
+##   coin_poisoned           — heads → POISONED (6 attacks)
+##   coin_burned             — heads → BURNED (5 attacks)
+##   coin_asleep             — heads → ASLEEP (1 attack)
+##   coin_confused_or_asleep — heads=CONFUSED / tails=ASLEEP (Illumise)
+##   coin_poisoned_or_asleep — heads=POISONED / tails=ASLEEP (Volbeat)
+##   coin_plus_30_or_paralyzed — heads=+30 dmg / tails=PARALYZED (Ampharos-ex)
+##
+## Group C — Coin flip → bonus damage (12): coin_plus_10/20/30
+## Group D — Coin flip → attack fails on tails (3): coin_fail
+## Group E — Coin flip → discard energy on tails (5): coin_discard_*
+## Group F — Retreat lock (6): needs retreat_locked_until_turn flag on PokemonInstance
+## Group G — Self-heal / remove damage counters (8): needs ctx.attacker heal + condition clear
+## Group H — Energy discard for optional bonus damage (3): needs "you may discard" UI
+## Group I — Energy discard, no bonus (7): post-action removes energy from attacker
+## Group J — Damage scaling (7): own/defender energy count, damage counters on target
+## Group K — Multiple coin flips (5): coin_multiply_2/3
+## Group L — Energy from discard (5): post-action searches game_position.discard
+## Group M — Energy from hand (3): needs hand interaction API
+## Group N — Bench-targeted damage (4): needs chooser UI separate from attack target
+## ─────────────────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	_register_handlers()
 
 
 func _register_handlers() -> void:
+	## ── Group A: unconditional status conditions ───────────────────────────────
+	EffectRegistry.register("inflict_asleep", func(ctx: AttackContext) -> void:
+		ctx.add_post_action(func() -> void:
+			ctx.target.add_condition(PokemonInstance.SpecialCondition.ASLEEP)
+		)
+	)
+	EffectRegistry.register("inflict_poisoned", func(ctx: AttackContext) -> void:
+		ctx.add_post_action(func() -> void:
+			ctx.target.add_condition(PokemonInstance.SpecialCondition.POISONED)
+		)
+	)
+	EffectRegistry.register("inflict_confused", func(ctx: AttackContext) -> void:
+		ctx.add_post_action(func() -> void:
+			ctx.target.add_condition(PokemonInstance.SpecialCondition.CONFUSED)
+		)
+	)
+	EffectRegistry.register("inflict_burned", func(ctx: AttackContext) -> void:
+		ctx.add_post_action(func() -> void:
+			ctx.target.add_condition(PokemonInstance.SpecialCondition.BURNED)
+		)
+	)
+	EffectRegistry.register("inflict_paralyzed", func(ctx: AttackContext) -> void:
+		ctx.add_post_action(func() -> void:
+			ctx.target.add_condition(PokemonInstance.SpecialCondition.PARALYZED)
+		)
+	)
+
+	## ── Group B: coin flip → status condition ─────────────────────────────────
+	EffectRegistry.register("coin_paralyzed", func(ctx: AttackContext) -> void:
+		if ctx.flip_coin():
+			ctx.add_post_action(func() -> void:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.PARALYZED)
+			)
+	)
+	EffectRegistry.register("coin_confused", func(ctx: AttackContext) -> void:
+		if ctx.flip_coin():
+			ctx.add_post_action(func() -> void:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.CONFUSED)
+			)
+	)
+	EffectRegistry.register("coin_poisoned", func(ctx: AttackContext) -> void:
+		if ctx.flip_coin():
+			ctx.add_post_action(func() -> void:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.POISONED)
+			)
+	)
+	EffectRegistry.register("coin_burned", func(ctx: AttackContext) -> void:
+		if ctx.flip_coin():
+			ctx.add_post_action(func() -> void:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.BURNED)
+			)
+	)
+	EffectRegistry.register("coin_asleep", func(ctx: AttackContext) -> void:
+		if ctx.flip_coin():
+			ctx.add_post_action(func() -> void:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.ASLEEP)
+			)
+	)
+
+	## Special two-outcome Group B variants.
+	EffectRegistry.register("coin_confused_or_asleep", func(ctx: AttackContext) -> void:
+		var heads: bool = ctx.flip_coin()
+		ctx.add_post_action(func() -> void:
+			if heads:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.CONFUSED)
+			else:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.ASLEEP)
+		)
+	)
+	EffectRegistry.register("coin_poisoned_or_asleep", func(ctx: AttackContext) -> void:
+		var heads: bool = ctx.flip_coin()
+		ctx.add_post_action(func() -> void:
+			if heads:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.POISONED)
+			else:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.ASLEEP)
+		)
+	)
+	## Ampharos-ex Gigavolt: heads = +30 damage, tails = Paralyzed.
+	EffectRegistry.register("coin_plus_30_or_paralyzed", func(ctx: AttackContext) -> void:
+		if ctx.flip_coin():
+			ctx.bonus_damage += 30
+		else:
+			ctx.add_post_action(func() -> void:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.PARALYZED)
+			)
+	)
+
 	## ── Group C: coin flip adds bonus damage on heads ─────────────────────────
 	EffectRegistry.register("coin_plus_10", func(ctx: AttackContext) -> void:
 		if ctx.flip_coin():

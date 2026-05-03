@@ -79,6 +79,18 @@ func end_turn() -> void:
 	push_error("MatchAuthority.end_turn is not implemented.")
 
 
+func begin_end_turn() -> void:
+	push_error("MatchAuthority.begin_end_turn is not implemented.")
+
+
+func complete_end_turn() -> void:
+	push_error("MatchAuthority.complete_end_turn is not implemented.")
+
+
+func flush_deferred_effects() -> void:
+	push_error("MatchAuthority.flush_deferred_effects is not implemented.")
+
+
 func request_action(_action: GameAction) -> ActionResult:
 	push_error("MatchAuthority.request_action is not implemented.")
 	return ActionResult.fail("No authority implementation.")

@@ -346,6 +346,27 @@ func flip_coins_batch(count: int, label: String) -> Array[bool]:
 	return results
 
 
+## --- Deferred effect queue ---------------------------------------------------
+## Effects from coin-flip handlers and between-turn cleanup are queued here
+## instead of applied immediately, so the scene layer can flush them after the
+## coin-flip animation watermark has passed.
+
+var _deferred_effects: Array[Callable] = []
+
+
+## Enqueue [fn] to run after the current animation completes.
+func queue_deferred_effect(fn: Callable) -> void:
+	_deferred_effects.append(fn)
+
+
+## Execute all queued effects now and clear the queue.
+func flush_deferred_effects() -> void:
+	var effects := _deferred_effects.duplicate()
+	_deferred_effects.clear()
+	for fn in effects:
+		fn.call()
+
+
 ## Called by the UI after the player selects which energy card(s) to discard
 ## when energy_discard_choice_required was emitted.
 ## [indices] are indices into the attacker's attached_energy array.
@@ -438,13 +459,32 @@ func can_play_supporter(pid: int) -> bool:
 
 ## Ends the current player's turn: runs cleanup for their board state, emits
 ## turn_ended, and passes control to the other player.
+## Split into begin_end_turn + complete_end_turn so the scene layer can
+## await coin-flip animations between the two phases.
 func end_turn() -> void:
 	if current_phase != Phase.MAIN:
-		return  ## already between turns / not yet started
+		return
+	begin_end_turn()
+	complete_end_turn()
+
+
+## Phase 1: run between-turn condition effects and emit coin_flipped signals.
+## Sets phase to ENDED. The caller may await animation completion before
+## calling complete_end_turn().
+func begin_end_turn() -> void:
+	if current_phase != Phase.MAIN:
+		return
+	_run_cleanup(current_player)
+	_log_state("[Cleanup] P%d end of turn %d" % [current_player, turn_number])
+	log_message.emit("[End Turn] P%d ends turn %d." % [current_player, turn_number])
+
+
+## Phase 2: advance state to the next player's turn.
+## Must only be called after begin_end_turn().
+func complete_end_turn() -> void:
+	if current_phase != Phase.ENDED:
+		return
 	var finishing_player := current_player
-	_run_cleanup(finishing_player)
-	_log_state("[Cleanup] P%d end of turn %d" % [finishing_player, turn_number])
-	log_message.emit("[End Turn] P%d ends turn %d." % [finishing_player, turn_number])
 	turn_ended.emit(finishing_player)
 	_begin_turn(1 - finishing_player)
 
@@ -498,38 +538,66 @@ func _reset_turn_flags(pid: int) -> void:
 	pokemon_entered_play_this_turn[pid] = []
 
 
-## Resolves between-turn condition effects for [pid]'s in-play Pokemon:
-##   - PARALYZED ends automatically at the end of its owner's turn.
-##   - ASLEEP flips a coin; heads wakes up.
-##   - BURNED flips a coin; heads ends the burn.  (Between-turn burn
-##     damage is intentionally not yet applied — damage lives in a later
-##     action, to be added alongside Attack resolution.)
-func _run_cleanup(pid: int) -> void:
+## Between-turn condition effects (2007 EX-era rules):
+##   - PARALYZED: ends at the close of its owner's turn only.
+##   - ASLEEP:    flip each between-turn; heads wakes up.
+##   - POISONED:  10 damage every between-turn (no flip, never auto-cures).
+##   - BURNED:    flip each between-turn; tails = 20 damage (never auto-cures).
+##   - CONFUSED:  no between-turn effect; only affects the confused Pokemon's attacks.
+func _run_cleanup(finishing_pid: int) -> void:
 	current_phase = Phase.ENDED
 	phase_changed.emit(current_phase)
-	for sid in BoardPosition.all_slot_ids(pid):
-		var inst: PokemonInstance = board_position.get_instance(sid)
-		if inst != null:
-			_cleanup_instance(inst)
+	for pid in range(2):
+		for sid in BoardPosition.all_slot_ids(pid):
+			var inst: PokemonInstance = board_position.get_instance(sid)
+			if inst != null:
+				_cleanup_instance(inst, sid, pid == finishing_pid)
 
 
-func _cleanup_instance(inst: PokemonInstance) -> void:
+func _cleanup_instance(inst: PokemonInstance, slot_id: String, clear_paralysis: bool) -> void:
 	var name: String = inst.card.display_name if inst.card != null else "Pokemon"
-	if inst.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED):
-		inst.remove_condition(PokemonInstance.SpecialCondition.PARALYZED)
-		log_message.emit("[Cleanup] %s is no longer Paralyzed." % name)
+	## Paralysis has no coin flip and no animation — apply immediately.
+	if clear_paralysis and inst.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED):
+		queue_deferred_effect(func() -> void:
+			inst.remove_condition(PokemonInstance.SpecialCondition.PARALYZED)
+			log_message.emit("[Cleanup] %s is no longer Paralyzed." % name)
+		)
+	## Asleep: flip now (starts animation), queue the result for after the animation.
 	if inst.special_conditions.has(PokemonInstance.SpecialCondition.ASLEEP):
-		if flip_coin("%s wake-up" % name):
-			inst.remove_condition(PokemonInstance.SpecialCondition.ASLEEP)
-			log_message.emit("[Cleanup] %s wakes up." % name)
+		var heads: bool = flip_coin("%s wake-up" % name)
+		if heads:
+			queue_deferred_effect(func() -> void:
+				inst.remove_condition(PokemonInstance.SpecialCondition.ASLEEP)
+				log_message.emit("[Cleanup] %s wakes up." % name)
+			)
 		else:
-			log_message.emit("[Cleanup] %s stays Asleep." % name)
+			queue_deferred_effect(func() -> void:
+				log_message.emit("[Cleanup] %s stays Asleep." % name)
+			)
+	## Poisoned: no coin flip, but queue with everything else so all cleanup effects land together.
+	if inst.special_conditions.has(PokemonInstance.SpecialCondition.POISONED):
+		queue_deferred_effect(func() -> void:
+			inst.apply_damage(10)
+			log_message.emit("[Cleanup] %s takes 10 damage from Poison." % name)
+			pokemon_state_changed.emit(slot_id, inst)
+			if inst.is_knocked_out():
+				resolve_knockout(slot_id, 1 - board_position.player_of(slot_id))
+		)
+	## Burned: flip now, queue the result. 2007 rules: tails = 20 dmg, burn never auto-cures.
 	if inst.special_conditions.has(PokemonInstance.SpecialCondition.BURNED):
-		if flip_coin("%s burn check" % name):
-			inst.remove_condition(PokemonInstance.SpecialCondition.BURNED)
-			log_message.emit("[Cleanup] %s's Burn ends." % name)
+		var heads: bool = flip_coin("%s burn check" % name)
+		if not heads:
+			queue_deferred_effect(func() -> void:
+				inst.apply_damage(20)
+				log_message.emit("[Cleanup] %s takes 20 damage from Burn (tails)." % name)
+				pokemon_state_changed.emit(slot_id, inst)
+				if inst.is_knocked_out():
+					resolve_knockout(slot_id, 1 - board_position.player_of(slot_id))
+			)
 		else:
-			log_message.emit("[Cleanup] %s stays Burned." % name)
+			queue_deferred_effect(func() -> void:
+				log_message.emit("[Cleanup] %s burn check: heads (no damage)." % name)
+			)
 
 
 ## --- Combat resolution -------------------------------------------------------

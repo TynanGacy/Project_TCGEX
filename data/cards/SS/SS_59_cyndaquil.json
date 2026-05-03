@@ -22,7 +22,8 @@
       "name": "Singe",
       "base_damage": 0,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Burned.",
-      "cost_fire": 1
+      "cost_fire": 1,
+      "effect_key": "coin_burned"
     }
   ]
 }

@@ -16,7 +16,8 @@
       "name": "Chaotic Noise",
       "base_damage": 0,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Confused. If tails, the Defending Pokémon is now Asleep.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_confused_or_asleep"
     },
     {
       "name": "Pester",

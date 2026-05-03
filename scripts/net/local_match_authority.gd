@@ -124,6 +124,18 @@ func end_turn() -> void:
 	_manager.end_turn()
 
 
+func begin_end_turn() -> void:
+	_manager.begin_end_turn()
+
+
+func complete_end_turn() -> void:
+	_manager.complete_end_turn()
+
+
+func flush_deferred_effects() -> void:
+	_manager.flush_deferred_effects()
+
+
 func request_action(action: GameAction) -> ActionResult:
 	return _manager.request_action(action)
 

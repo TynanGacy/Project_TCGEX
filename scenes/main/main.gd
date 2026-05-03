@@ -1185,7 +1185,19 @@ func _on_stadium_changed(stadium: TrainerCardData, owner_id: int) -> void:
 func _on_end_turn_pressed() -> void:
 	if _in_placement_phase:
 		return  ## Button is acting as "Ready" — handled by _show_placement_phase.
-	_authority.end_turn()
+	if _anim_wait_active:
+		return
+	## Run between-turn cleanup coin flips (updates _anim_end_msec, effects deferred).
+	_authority.begin_end_turn()
+	## Wait for cleanup animations to fully complete, including the 1-second buffer.
+	var wait_ms: int = _anim_end_msec - Time.get_ticks_msec()
+	if wait_ms > 0:
+		_anim_wait_active = true
+		await get_tree().create_timer(wait_ms / 1000.0).timeout
+		_anim_wait_active = false
+	## Apply deferred cleanup effects (damage, condition changes) after animation.
+	_authority.flush_deferred_effects()
+	_authority.complete_end_turn()
 
 
 func _on_turn_started(pid: int, _turn_num: int) -> void:
@@ -1507,8 +1519,7 @@ func _try_end_turn_after_attack() -> void:
 		return
 	if manager.promotion_phase_for >= 0:
 		return
-	## Wait for pending animations (coin flip, etc.) without referencing
-	## any overlay state — we only check the engine-time watermark.
+	## Wait for attack animations (coin flip, etc.) — full duration including buffer.
 	if _anim_wait_active:
 		return
 	var wait_ms: int = _anim_end_msec - Time.get_ticks_msec()
@@ -1523,8 +1534,20 @@ func _try_end_turn_after_attack() -> void:
 			return
 		if manager.promotion_phase_for >= 0:
 			return
+	## Flush attack post-actions (status conditions, etc.) now that animation is done.
+	_authority.flush_deferred_effects()
+	## Run between-turn cleanup coin flips (updates _anim_end_msec, effects deferred).
+	_authority.begin_end_turn()
+	## Wait for cleanup animations to fully complete, including the 1-second buffer.
+	var cleanup_wait_ms: int = _anim_end_msec - Time.get_ticks_msec()
+	if cleanup_wait_ms > 0:
+		_anim_wait_active = true
+		await get_tree().create_timer(cleanup_wait_ms / 1000.0).timeout
+		_anim_wait_active = false
+	## Apply deferred cleanup effects (damage, condition changes) after animation.
+	_authority.flush_deferred_effects()
 	_attack_end_turn_pending = false
-	_authority.end_turn()
+	_authority.complete_end_turn()
 
 
 ## Returns a bracketed string of single-letter energy symbols for [atk]'s cost.
