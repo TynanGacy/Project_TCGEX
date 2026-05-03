@@ -22,7 +22,8 @@
       "name": "Soothing Wave",
       "base_damage": 0,
       "text": "Each Defending Pokémon is now Asleep.",
-      "cost_psychic": 1
+      "cost_psychic": 1,
+      "effect_key": "inflict_asleep"
     }
   ]
 }

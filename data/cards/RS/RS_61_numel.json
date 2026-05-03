@@ -23,7 +23,8 @@
       "base_damage": 0,
       "text": "Flip a coin. If heads, each Defending Pokémon is now Burned.",
       "cost_fire": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_burned"
     }
   ]
 }

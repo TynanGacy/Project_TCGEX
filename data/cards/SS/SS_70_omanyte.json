@@ -22,7 +22,8 @@
       "name": "Bind",
       "base_damage": 20,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "coin_paralyzed"
     }
   ]
 }

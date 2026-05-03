@@ -357,6 +357,27 @@ func flip_coins_batch(count: int, label: String) -> Array[bool]:
 	return results
 
 
+## --- Deferred effect queue ---------------------------------------------------
+## Effects from coin-flip handlers and between-turn cleanup are queued here
+## instead of applied immediately, so the scene layer can flush them after the
+## coin-flip animation watermark has passed.
+
+var _deferred_effects: Array[Callable] = []
+
+
+## Enqueue [fn] to run after the current animation completes.
+func queue_deferred_effect(fn: Callable) -> void:
+	_deferred_effects.append(fn)
+
+
+## Execute all queued effects now and clear the queue.
+func flush_deferred_effects() -> void:
+	var effects := _deferred_effects.duplicate()
+	_deferred_effects.clear()
+	for fn in effects:
+		fn.call()
+
+
 ## Called by the UI after the player selects which energy card(s) to discard
 ## when energy_discard_choice_required was emitted.
 ## [indices] are indices into the attacker's attached_energy array.
@@ -449,6 +470,8 @@ func can_play_supporter(pid: int) -> bool:
 
 ## Ends the current player's turn: runs cleanup for their board state, emits
 ## turn_ended, and passes control to the other player.
+## Split into begin_end_turn + complete_end_turn so the scene layer can
+## await coin-flip animations between the two phases.
 func end_turn() -> void:
 	if current_phase != Phase.MAIN:
 		return

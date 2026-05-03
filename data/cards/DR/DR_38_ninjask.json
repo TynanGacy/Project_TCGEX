@@ -16,7 +16,8 @@
       "name": "Supersonic",
       "base_damage": 10,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_confused"
     },
     {
       "name": "Sonic Wing",

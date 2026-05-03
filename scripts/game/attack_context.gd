@@ -45,10 +45,11 @@ func add_post_action(fn: Callable) -> void:
 	_post_actions.append(fn)
 
 
-## Called by ActionAttack after the KO check. Runs all queued post-actions.
+## Called by ActionAttack after the KO check.
+## Queues post-actions on the manager for deferred execution after animations complete.
 func run_post_actions() -> void:
 	for fn in _post_actions:
-		fn.call()
+		manager.queue_deferred_effect(fn)
 
 
 ## Flips a coin, emits the game-wide coin_flipped signal, logs the result,
