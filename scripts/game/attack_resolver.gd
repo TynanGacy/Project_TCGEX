@@ -98,7 +98,7 @@ func begin_attack(action, manager) -> void:
 	_execute_category(ctx, QueuedEffect.Category.DEFENDER_MODIFIER)
 
 	## Step 5d: Queue damage entries.
-	var opp_id := 1 - action.player_id
+	var opp_id: int = 1 - action.player_id
 	var hit_slots: Array[String] = []
 	if attack.hits_each_defending:
 		for s in BoardPosition.ACTIVE_SLOTS:
