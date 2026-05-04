@@ -15,10 +15,13 @@
     {
       "name": "Stun Spore",
       "base_damage": 20,
-      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Paralyzed.",
       "cost_grass": 1,
       "cost_colorless": 1,
-      "effect_key": "coin_paralyzed"
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "PARALYZED"
+      }
     },
     {
       "name": "Razor Wind",

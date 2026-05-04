@@ -15,14 +15,17 @@
     {
       "name": "Confusion Gas",
       "base_damage": 10,
-      "text": "The Defending Pokémon is now Confused.",
+      "text": "The Defending Pok\u00e9mon is now Confused.",
       "cost_grass": 1,
-      "effect_key": "inflict_confused"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "CONFUSED"
+      }
     },
     {
       "name": "Poison Smog",
       "base_damage": 0,
-      "text": "Each Defending Pokémon is now Poisoned. Does 10 damage to each of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "text": "Each Defending Pok\u00e9mon is now Poisoned. Does 10 damage to each of your opponent's Benched Pok\u00e9mon. (Don't apply Weakness and Resistance for Benched Pok\u00e9mon.)",
       "cost_grass": 1,
       "cost_colorless": 1
     }

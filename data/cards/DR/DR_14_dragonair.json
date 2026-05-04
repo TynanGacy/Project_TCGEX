@@ -15,15 +15,18 @@
     {
       "name": "Dazzle Blast",
       "base_damage": 20,
-      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Confused.",
       "cost_lightning": 1,
       "cost_colorless": 1,
-      "effect_key": "coin_confused"
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "CONFUSED"
+      }
     },
     {
       "name": "Healing Wave",
       "base_damage": 30,
-      "text": "Remove 1 damage counter from each of your Active Pokémon.",
+      "text": "Remove 1 damage counter from each of your Active Pok\u00e9mon.",
       "cost_water": 1,
       "cost_colorless": 2
     }

@@ -15,14 +15,18 @@
     {
       "name": "Chaotic Noise",
       "base_damage": 0,
-      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused. If tails, the Defending Pokémon is now Asleep.",
+      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Confused. If tails, the Defending Pok\u00e9mon is now Asleep.",
       "cost_colorless": 1,
-      "effect_key": "coin_confused_or_asleep"
+      "effect_key": "coin_status",
+      "effect_params": {
+        "heads_condition": "CONFUSED",
+        "tails_condition": "ASLEEP"
+      }
     },
     {
       "name": "Pester",
       "base_damage": 20,
-      "text": "If the Defending Pokémon is affected by a Special Condition, this attack does 20 damage plus 20 more damage.",
+      "text": "If the Defending Pok\u00e9mon is affected by a Special Condition, this attack does 20 damage plus 20 more damage.",
       "cost_grass": 1,
       "cost_colorless": 1
     }

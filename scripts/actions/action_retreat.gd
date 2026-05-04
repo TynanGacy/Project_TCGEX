@@ -42,6 +42,8 @@ func validate(manager) -> ActionResult:
 				active_inst.attached_energy.size(),
 			]
 		)
+	if active_inst.retreat_locked_until_turn >= manager.turn_number:
+		return ActionResult.fail("This Pokémon is retreat-locked until the end of your opponent's next turn.")
 
 	if not manager.board_position.has_slot(bench_slot):
 		return ActionResult.fail("Unknown bench slot '%s'." % bench_slot)

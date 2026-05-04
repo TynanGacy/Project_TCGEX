@@ -16,7 +16,12 @@
       "name": "Flail",
       "base_damage": 10,
       "text": "Does 10 damage for each damage counter on Goldeen.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "bonus_per_damage_counter",
+      "effect_params": {
+        "multiplier": 10,
+        "source": "attacker"
+      }
     }
   ]
 }

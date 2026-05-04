@@ -15,9 +15,12 @@
     {
       "name": "Powder Snow",
       "base_damage": 10,
-      "text": "The Defending Pokémon is now Asleep.",
+      "text": "The Defending Pok\u00e9mon is now Asleep.",
       "cost_water": 1,
-      "effect_key": "inflict_asleep"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "ASLEEP"
+      }
     }
   ]
 }

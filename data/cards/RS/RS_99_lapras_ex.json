@@ -10,7 +10,7 @@
   "weakness": "LIGHTNING",
   "resistance": "NONE",
   "retreat_cost": 3,
-  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Energy Ball",
@@ -21,10 +21,13 @@
     {
       "name": "Confuse Ray",
       "base_damage": 30,
-      "text": "The Defending Pokémon is now Confused.",
+      "text": "The Defending Pok\u00e9mon is now Confused.",
       "cost_water": 2,
       "cost_colorless": 1,
-      "effect_key": "inflict_confused"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "CONFUSED"
+      }
     }
   ]
 }

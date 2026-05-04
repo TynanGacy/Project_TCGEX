@@ -16,15 +16,24 @@
       "name": "Growth Spurt",
       "base_damage": 0,
       "text": "Attach a Grass Energy card from your hand to Shroomish.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "attach_from_hand",
+      "effect_params": {
+        "type": "GRASS",
+        "count": 1,
+        "target": "self"
+      }
     },
     {
       "name": "Poisonpowder",
       "base_damage": 10,
-      "text": "The Defending Pokémon is now Poisoned.",
+      "text": "The Defending Pok\u00e9mon is now Poisoned.",
       "cost_grass": 1,
       "cost_colorless": 1,
-      "effect_key": "inflict_poisoned"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "POISONED"
+      }
     }
   ]
 }

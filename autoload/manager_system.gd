@@ -508,6 +508,7 @@ func _begin_turn(pid: int) -> void:
 	current_player = pid
 	turn_number   += 1
 	_reset_turn_flags(pid)
+	_clear_expired_retreat_locks()
 	current_phase = Phase.MAIN
 	phase_changed.emit(current_phase)
 	## The first player does not draw on their very first turn (RS-PK rule).
@@ -530,6 +531,15 @@ func _reset_turn_flags(pid: int) -> void:
 	retreat_used_this_turn[pid]      = false
 	attack_used_this_turn[pid]       = false
 	pokemon_entered_play_this_turn[pid] = []
+
+
+func _clear_expired_retreat_locks() -> void:
+	for p in range(2):
+		for s: String in ["active1", "active2", "bench1", "bench2", "bench3", "bench4", "bench5"]:
+			var inst: PokemonInstance = board_position.get_instance("p%d_%s" % [p, s])
+			if inst != null and inst.retreat_locked_until_turn != -1 \
+					and inst.retreat_locked_until_turn < turn_number:
+				inst.retreat_locked_until_turn = -1
 
 
 ## Between-turn effects (step 12).  Iterates both players' active Pokemon.

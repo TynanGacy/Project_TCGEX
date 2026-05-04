@@ -21,9 +21,12 @@
     {
       "name": "Toxic Grip",
       "base_damage": 10,
-      "text": "The Defending Pokémon is now Poisoned.",
+      "text": "The Defending Pok\u00e9mon is now Poisoned.",
       "cost_colorless": 2,
-      "effect_key": "inflict_poisoned"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "POISONED"
+      }
     }
   ]
 }

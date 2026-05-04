@@ -10,14 +10,17 @@
   "weakness": "LIGHTNING",
   "resistance": "FIGHTING",
   "retreat_cost": 1,
-  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Supersonic",
       "base_damage": 10,
-      "text": "The Defending Pokémon is now Confused.",
+      "text": "The Defending Pok\u00e9mon is now Confused.",
       "cost_colorless": 1,
-      "effect_key": "inflict_confused"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "CONFUSED"
+      }
     },
     {
       "name": "Wing Attack",

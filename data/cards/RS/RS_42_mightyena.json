@@ -22,9 +22,12 @@
       "name": "Ambush",
       "base_damage": 30,
       "text": "Flip a coin. If heads, this attack does 30 damage plus 30 more damage.",
-      "effect_key": "coin_plus_30",
+      "effect_key": "coin_bonus_damage",
       "cost_darkness": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_params": {
+        "bonus": 30
+      }
     }
   ]
 }

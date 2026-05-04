@@ -15,14 +15,17 @@
     {
       "name": "Dazzle Dance",
       "base_damage": 0,
-      "text": "Flip a coin. If heads, each Defending Pokémon is now Confused.",
+      "text": "Flip a coin. If heads, each Defending Pok\u00e9mon is now Confused.",
       "cost_colorless": 1,
-      "effect_key": "coin_confused"
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "CONFUSED"
+      }
     },
     {
       "name": "Life Drain",
       "base_damage": 0,
-      "text": "Flip a coin. If heads, put damage counters on the Defending Pokémon until it is 10 HP away from being Knocked Out.",
+      "text": "Flip a coin. If heads, put damage counters on the Defending Pok\u00e9mon until it is 10 HP away from being Knocked Out.",
       "cost_psychic": 1
     }
   ]

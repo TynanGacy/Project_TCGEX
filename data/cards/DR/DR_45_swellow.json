@@ -15,13 +15,15 @@
     {
       "name": "Clutch",
       "base_damage": 10,
-      "text": "The Defending Pokémon can't retreat until the end of your opponent's next turn.",
-      "cost_colorless": 1
+      "text": "The Defending Pok\u00e9mon can't retreat until the end of your opponent's next turn.",
+      "cost_colorless": 1,
+      "effect_key": "retreat_lock",
+      "effect_params": {}
     },
     {
       "name": "Quick Dive",
       "base_damage": 0,
-      "text": "Flip a coin. If heads, choose 1 of your opponent's Pokémon. This attack does 50 damage to that Pokémon. This attack's damage isn't affected by Weakness or Resistance.",
+      "text": "Flip a coin. If heads, choose 1 of your opponent's Pok\u00e9mon. This attack does 50 damage to that Pok\u00e9mon. This attack's damage isn't affected by Weakness or Resistance.",
       "cost_colorless": 2
     }
   ]

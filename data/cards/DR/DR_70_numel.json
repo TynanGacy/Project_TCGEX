@@ -21,8 +21,10 @@
     {
       "name": "Kindle",
       "base_damage": 10,
-      "text": "Discard a Fire Energy card attached to Numel and then discard an Energy card attached to the Defending Pokémon.",
-      "cost_fire": 1
+      "text": "Discard a Fire Energy card attached to Numel and then discard an Energy card attached to the Defending Pok\u00e9mon.",
+      "cost_fire": 1,
+      "effect_key": "kindle",
+      "effect_params": {}
     }
   ]
 }

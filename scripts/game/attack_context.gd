@@ -38,6 +38,9 @@ var current_phase: int = -1
 
 var _post_actions: Array[Callable] = []
 
+## Populated by AttackResolver when a needs_query QueuedEffect is about to execute.
+var _query_response: Variant = null
+
 
 ## Queue [fn] to run after damage is applied and KO is resolved.
 ## Use this for status conditions, bench damage, energy discards, etc.

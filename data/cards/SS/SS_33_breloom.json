@@ -15,9 +15,12 @@
     {
       "name": "Super Poison Breath",
       "base_damage": 0,
-      "text": "Each Defending Pokémon is now Poisoned.",
+      "text": "Each Defending Pok\u00e9mon is now Poisoned.",
       "cost_colorless": 1,
-      "effect_key": "inflict_poisoned"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "POISONED"
+      }
     },
     {
       "name": "Sky Uppercut",
