@@ -1,0 +1,95 @@
+ATTACK RESOLUTION FLOWCHART — 2007 EX-Era TCG Rules
+====================================================
+
+Terminology
+-----------
+  Query   = Prompt one or both players for input.
+  Resolve = Calculate / prepare a game action without executing it yet.
+  Queue   = Store a resolved action for batch execution later.
+  Execute = Mutate game state, or force an animation delay before the next step.
+
+
+Steps
+-----
+
+0. VALIDATE
+   For each available attack, check legality (energy costs, blocking conditions).
+   Invalid attacks are greyed out in the UI.  Already handled by ActionAttack.validate().
+
+1. SELECT TARGET (Query)
+   Prompt the player to select target(s).  Most attacks implicitly target the
+   opposing active, but with 2-active-slot boards, explicit selection matters.
+   Valid targets may be modified by abilities or board effects.
+   Handled by the UI before action submission.
+
+2. DECLARE ATTACK
+   Attack is locked in; cannot be cancelled.  Mark attack_used_this_turn.
+
+3. CONDITIONALS (Resolve / Execute)
+   Resolve and execute conditions that may block or redirect the attack.
+   Order: Confusion first, then other conditionals (e.g. Smokescreen-like).
+     - Confusion: flip coin.  Tails = 30 self-damage, attack stops.
+   Execute an animation delay for each coin flip before moving on.
+
+4. PRE-DAMAGE EFFECTS (Resolve / Queue)
+   Resolve effects whose text says "before doing damage" or "before using this
+   effect."  May include "may" abilities (player queries).  Queue all resolved
+   pre-damage effects.  Execute animation delay per coin flip.
+
+5. DAMAGE CALCULATION
+
+   5a. BASE DAMAGE
+       Start with base_damage from AttackData.
+
+   5b. ATTACKER MODIFIERS (Resolve)
+       Resolve damage modifiers on the attacker: coin-flip bonuses, tools,
+       abilities, "may" queries.  If total damage <= 0, skip to step 6.
+       Execute animation delay per coin flip.
+
+   5c. DEFENDER MODIFIERS (Resolve)
+       Apply weakness (x2), then resistance (-30), then other defender effects
+       (tools, abilities, "may" queries).  If total damage <= 0, skip to step 6.
+       Execute animation delay per coin flip.
+
+   5d. QUEUE DAMAGE
+       Queue the final damage amount for execution in step 8.
+
+6. POST-DAMAGE EFFECTS (Resolve / Queue)
+   Resolve remaining attack text effects: status conditions, bench damage,
+   self-damage, energy discards, etc.  May include "may" queries.
+   Queue all resolved effects.  Execute animation delay per coin flip.
+
+7. NULLIFICATION (Resolve)
+   Check for abilities that block some or all queued effects.  Remove nullified
+   effects from the queue.  Rarely may include "may" queries.
+   Execute animation delay if applicable.
+
+8. EXECUTE QUEUE
+   Play the main attack animation.  Then execute all surviving queued effects
+   (damage + effects) in order.
+
+9. ON-DAMAGE-RECEIVED (Resolve / Execute)
+   Resolve effects that trigger when a Pokemon receives damage.
+   Execute animation delay, then execute the effects.
+
+10. EXIT ATTACK
+    Check for KOs simultaneously across all damaged Pokemon.
+    Resolve prizes / promotions.
+
+--- End of attack pipeline.  Steps 11-13 are turn management. ---
+
+11. END OF TURN
+    Handled by ManagerSystem.
+
+12. BETWEEN-TURN EFFECTS (Resolve / Execute)
+    Resolve in-between effects for all active Pokemon:
+      - Poison: 10 damage per turn.
+      - Sleep: flip coin to wake (heads = wake).
+      - Burn: flip coin; tails = 20 damage (2007 rules: no auto-cure).
+      - Paralysis: cleared at end of afflicted Pokemon's controller's turn.
+    If multiple effects apply, the controller chooses execution order.
+    Execute animation delay per coin flip, then execute effects.
+    Check KOs simultaneously after all between-turn effects resolve.
+
+13. START NEXT TURN
+    Handled by ManagerSystem.

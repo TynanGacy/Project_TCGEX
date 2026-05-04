@@ -63,69 +63,7 @@ func validate(manager) -> ActionResult:
 
 
 func apply(manager) -> void:
-	var attacker: PokemonInstance = manager.board_position.get_instance(attacker_slot)
-	var target: PokemonInstance   = manager.board_position.get_instance(target_slot)
-	var attack: AttackData        = attacker.card.attacks[attack_index]
-
-	## Consume the attack for this turn regardless of what happens next.
-	manager.attack_used_this_turn[player_id] = true
-
-	## 2007 Confusion check: flip before attacking.
-	## Tails = attack fails, attacker takes 30 damage (deferred until animation completes).
-	if attacker.special_conditions.has(PokemonInstance.SpecialCondition.CONFUSED):
-		var pname: String = attacker.card.display_name if attacker.card != null else "Pokémon"
-		if not manager.flip_coin("%s confusion" % pname):
-			manager.queue_deferred_effect(func() -> void:
-				manager.log_message.emit("[Confused] %s is confused — attack fails! Takes 30 damage." % pname)
-				attacker.apply_damage(30)
-				manager.pokemon_state_changed.emit(attacker_slot, attacker)
-				if attacker.is_knocked_out():
-					manager.resolve_knockout(attacker_slot, 1 - player_id)
-			)
-			return
-
-	## Build the context that effect handlers operate on.
-	var ctx := AttackContext.new()
-	ctx.manager       = manager
-	ctx.attacker      = attacker
-	ctx.target        = target
-	ctx.attack        = attack
-	ctx.player_id     = player_id
-	ctx.attacker_slot = attacker_slot
-	ctx.target_slot   = target_slot
-	ctx.base_damage   = attack.base_damage
-	ctx.bonus_damage  = 0
-
-	## Pre-damage dispatch: handlers may set ctx.bonus_damage (which will be
-	## included in the W/R calculation) and/or queue post-actions.
-	EffectRegistry.dispatch(attack.effect_key, ctx)
-
-	## Collect the slots to damage: single target normally, all opponent actives
-	## when the attack flag is set (e.g. "does 20 damage to each Defending Pokémon").
-	var opp_id := 1 - player_id
-	var hit_slots: Array[String] = []
-	if attack.hits_each_defending:
-		for s in BoardPosition.ACTIVE_SLOTS:
-			var sid := "p%d_%s" % [opp_id, s]
-			if not manager.board_position.is_empty(sid):
-				hit_slots.append(sid)
-	else:
-		hit_slots.append(target_slot)
-
-	for sid in hit_slots:
-		var hit_target: PokemonInstance = manager.board_position.get_instance(sid)
-		if hit_target == null:
-			continue
-		var dmg := _compute_damage(ctx.base_damage + ctx.bonus_damage, attacker, hit_target)
-		if sid == target_slot:
-			ctx.final_damage = dmg
-		if dmg > 0:
-			hit_target.apply_damage(dmg)
-		if hit_target.is_knocked_out():
-			manager.resolve_knockout(sid, player_id)
-
-	## Post-damage dispatch: status conditions, bench damage, self-heal, etc.
-	ctx.run_post_actions()
+	manager.attack_resolver.begin_attack(self, manager)
 
 
 func description() -> String:

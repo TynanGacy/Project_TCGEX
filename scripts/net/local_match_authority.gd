@@ -124,20 +124,16 @@ func end_turn() -> void:
 	_manager.end_turn()
 
 
-func begin_end_turn() -> void:
-	_manager.begin_end_turn()
-
-
-func complete_end_turn() -> void:
-	_manager.complete_end_turn()
-
-
-func flush_deferred_effects() -> void:
-	_manager.flush_deferred_effects()
+func end_turn_async() -> void:
+	await _manager.end_turn()
 
 
 func request_action(action: GameAction) -> ActionResult:
 	return _manager.request_action(action)
+
+
+func request_action_async(action: GameAction) -> ActionResult:
+	return await _manager.request_action_async(action)
 
 
 func phase_name() -> String:

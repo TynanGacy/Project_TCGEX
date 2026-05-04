@@ -30,6 +30,12 @@ var bonus_damage: int = 0
 ## Set by ActionAttack after W/R. Available to post-actions for reference.
 var final_damage: int = 0
 
+var effect_queue: Array[QueuedEffect] = []
+var damage_queue: Array[DamageEntry] = []
+var damaged_slots: Array[String] = []
+var attack_blocked: bool = false
+var current_phase: int = -1
+
 var _post_actions: Array[Callable] = []
 
 
