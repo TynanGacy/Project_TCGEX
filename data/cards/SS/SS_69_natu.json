@@ -12,21 +12,21 @@
   "retreat_cost": 1,
   "rules_text": "",
   "attacks": [
-    {
-      "name": "Peck",
-      "base_damage": 10,
-      "text": "",
-      "cost_colorless": 1
-    },
-    {
-      "name": "Soothing Wave",
-      "base_damage": 0,
-      "text": "Each Defending Pok\u00e9mon is now Asleep.",
-      "cost_psychic": 1,
-      "effect_key": "inflict_status",
-      "effect_params": {
-        "condition": "ASLEEP"
-      }
-    }
+	{
+	  "name": "Peck",
+	  "base_damage": 10,
+	  "text": "",
+	  "cost_colorless": 1
+	},
+	{
+	  "name": "Soothing Wave",
+	  "base_damage": 0,
+	  "text": "Each Defending Pok\u00e9mon is now Asleep.",
+	  "cost_psychic": 1,
+	  "effect_key": "inflict_status",
+	  "effect_params": {
+		"condition": "ASLEEP"
+	  }
+	}
   ]
 }
