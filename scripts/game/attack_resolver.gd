@@ -98,7 +98,7 @@ func begin_attack(action, manager) -> void:
 	_execute_category(ctx, QueuedEffect.Category.DEFENDER_MODIFIER)
 
 	## Step 5d: Queue damage entries.
-	var opp_id := 1 - action.player_id
+	var opp_id: int = 1 - action.player_id
 	var hit_slots: Array[String] = []
 	if attack.hits_each_defending:
 		for s in BoardPosition.ACTIVE_SLOTS:
@@ -139,9 +139,14 @@ func begin_attack(action, manager) -> void:
 			ctx.damaged_slots.append(entry.target_slot)
 
 	for effect: QueuedEffect in ctx.effect_queue:
-		if effect.category != QueuedEffect.Category.ATTACKER_MODIFIER \
-				and effect.category != QueuedEffect.Category.DEFENDER_MODIFIER:
-			effect.execute.call(ctx)
+		if effect.category == QueuedEffect.Category.ATTACKER_MODIFIER \
+				or effect.category == QueuedEffect.Category.DEFENDER_MODIFIER:
+			continue
+		ctx._query_response = null
+		if effect.needs_query and effect.query_template != null:
+			player_query_requested.emit(effect.query_template)
+			ctx._query_response = await player_query_resolved
+		effect.execute.call(ctx)
 
 	## Step 9: On-damage-received (placeholder — no such effects implemented yet).
 	ctx.current_phase = Phase.ON_DAMAGE_RECEIVED
@@ -151,6 +156,11 @@ func begin_attack(action, manager) -> void:
 	for entry: DamageEntry in ctx.damage_queue:
 		if entry.target_instance.is_knocked_out():
 			manager.resolve_knockout(entry.target_slot, action.player_id)
+
+	## Run post-actions (status conditions, heal, discard, retreat lock, etc.)
+	## after KO resolution so bench-damage KOs don't double-process.
+	ctx.run_post_actions()
+	manager.flush_deferred_effects()
 
 	_is_resolving = false
 	pipeline_completed.emit()

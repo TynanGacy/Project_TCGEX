@@ -15,15 +15,18 @@
     {
       "name": "Team Assembly",
       "base_damage": 0,
-      "text": "Search your deck for Omanyte, Kabuto, or any Basic Pokémon and put as many of them as you like onto your Bench. Shuffle your deck afterward. Treat the new Benched Pokémon as Basic Pokémon.",
+      "text": "Search your deck for Omanyte, Kabuto, or any Basic Pok\u00e9mon and put as many of them as you like onto your Bench. Shuffle your deck afterward. Treat the new Benched Pok\u00e9mon as Basic Pok\u00e9mon.",
       "cost_colorless": 1
     },
     {
       "name": "Bind",
       "base_damage": 20,
-      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Paralyzed.",
       "cost_colorless": 2,
-      "effect_key": "coin_paralyzed"
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "PARALYZED"
+      }
     }
   ]
 }

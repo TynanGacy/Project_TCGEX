@@ -15,9 +15,12 @@
     {
       "name": "Poison Thread",
       "base_damage": 0,
-      "text": "The Defending Pokémon is now Poisoned.",
+      "text": "The Defending Pok\u00e9mon is now Poisoned.",
       "cost_grass": 1,
-      "effect_key": "inflict_poisoned"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "POISONED"
+      }
     }
   ]
 }

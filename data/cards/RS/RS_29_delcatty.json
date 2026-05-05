@@ -15,8 +15,13 @@
     {
       "name": "Energy Call",
       "base_damage": 10,
-      "text": "Attach 1 Energy card from your discard pile to your Active Pokémon.",
-      "cost_colorless": 1
+      "text": "Attach 1 Energy card from your discard pile to your Active Pok\u00e9mon.",
+      "cost_colorless": 1,
+      "effect_key": "attach_from_discard",
+      "effect_params": {
+        "type": "ANY",
+        "count": 1
+      }
     },
     {
       "name": "Cannonball",

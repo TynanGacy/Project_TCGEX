@@ -10,15 +10,19 @@
   "weakness": "FIGHTING",
   "resistance": "METAL",
   "retreat_cost": 3,
-  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Gigavolt",
       "base_damage": 40,
-      "text": "Flip a coin. If heads, this attack does 40 damage plus 30 more damage. If tails, the Defending Pokémon is now Paralyzed.",
+      "text": "Flip a coin. If heads, this attack does 40 damage plus 30 more damage. If tails, the Defending Pok\u00e9mon is now Paralyzed.",
       "cost_lightning": 1,
       "cost_colorless": 2,
-      "effect_key": "coin_plus_30_or_paralyzed"
+      "effect_key": "coin_status",
+      "effect_params": {
+        "heads_bonus": 30,
+        "tails_condition": "PARALYZED"
+      }
     }
   ]
 }

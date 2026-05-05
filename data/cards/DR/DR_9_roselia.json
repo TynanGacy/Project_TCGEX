@@ -15,15 +15,18 @@
     {
       "name": "Speed Growth",
       "base_damage": 0,
-      "text": "Attach up to 2 Grass Energy cards from your hand to your Pokémon in any way you like.",
+      "text": "Attach up to 2 Grass Energy cards from your hand to your Pok\u00e9mon in any way you like.",
       "cost_colorless": 1
     },
     {
       "name": "Sleep Powder",
       "base_damage": 10,
-      "text": "The Defending Pokémon is now Asleep.",
+      "text": "The Defending Pok\u00e9mon is now Asleep.",
       "cost_grass": 1,
-      "effect_key": "inflict_asleep"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "ASLEEP"
+      }
     }
   ]
 }

@@ -21,9 +21,15 @@
     {
       "name": "Dark Bind",
       "base_damage": 20,
-      "text": "You may discard a Darkness Energy card attached to Sableye. If you do, the Defending Pokémon is now Paralyzed.",
+      "text": "You may discard a Darkness Energy card attached to Sableye. If you do, the Defending Pok\u00e9mon is now Paralyzed.",
       "cost_darkness": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "may_discard_for_status",
+      "effect_params": {
+        "type": "DARKNESS",
+        "count": 1,
+        "condition": "PARALYZED"
+      }
     }
   ]
 }

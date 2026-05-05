@@ -19,3 +19,5 @@ class_name AttackData
 
 ## Optional effect identifier used by future attack-effect dispatch.
 @export var effect_key: String = ""
+## Runtime configuration for parameterized effect handlers.
+@export var effect_params: Dictionary = {}

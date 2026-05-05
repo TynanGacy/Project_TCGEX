@@ -15,16 +15,23 @@
     {
       "name": "Psychic Boom",
       "base_damage": 20,
-      "text": "Does 20 damage plus 10 more damage for each Energy attached to the Defending Pokémon.",
+      "text": "Does 20 damage plus 10 more damage for each Energy attached to the Defending Pok\u00e9mon.",
       "cost_psychic": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "bonus_per_energy",
+      "effect_params": {
+        "source": "defender",
+        "multiplier": 10
+      }
     },
     {
       "name": "Mind Trip",
       "base_damage": 50,
-      "text": "If Grumpig and the Defending Pokémon have the same amount of Energy attached to them, the Defending Pokémon is now Confused.",
+      "text": "If Grumpig and the Defending Pok\u00e9mon have the same amount of Energy attached to them, the Defending Pok\u00e9mon is now Confused.",
       "cost_psychic": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "inflict_confused_if_equal_energy",
+      "effect_params": {}
     }
   ]
 }

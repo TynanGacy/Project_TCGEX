@@ -15,15 +15,23 @@
     {
       "name": "Hypnosis",
       "base_damage": 0,
-      "text": "The Defending Pokémon is now Asleep.",
+      "text": "The Defending Pok\u00e9mon is now Asleep.",
       "cost_colorless": 1,
-      "effect_key": "inflict_asleep"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "ASLEEP"
+      }
     },
     {
       "name": "Psychic Boom",
       "base_damage": 10,
-      "text": "Does 10 damage times the amount of Energy attached to the Defending Pokémon.",
-      "cost_psychic": 1
+      "text": "Does 10 damage times the amount of Energy attached to the Defending Pok\u00e9mon.",
+      "cost_psychic": 1,
+      "effect_key": "bonus_per_energy",
+      "effect_params": {
+        "source": "defender",
+        "multiplier": 10
+      }
     }
   ]
 }

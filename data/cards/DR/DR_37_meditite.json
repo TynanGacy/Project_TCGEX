@@ -21,9 +21,14 @@
     {
       "name": "Meditate",
       "base_damage": 10,
-      "text": "Does 10 damage plus 10 more damage for each damage counter on the Defending Pokémon.",
+      "text": "Does 10 damage plus 10 more damage for each damage counter on the Defending Pok\u00e9mon.",
       "cost_fighting": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "bonus_per_damage_counter",
+      "effect_params": {
+        "multiplier": 10,
+        "source": "defender"
+      }
     }
   ]
 }

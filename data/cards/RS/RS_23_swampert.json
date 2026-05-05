@@ -15,8 +15,13 @@
     {
       "name": "Water Arrow",
       "base_damage": 20,
-      "text": "Choose 1 of your opponent's Pokémon. This attack does 20 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
-      "cost_water": 1
+      "text": "Choose 1 of your opponent's Pok\u00e9mon. This attack does 20 damage to that Pok\u00e9mon. (Don't apply Weakness and Resistance for Benched Pok\u00e9mon.)",
+      "cost_water": 1,
+      "effect_key": "bench_damage",
+      "effect_params": {
+        "amount": 20,
+        "unmodified": true
+      }
     },
     {
       "name": "Waterfall",

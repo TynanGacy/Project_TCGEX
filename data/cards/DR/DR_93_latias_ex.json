@@ -10,14 +10,17 @@
   "weakness": "COLORLESS",
   "resistance": "FIGHTING",
   "retreat_cost": 2,
-  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Hypnoblast",
       "base_damage": 10,
-      "text": "Flip a coin. If heads, the Defending Pokémon is now Asleep.",
+      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Asleep.",
       "cost_colorless": 1,
-      "effect_key": "coin_asleep"
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "ASLEEP"
+      }
     },
     {
       "name": "Mist Ball",

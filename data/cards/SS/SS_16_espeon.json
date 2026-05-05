@@ -15,14 +15,17 @@
     {
       "name": "Confuse Ray",
       "base_damage": 20,
-      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Confused.",
       "cost_psychic": 1,
-      "effect_key": "coin_confused"
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "CONFUSED"
+      }
     },
     {
       "name": "Energy Crush",
       "base_damage": 20,
-      "text": "Does 20 more damage plus 10 more damage for each Energy attached to all of your opponent's Pokémon.",
+      "text": "Does 20 more damage plus 10 more damage for each Energy attached to all of your opponent's Pok\u00e9mon.",
       "cost_colorless": 3
     }
   ]

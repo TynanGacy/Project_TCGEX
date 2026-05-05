@@ -15,14 +15,17 @@
     {
       "name": "Poison Breath",
       "base_damage": 0,
-      "text": "The Defending Pokémon is now Poisoned.",
+      "text": "The Defending Pok\u00e9mon is now Poisoned.",
       "cost_colorless": 2,
-      "effect_key": "inflict_poisoned"
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "POISONED"
+      }
     },
     {
       "name": "Swift",
       "base_damage": 30,
-      "text": "This attack's damage isn't affected by Weakness, Resistance, Poké-Powers, Poké-Bodies, or any other effects on the Defending Pokémon.",
+      "text": "This attack's damage isn't affected by Weakness, Resistance, Pok\u00e9-Powers, Pok\u00e9-Bodies, or any other effects on the Defending Pok\u00e9mon.",
       "cost_grass": 1,
       "cost_colorless": 2
     }

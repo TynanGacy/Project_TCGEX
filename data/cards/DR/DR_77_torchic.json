@@ -16,9 +16,12 @@
       "name": "Firebreathing",
       "base_damage": 20,
       "text": "Flip a coin. If heads, this attack does 20 damage plus 20 more damage.",
-      "effect_key": "coin_plus_20",
+      "effect_key": "coin_bonus_damage",
       "cost_fire": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_params": {
+        "bonus": 20
+      }
     }
   ]
 }

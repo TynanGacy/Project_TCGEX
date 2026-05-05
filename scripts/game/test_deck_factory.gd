@@ -249,6 +249,7 @@ static func _parse_attack(d: Dictionary) -> AttackData:
 	atk.cost_metal         = int(d.get("cost_metal", 0))
 	atk.hits_each_defending = bool(d.get("hits_each_defending", false))
 	atk.effect_key         = d.get("effect_key", "")
+	atk.effect_params      = d.get("effect_params", {})
 	return atk
 
 

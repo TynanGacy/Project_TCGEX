@@ -21,9 +21,15 @@
     {
       "name": "Burning Claw",
       "base_damage": 40,
-      "text": "You may discard a Fire Energy card attached to Quilava. If you do, the Defending Pokémon is now Burned.",
+      "text": "You may discard a Fire Energy card attached to Quilava. If you do, the Defending Pok\u00e9mon is now Burned.",
       "cost_fire": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "may_discard_for_status",
+      "effect_params": {
+        "type": "FIRE",
+        "count": 1,
+        "condition": "BURNED"
+      }
     }
   ]
 }

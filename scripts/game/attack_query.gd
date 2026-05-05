@@ -8,6 +8,9 @@ enum Kind {
 	CHOOSE_ENERGY_DISCARD,
 	CHOOSE_ORDER,
 	GENERIC_CHOICE,
+	CHOOSE_BENCH_TARGET,      ## Group N — pick an opponent bench Pokémon
+	MAY_DISCARD_FOR_BONUS,    ## Group H — opt in/out of energy discard for bonus damage
+	CHOOSE_ENERGY_FROM_HAND,  ## Group M — select energy from hand to attach
 }
 
 var kind: int = Kind.GENERIC_CHOICE

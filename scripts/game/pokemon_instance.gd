@@ -34,6 +34,10 @@ var attached_tools: Array[CardData] = []
 ## value is an arbitrary Dictionary the effect defines.  Cleared on release.
 var modifiers: Dictionary = {}
 
+## Set to manager.turn_number + 1 by retreat_lock / inflict_burned_retreat_lock handlers.
+## ActionRetreat blocks while turn_number <= this value.  Reset to -1 on release.
+var retreat_locked_until_turn: int = -1
+
 ## --- Visual -----------------------------------------------------------------
 const _CARD_SCENE := preload("res://scenes/card/card.tscn")
 
@@ -656,6 +660,7 @@ func release_cards() -> Array[CardData]:
 	attached_tools.clear()
 	special_conditions.clear()
 	modifiers.clear()
+	retreat_locked_until_turn = -1
 	current_hp = 0
 	max_hp = 0
 	return out

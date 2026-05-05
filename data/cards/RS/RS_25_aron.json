@@ -22,8 +22,11 @@
       "name": "Double Stab",
       "base_damage": 20,
       "text": "Flip 2 coins. This attack does 20 damage times the number of heads.",
-      "effect_key": "coin_multiply_2",
-      "cost_colorless": 2
+      "effect_key": "coin_multiply_damage",
+      "cost_colorless": 2,
+      "effect_params": {
+        "flips": 2
+      }
     }
   ]
 }
