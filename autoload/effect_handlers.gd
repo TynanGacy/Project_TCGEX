@@ -34,43 +34,53 @@ func _register_handlers() -> void:
 
 	## ── Group A: unconditional status ─────────────────────────────────────────
 	## effect_params: {"condition": "ASLEEP"}  (or POISONED, CONFUSED, BURNED, PARALYZED)
-	EffectRegistry.register("inflict_status", func(ctx: AttackContext) -> void:
-		var cond: int = _condition_from_string(
-			ctx.attack.effect_params.get("condition", "ASLEEP")
-		)
-		ctx.add_post_action(func() -> void:
-			ctx.target.add_condition(cond)
-		)
-	)
+	EffectRegistry.register_def("inflict_status", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var cond: int = _condition_from_string(
+				ctx.attack.effect_params.get("condition", "ASLEEP")
+			)
+			ctx.add_post_action(func() -> void:
+				ctx.target.add_condition(cond)
+			)
+	))
 
 	## ── Group B: coin flip → status ───────────────────────────────────────────
 	## Sub-variant A — simple: {"condition": "PARALYZED"}
 	## Sub-variant B — either: {"heads_condition": "CONFUSED", "tails_condition": "ASLEEP"}
 	## Sub-variant C — damage-or-status: {"heads_bonus": 30, "tails_condition": "PARALYZED"}
-	EffectRegistry.register("coin_status", func(ctx: AttackContext) -> void:
-		var p: Dictionary = ctx.attack.effect_params
-		if p.has("heads_bonus") or (p.has("tails_condition") and not p.has("heads_condition")):
-			# Sub-variant C: heads = bonus damage, tails = status
-			if ctx.flip_coin():
-				ctx.bonus_damage += int(p.get("heads_bonus", 0))
-			elif p.has("tails_condition"):
-				var c: int = _condition_from_string(p["tails_condition"])
-				ctx.add_post_action(func() -> void: ctx.target.add_condition(c))
-		elif p.has("heads_condition") and p.has("tails_condition"):
-			# Sub-variant B: either/or
-			var heads: bool = ctx.flip_coin()
-			ctx.add_post_action(func() -> void:
-				var c: int = _condition_from_string(
-					p["heads_condition"] if heads else p["tails_condition"]
+	## Runs at DAMAGE_CALC so sub-variant C can modify bonus_damage before W/R.
+	EffectRegistry.register_def("coin_status", EffectDefinition.single(
+		AttackResolver.Phase.DAMAGE_CALC,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			if p.has("heads_bonus") or (p.has("tails_condition") and not p.has("heads_condition")):
+				# Sub-variant C: heads = bonus damage, tails = status
+				if ctx.flip_coin():
+					var bonus: int = int(p.get("heads_bonus", 0))
+					var e := QueuedEffect.new()
+					e.category = QueuedEffect.Category.ATTACKER_MODIFIER
+					e.source_key = "coin_status"
+					e.execute = func(c: AttackContext) -> void: c.bonus_damage += bonus
+					queue.append(e)
+				elif p.has("tails_condition"):
+					var c: int = _condition_from_string(p["tails_condition"])
+					ctx.add_post_action(func() -> void: ctx.target.add_condition(c))
+			elif p.has("heads_condition") and p.has("tails_condition"):
+				# Sub-variant B: either/or
+				var heads: bool = ctx.flip_coin()
+				ctx.add_post_action(func() -> void:
+					var c: int = _condition_from_string(
+						p["heads_condition"] if heads else p["tails_condition"]
+					)
+					ctx.target.add_condition(c)
 				)
-				ctx.target.add_condition(c)
-			)
-		else:
-			# Sub-variant A: simple heads → condition
-			var cond: int = _condition_from_string(p.get("condition", "PARALYZED"))
-			if ctx.flip_coin():
-				ctx.add_post_action(func() -> void: ctx.target.add_condition(cond))
-	)
+			else:
+				# Sub-variant A: simple heads → condition
+				var cond: int = _condition_from_string(p.get("condition", "PARALYZED"))
+				if ctx.flip_coin():
+					ctx.add_post_action(func() -> void: ctx.target.add_condition(cond))
+	))
 
 	## ── Group C: coin flip adds bonus damage on heads ─────────────────────────
 	## effect_params: {"bonus": 10}
@@ -120,37 +130,45 @@ func _register_handlers() -> void:
 	))
 
 	## ── Group F: retreat lock ─────────────────────────────────────────────────
-	EffectRegistry.register("retreat_lock", func(ctx: AttackContext) -> void:
-		ctx.add_post_action(func() -> void:
-			ctx.target.retreat_locked_until_turn = ctx.manager.turn_number + 1
-		)
-	)
+	EffectRegistry.register_def("retreat_lock", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.add_post_action(func() -> void:
+				ctx.target.retreat_locked_until_turn = ctx.manager.turn_number + 1
+			)
+	))
 
 	## Group F + burn
-	EffectRegistry.register("inflict_burned_retreat_lock", func(ctx: AttackContext) -> void:
-		ctx.add_post_action(func() -> void:
-			ctx.target.add_condition(PokemonInstance.SpecialCondition.BURNED)
-			ctx.target.retreat_locked_until_turn = ctx.manager.turn_number + 1
-		)
-	)
+	EffectRegistry.register_def("inflict_burned_retreat_lock", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.add_post_action(func() -> void:
+				ctx.target.add_condition(PokemonInstance.SpecialCondition.BURNED)
+				ctx.target.retreat_locked_until_turn = ctx.manager.turn_number + 1
+			)
+	))
 
 	## ── Group G: self-heal ────────────────────────────────────────────────────
 	## effect_params: {"amount": 30}  (amount -1 = full heal)
-	EffectRegistry.register("heal_self", func(ctx: AttackContext) -> void:
-		var amount: int = ctx.attack.effect_params.get("amount", 10)
-		ctx.add_post_action(func() -> void:
-			ctx.attacker.heal(ctx.attacker.max_hp if amount < 0 else amount)
-		)
-	)
+	EffectRegistry.register_def("heal_self", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var amount: int = ctx.attack.effect_params.get("amount", 10)
+			ctx.add_post_action(func() -> void:
+				ctx.attacker.heal(ctx.attacker.max_hp if amount < 0 else amount)
+			)
+	))
 
 	## Rest — clear conditions, heal 40, fall asleep
-	EffectRegistry.register("rest_self", func(ctx: AttackContext) -> void:
-		ctx.add_post_action(func() -> void:
-			ctx.attacker.special_conditions.clear()
-			ctx.attacker.heal(40)
-			ctx.attacker.add_condition(PokemonInstance.SpecialCondition.ASLEEP)
-		)
-	)
+	EffectRegistry.register_def("rest_self", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.add_post_action(func() -> void:
+				ctx.attacker.special_conditions.clear()
+				ctx.attacker.heal(40)
+				ctx.attacker.add_condition(PokemonInstance.SpecialCondition.ASLEEP)
+			)
+	))
 
 	## ── Group H: may discard energy for bonus damage ──────────────────────────
 	## effect_params: {"type": "FIRE", "count": 1, "bonus": 20}
@@ -214,24 +232,28 @@ func _register_handlers() -> void:
 
 	## ── Group I: mandatory post-attack energy discard ─────────────────────────
 	## effect_params: {"type": "FIRE", "count": 1}
-	EffectRegistry.register("discard_energy", func(ctx: AttackContext) -> void:
-		var type_str: String = ctx.attack.effect_params.get("type", "ANY")
-		var count: int       = ctx.attack.effect_params.get("count", 1)
-		ctx.add_post_action(func() -> void:
-			if type_str == "ANY":
-				_discard_any(ctx, count)
-			else:
-				_discard_typed(ctx, _energy_type_from_string(type_str), count)
-		)
-	)
+	EffectRegistry.register_def("discard_energy", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var type_str: String = ctx.attack.effect_params.get("type", "ANY")
+			var count: int       = ctx.attack.effect_params.get("count", 1)
+			ctx.add_post_action(func() -> void:
+				if type_str == "ANY":
+					_discard_any(ctx, count)
+				else:
+					_discard_typed(ctx, _energy_type_from_string(type_str), count)
+			)
+	))
 
 	## Kindle — discard 1 fire from attacker AND 1 any from target
-	EffectRegistry.register("kindle", func(ctx: AttackContext) -> void:
-		ctx.add_post_action(func() -> void:
-			_discard_typed(ctx, PokemonCardData.EnergyType.FIRE, 1)
-			_discard_typed_from(ctx.target, ctx.manager, 1 - ctx.player_id, 1)
-		)
-	)
+	EffectRegistry.register_def("kindle", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.add_post_action(func() -> void:
+				_discard_typed(ctx, PokemonCardData.EnergyType.FIRE, 1)
+				_discard_typed_from(ctx.target, ctx.manager, 1 - ctx.player_id, 1)
+			)
+	))
 
 	## ── Group J: damage scaling ───────────────────────────────────────────────
 	## bonus_per_energy: {"source": "defender", "multiplier": 10}
@@ -270,14 +292,16 @@ func _register_handlers() -> void:
 	))
 
 	## inflict_confused_if_equal_energy — Mind Trip (equal energy counts → CONFUSED)
-	EffectRegistry.register("inflict_confused_if_equal_energy", func(ctx: AttackContext) -> void:
-		var atk_count: int = ctx.attacker.attached_energy.size()
-		var def_count: int = ctx.target.attached_energy.size()
-		if atk_count == def_count:
-			ctx.add_post_action(func() -> void:
-				ctx.target.add_condition(PokemonInstance.SpecialCondition.CONFUSED)
-			)
-	)
+	EffectRegistry.register_def("inflict_confused_if_equal_energy", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var atk_count: int = ctx.attacker.attached_energy.size()
+			var def_count: int = ctx.target.attached_energy.size()
+			if atk_count == def_count:
+				ctx.add_post_action(func() -> void:
+					ctx.target.add_condition(PokemonInstance.SpecialCondition.CONFUSED)
+				)
+	))
 
 	## ── Group K: multi-coin damage multiplier ─────────────────────────────────
 	## effect_params: {"flips": 2}
@@ -297,59 +321,63 @@ func _register_handlers() -> void:
 
 	## ── Group L: attach energy from discard ───────────────────────────────────
 	## effect_params: {"type": "FIRE", "count": 2}
-	EffectRegistry.register("attach_from_discard", func(ctx: AttackContext) -> void:
-		var type_str: String = ctx.attack.effect_params.get("type", "ANY")
-		var count: int       = ctx.attack.effect_params.get("count", 1)
-		ctx.add_post_action(func() -> void:
-			var discard: Array = ctx.manager.game_position.discards[ctx.player_id]
-			var attached := 0
-			for i in range(discard.size() - 1, -1, -1):
-				if attached >= count:
-					break
-				var c = discard[i]
-				if not (c is EnergyCardData):
-					continue
-				if type_str != "ANY":
-					var et: int = int((c as EnergyCardData).energy_type)
-					if et != _energy_type_from_string(type_str):
-						continue
-				discard.remove_at(i)
-				ctx.attacker.attach_energy(c)
-				attached += 1
-			ctx.manager.game_position.discard_changed.emit(ctx.player_id)
-			ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
-		)
-	)
-
-	## ── Group M: attach energy from hand ──────────────────────────────────────
-	## effect_params: {"type": "GRASS", "count": 1, "target": "self"}
-	## target "self" auto-attaches first matching energy from hand to attacker.
-	## target "any" (future): uses needs_query + CHOOSE_ENERGY_FROM_HAND.
-	EffectRegistry.register("attach_from_hand", func(ctx: AttackContext) -> void:
-		var type_str: String = ctx.attack.effect_params.get("type", "ANY")
-		var count: int       = ctx.attack.effect_params.get("count", 1)
-		var target: String   = ctx.attack.effect_params.get("target", "self")
-		if target == "self":
+	EffectRegistry.register_def("attach_from_discard", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var type_str: String = ctx.attack.effect_params.get("type", "ANY")
+			var count: int       = ctx.attack.effect_params.get("count", 1)
 			ctx.add_post_action(func() -> void:
-				var hand: Array = ctx.manager.game_position.hands[ctx.player_id]
+				var discard: Array = ctx.manager.game_position.discards[ctx.player_id]
 				var attached := 0
-				for i in range(hand.size() - 1, -1, -1):
+				for i in range(discard.size() - 1, -1, -1):
 					if attached >= count:
 						break
-					var c = hand[i]
+					var c = discard[i]
 					if not (c is EnergyCardData):
 						continue
 					if type_str != "ANY":
 						var et: int = int((c as EnergyCardData).energy_type)
 						if et != _energy_type_from_string(type_str):
 							continue
-					hand.remove_at(i)
+					discard.remove_at(i)
 					ctx.attacker.attach_energy(c)
 					attached += 1
-				ctx.manager.game_position.hand_changed.emit(ctx.player_id)
+				ctx.manager.game_position.discard_changed.emit(ctx.player_id)
 				ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
 			)
-	)
+	))
+
+	## ── Group M: attach energy from hand ──────────────────────────────────────
+	## effect_params: {"type": "GRASS", "count": 1, "target": "self"}
+	## target "self" auto-attaches first matching energy from hand to attacker.
+	## target "any" (future): uses needs_query + CHOOSE_ENERGY_FROM_HAND.
+	EffectRegistry.register_def("attach_from_hand", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var type_str: String = ctx.attack.effect_params.get("type", "ANY")
+			var count: int       = ctx.attack.effect_params.get("count", 1)
+			var target: String   = ctx.attack.effect_params.get("target", "self")
+			if target == "self":
+				ctx.add_post_action(func() -> void:
+					var hand: Array = ctx.manager.game_position.hands[ctx.player_id]
+					var attached := 0
+					for i in range(hand.size() - 1, -1, -1):
+						if attached >= count:
+							break
+						var c = hand[i]
+						if not (c is EnergyCardData):
+							continue
+						if type_str != "ANY":
+							var et: int = int((c as EnergyCardData).energy_type)
+							if et != _energy_type_from_string(type_str):
+								continue
+						hand.remove_at(i)
+						ctx.attacker.attach_energy(c)
+						attached += 1
+					ctx.manager.game_position.hand_changed.emit(ctx.player_id)
+					ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
+				)
+	))
 
 	## ── Group N: deal damage to a chosen bench Pokémon ────────────────────────
 	## effect_params: {"amount": 20, "unmodified": true}

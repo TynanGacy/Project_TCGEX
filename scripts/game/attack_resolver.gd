@@ -157,6 +157,11 @@ func begin_attack(action, manager) -> void:
 		if entry.target_instance.is_knocked_out():
 			manager.resolve_knockout(entry.target_slot, action.player_id)
 
+	## Run post-actions (status conditions, heal, discard, retreat lock, etc.)
+	## after KO resolution so bench-damage KOs don't double-process.
+	ctx.run_post_actions()
+	manager.flush_deferred_effects()
+
 	_is_resolving = false
 	pipeline_completed.emit()
 
