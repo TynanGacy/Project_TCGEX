@@ -1962,7 +1962,7 @@ func _on_game_won(player_id: int) -> void:
 ## ---------------------------------------------------------------------------
 
 func _on_energy_discard_choice_required(
-		player_id: int, eligible: Array, count: int, _attacker_slot: String) -> void:
+		_player_id: int, eligible: Array, count: int, _attacker_slot: String) -> void:
 	var panel := _make_setup_panel()
 	var vbox  := panel.get_child(0) as VBoxContainer
 
@@ -1971,16 +1971,33 @@ func _on_energy_discard_choice_required(
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(header)
 
+	var selected: Array[int] = []
+
+	var confirm_btn := Button.new()
+	confirm_btn.text = "Confirm (%d/%d selected)" % [0, count]
+	confirm_btn.disabled = true
+
 	for i in eligible.size():
 		var card: CardData = eligible[i]
-		var btn := Button.new()
-		btn.text = card.display_name if card != null else "Energy"
+		var cb := CheckBox.new()
+		cb.text = card.display_name if card != null else "Energy"
 		var idx := i
-		btn.pressed.connect(func() -> void:
-			manager.resolve_energy_discard_choice([idx])
-			panel.queue_free()
+		cb.toggled.connect(func(on: bool) -> void:
+			if on:
+				if not selected.has(idx):
+					selected.append(idx)
+			else:
+				selected.erase(idx)
+			confirm_btn.text = "Confirm (%d/%d selected)" % [selected.size(), count]
+			confirm_btn.disabled = selected.size() != count
 		)
-		vbox.add_child(btn)
+		vbox.add_child(cb)
+
+	confirm_btn.pressed.connect(func() -> void:
+		manager.resolve_energy_discard_choice(selected)
+		panel.queue_free()
+	)
+	vbox.add_child(confirm_btn)
 
 	$HUD.add_child(panel)
 
