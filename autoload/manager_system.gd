@@ -70,6 +70,9 @@ signal coins_batch_flipped(results: Array[bool], label: String)
 ## Emitted when an attack effect requires the player to choose which energy
 ## card(s) to discard and the attacker has non-identical energy attached.
 signal energy_discard_choice_required(player_id: int, eligible: Array[CardData], count: int, attacker_slot: String)
+## Emitted when a retreat requires the player to choose which energy to discard
+## (i.e. more energies attached than the retreat cost).
+signal retreat_energy_choice_required(player_id: int, eligible: Array[CardData], count: int, active_slot: String)
 
 var board_position: BoardPosition = null
 var game_position:  GamePosition = null
@@ -120,6 +123,14 @@ var energy_discard_pending: bool = false
 var energy_discard_player:  int  = -1
 var energy_discard_count:   int  = 0
 var energy_discard_slot:    String = ""
+
+## --- Retreat energy choice state --------------------------------------------
+## Set by ActionRetreat.apply() when the player must choose which energy to
+## discard for retreat.  Cleared by resolve_retreat_energy_choice().
+var retreat_pending:     bool   = false
+var retreat_player_id:   int    = -1
+var retreat_active_slot: String = ""
+var retreat_bench_slot:  String = ""
 
 ## The player currently in the pre-game placement phase (-1 = not placing).
 ## Set by begin_setup_placement(); cleared by end_setup_placement().
@@ -408,6 +419,41 @@ func _clear_energy_discard_state() -> void:
 	energy_discard_player  = -1
 	energy_discard_count   = 0
 	energy_discard_slot    = ""
+
+
+## Called by the UI after the player selects which energy card(s) to discard
+## for a retreat when retreat_energy_choice_required was emitted.
+## [indices] are indices into the active Pokémon's attached_energy array.
+func resolve_retreat_energy_choice(indices: Array[int]) -> void:
+	if not retreat_pending:
+		return
+	var active_inst: PokemonInstance = board_position.get_instance(retreat_active_slot)
+	if active_inst == null:
+		_clear_retreat_pending_state()
+		return
+	var to_remove: Array[CardData] = []
+	var sorted_idx: Array[int] = indices.duplicate()
+	sorted_idx.sort()
+	sorted_idx.reverse()
+	for idx in sorted_idx:
+		if idx >= 0 and idx < active_inst.attached_energy.size():
+			to_remove.append(active_inst.attached_energy[idx])
+			active_inst.attached_energy.remove_at(idx)
+	if not to_remove.is_empty():
+		game_position.discard_all(retreat_player_id, to_remove)
+	active_inst.special_conditions.clear()
+	active_inst.refresh_visual()
+	pokemon_state_changed.emit(retreat_active_slot, active_inst)
+	board_position.swap(retreat_active_slot, retreat_bench_slot)
+	retreat_used_this_turn[retreat_player_id] = true
+	_clear_retreat_pending_state()
+
+
+func _clear_retreat_pending_state() -> void:
+	retreat_pending     = false
+	retreat_player_id   = -1
+	retreat_active_slot = ""
+	retreat_bench_slot  = ""
 
 
 ## Starts the match.  Called once after the setup sequence (mulligans + coin

@@ -42,6 +42,10 @@ func validate(manager) -> ActionResult:
 				active_inst.attached_energy.size(),
 			]
 		)
+	if active_inst.special_conditions.has(PokemonInstance.SpecialCondition.ASLEEP):
+		return ActionResult.fail("This Pokémon is Asleep and cannot retreat.")
+	if active_inst.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED):
+		return ActionResult.fail("This Pokémon is Paralyzed and cannot retreat.")
 	if active_inst.retreat_locked_until_turn >= manager.turn_number:
 		return ActionResult.fail("This Pokémon is retreat-locked until the end of your opponent's next turn.")
 
@@ -60,7 +64,21 @@ func apply(manager) -> void:
 	var active_inst: PokemonInstance = manager.board_position.get_instance(active_slot)
 	var cost: int = active_inst.card.retreat_cost
 
-	## Discard the first [cost] attached energies (any type accepted).
+	## When there are more energies than the cost, the player must choose which to discard.
+	if cost > 0 and active_inst.attached_energy.size() > cost:
+		manager.retreat_active_slot = active_slot
+		manager.retreat_bench_slot  = bench_slot
+		manager.retreat_player_id   = player_id
+		manager.retreat_pending     = true
+		manager.retreat_energy_choice_required.emit(
+			player_id,
+			active_inst.attached_energy.duplicate(),
+			cost,
+			active_slot
+		)
+		return
+
+	## Auto-discard when there is no meaningful choice (cost == 0 or exactly enough energy).
 	for _i in range(cost):
 		if active_inst.attached_energy.is_empty():
 			break
