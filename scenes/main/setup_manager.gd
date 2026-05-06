@@ -214,6 +214,8 @@ func _start_game() -> void:
 
 	var p0_deck: Array[CardData] = DeckLoader.load_deck(0, _player_deck_path)
 	var p1_deck: Array[CardData] = DeckLoader.load_deck(1, _opponent_deck_path)
+	TestDeckFactory.load_art_for_deck(p0_deck)
+	TestDeckFactory.load_art_for_deck(p1_deck)
 	_main._authority.load_deck(0, p0_deck)
 	_main._authority.load_deck(1, p1_deck)
 

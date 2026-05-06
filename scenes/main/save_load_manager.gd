@@ -191,6 +191,30 @@ func load_game_state(path: String) -> void:
 	GameStateSerializer.restore_positions(state, _main.manager, pool_by_id)
 	GameStateSerializer.restore_board(state, _main.manager, pool_by_id)
 
+	var gp: GamePosition = _main.manager.game_position
+	var all_cards: Array[CardData] = []
+	for pid in range(2):
+		all_cards.append_array(gp.decks[pid] as Array[CardData])
+		all_cards.append_array(gp.hands[pid] as Array[CardData])
+		all_cards.append_array(gp.discards[pid] as Array[CardData])
+		for c in gp.prizes[pid]:
+			if c != null:
+				all_cards.append(c as CardData)
+	for sid in BoardPosition.all_slot_ids():
+		var inst: PokemonInstance = _main.manager.board_position.get_instance(sid)
+		if inst == null:
+			continue
+		all_cards.append(inst.card)
+		all_cards.append_array(inst.prior_stages as Array[CardData])
+		all_cards.append_array(inst.attached_energy)
+		all_cards.append_array(inst.attached_tools)
+	TestDeckFactory.load_art_for_deck(all_cards)
+	for sid in BoardPosition.all_slot_ids():
+		var inst: PokemonInstance = _main.manager.board_position.get_instance(sid)
+		if inst != null:
+			inst.refresh_visual()
+			_main.manager.pokemon_state_changed.emit(sid, inst)
+
 	_main.player_hand.transform = _main._p0_hand_transform
 	_main.camera.transform = _main._p1_cam_transform if _main._controlling_player == 1 else _main._p0_cam_transform
 

@@ -73,7 +73,6 @@ static func _card_from_json(data: Dictionary) -> CardData:
 			card = _energy(data["card_id"], data["display_name"], energy_type)
 
 	if card != null:
-		card.art = _load_art(data["card_id"])
 		if card is PokemonCardData:
 			var pcard := card as PokemonCardData
 			pcard.name_slug    = data.get("name_slug", data.get("card_id", ""))
@@ -138,6 +137,23 @@ static func _build_card_pool_by_id() -> Dictionary:
 	for card in _build_pool():
 		_cached_pool_by_id[card.card_id] = card
 	return _cached_pool_by_id
+
+
+## Loads art only for cards in the given deck. Cards that already have art are
+## skipped. Shared Texture2D references are reused across duplicates of the
+## same card_id within the deck.
+static func load_art_for_deck(deck: Array[CardData]) -> void:
+	var loaded: Dictionary = {}
+	for card: CardData in deck:
+		if card == null or card.art != null:
+			continue
+		if loaded.has(card.card_id):
+			card.art = loaded[card.card_id]
+			continue
+		var tex: Texture2D = _load_art(card.card_id)
+		card.art = tex
+		if tex != null:
+			loaded[card.card_id] = tex
 
 
 # ---------------------------------------------------------------------------
