@@ -42,6 +42,15 @@ func _ready() -> void:
 	print("[MCPInputServer] ready on 127.0.0.1:%d" % PORT)
 
 
+func _exit_tree() -> void:
+	for peer: StreamPeerTCP in _peers:
+		peer.disconnect_from_host()
+	_peers.clear()
+	_buffers.clear()
+	if _server.is_listening():
+		_server.stop()
+
+
 func _process(_delta: float) -> void:
 	# Advance drag queue one step per frame.
 	if not _drag_queue.is_empty():

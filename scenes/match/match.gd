@@ -77,12 +77,17 @@ var _in_placement_phase: bool = false
 var _reset_button:      Button = null
 var _attack_button:     Button = null
 var _retreat_button:    Button = null
-var _bench_button:      Button = null
-var _save_state_button: Button = null
-var _load_state_button: Button = null
+var _bench_button:       Button = null
+var _save_state_button:  Button = null
+var _load_state_button:  Button = null
+var _back_to_menu_button: Button = null
 
-var _dialog_mgr: DialogManager = null
+var _dialog_mgr:    DialogManager   = null
 var _save_load_mgr: SaveLoadManager = null
+
+## Match-local nodes (moved from autoload so they free with this scene).
+var _anim_manager:    Node = null
+var _effect_handlers: Node = null
 
 ## Deferred end-of-turn: set when an attack commits; cleared after prize
 ## selection and promotion both resolve so we don't end the turn too early.
@@ -90,6 +95,14 @@ var _attack_end_turn_pending: bool = false
 
 
 func _ready() -> void:
+	## Match-local subsystems — created first so ManagerSystemSingleton can
+	## reference animation_manager before any other node tries to use it.
+	_anim_manager = load("res://scenes/match/animation_manager.gd").new()
+	add_child(_anim_manager)
+	_effect_handlers = load("res://scenes/match/effect_handlers.gd").new()
+	add_child(_effect_handlers)
+	ManagerSystemSingleton.animation_manager = _anim_manager
+
 	_pile_mgr = PileVisualManager.new()
 	add_child(_pile_mgr)
 	_pile_mgr.init(self)
@@ -130,13 +143,20 @@ func _ready() -> void:
 
 	_save_state_button = Button.new()
 	_save_state_button.text = "Save State"
+	_save_state_button.disabled = true
 	_save_state_button.pressed.connect(_on_save_state_pressed)
 	end_turn_button.get_parent().add_child(_save_state_button)
 
 	_load_state_button = Button.new()
 	_load_state_button.text = "Load State"
+	_load_state_button.disabled = true
 	_load_state_button.pressed.connect(_on_load_state_pressed)
 	end_turn_button.get_parent().add_child(_load_state_button)
+
+	_back_to_menu_button = Button.new()
+	_back_to_menu_button.text = "Menu"
+	_back_to_menu_button.pressed.connect(_on_back_to_menu_pressed)
+	end_turn_button.get_parent().add_child(_back_to_menu_button)
 
 	_authority = LocalMatchAuthority.new(manager)
 	_authority.action_committed.connect(_on_action_committed)
@@ -164,7 +184,7 @@ func _ready() -> void:
 	## AnimationManager auto-connects to coin signals and drives the overlay.
 	_coin_flip_overlay = preload("res://scenes/ui/coin_flip_overlay.gd").new()
 	$HUD.add_child(_coin_flip_overlay)
-	AnimationManagerSingleton.set_coin_overlay(_coin_flip_overlay)
+	_anim_manager.set_coin_overlay(_coin_flip_overlay)
 	manager.energy_discard_choice_required.connect(_on_energy_discard_choice_required)
 	manager.retreat_energy_choice_required.connect(_on_retreat_energy_choice_required)
 
@@ -196,6 +216,11 @@ func _ready() -> void:
 
 
 ## Setup dialog and sequence — delegated to SetupManager.
+
+
+func _on_back_to_menu_pressed() -> void:
+	ManagerSystemSingleton.full_reset()
+	GameStateManager.return_to_menu()
 
 
 func _reset_game() -> void:
@@ -238,6 +263,9 @@ func _reset_game() -> void:
 	## start from the default camera side.
 	_controlling_player = 0
 	camera.transform = _p0_cam_transform
+
+	_save_state_button.disabled = true
+	_load_state_button.disabled = true
 
 	phase_label.text = ""
 	game_log.clear()
@@ -317,6 +345,8 @@ func _on_turn_started(pid: int, _turn_num: int) -> void:
 	_hand_mgr.rebuild(0)
 	_hand_mgr.rebuild(1)
 	_update_phase_label()
+	_save_state_button.disabled = false
+	_load_state_button.disabled = false
 
 
 ## --- Developer-mode perspective flip ---------------------------------------
