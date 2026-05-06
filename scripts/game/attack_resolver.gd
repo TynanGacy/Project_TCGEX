@@ -176,7 +176,7 @@ func _wait_for_animations() -> void:
 
 
 func _get_animation_manager() -> Node:
-	return get_node_or_null("/root/AnimationManagerSingleton")
+	return ManagerSystemSingleton.animation_manager
 
 
 ## Immediately executes and removes all queued effects of [cat] from the queue.

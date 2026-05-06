@@ -78,6 +78,10 @@ var board_position: BoardPosition = null
 var game_position:  GamePosition = null
 var attack_resolver: AttackResolver = null
 
+## Set by the match scene in _ready(); cleared by full_reset() on match exit.
+## Used by AttackResolver and cleanup phases for animation sequencing.
+var animation_manager: Node = null
+
 ## --- Slot configuration ------------------------------------------------------
 ## Set once per game via configure_slots() before begin_game().
 ## active_slot_count never changes mid-game; bench_slot_count can change via
@@ -548,6 +552,17 @@ func reset_game_state() -> void:
 		_reset_turn_flags(pid)
 
 
+## Full reset for scene transitions.  Clears all game state AND drops the
+## match-local subsystem references so they are not used after the match
+## scene is freed.  Called by match.gd before transitioning to another scene.
+func full_reset() -> void:
+	reset_game_state()
+	board_position   = null
+	game_position    = null
+	attack_resolver  = null
+	animation_manager = null
+
+
 ## --- Internal: turn flow ----------------------------------------------------
 
 func _begin_turn(pid: int) -> void:
@@ -651,7 +666,7 @@ func _cleanup_instance_async(inst: PokemonInstance, slot_id: String,
 
 
 func _get_animation_manager() -> Node:
-	return get_node_or_null("/root/AnimationManagerSingleton")
+	return animation_manager
 
 
 ## --- Combat resolution -------------------------------------------------------

@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://3biiiwu3vffd"]
 
-[ext_resource type="Script" uid="uid://oqlm37bu3nk5" path="res://scenes/main/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://oqlm37bu3nk5" path="res://scenes/match/match.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/board/board.tscn" id="2_board"]
 [ext_resource type="PackedScene" path="res://scenes/hand/hand.tscn" id="3_hand"]
 [ext_resource type="PackedScene" path="res://scenes/card/card_zoom_popup.tscn" id="4_czp"]
-[ext_resource type="Script" uid="uid://bciiqsc6342yf" path="res://scenes/main/background_manager.gd" id="5_bgmgr"]
+[ext_resource type="Script" uid="uid://bciiqsc6342yf" path="res://scenes/match/background_manager.gd" id="5_bgmgr"]
 
 [node name="Main" type="Node3D" unique_id=1389932364]
 script = ExtResource("1_main")
