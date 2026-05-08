@@ -10,10 +10,6 @@ var _hud: CanvasLayer = null
 ## Active attack/retreat/prize/promotion dialog (at most one open at a time).
 var _attack_dialog: Control = null
 
-## Queue of {pid, slot_id} dicts for Pokemon that couldn't be auto-relocated
-## when the bench slot count was reduced.  Processed one at a time.
-var _bench_overflow_queue: Array = []
-
 
 func init(main_node: Node) -> void:
 	_main = main_node
@@ -24,7 +20,6 @@ func clear() -> void:
 	if _attack_dialog != null:
 		_attack_dialog.queue_free()
 		_attack_dialog = null
-	_bench_overflow_queue.clear()
 
 
 ## ---------------------------------------------------------------------------
@@ -214,7 +209,7 @@ func _show_retreat_dialog() -> void:
 	var vbox := panel.get_child(0) as VBoxContainer
 
 	var title := Label.new()
-	title.text = "Choose Pokémon to Retreat"
+	title.text = "Retreat — choose active Pokémon"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 16)
 	vbox.add_child(title)
@@ -254,7 +249,7 @@ func _pick_bench_for_retreat(pid: int, active_slot: String, bench_options: Array
 	var vbox := panel.get_child(0) as VBoxContainer
 
 	var title := Label.new()
-	title.text = "Choose Bench Replacement"
+	title.text = "Retreat — choose bench replacement"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 16)
 	vbox.add_child(title)
@@ -286,135 +281,6 @@ func _pick_bench_for_retreat(pid: int, active_slot: String, bench_options: Array
 func _submit_retreat(pid: int, active_slot: String, bench_slot: String) -> void:
 	var action := ActionRetreat.new(pid, active_slot, bench_slot)
 	_main._authority.request_action(action)
-
-
-## ---------------------------------------------------------------------------
-## Modify Bench dialog
-## ---------------------------------------------------------------------------
-
-func on_modify_bench_pressed() -> void:
-	if _main._setup_dialog != null or _main._in_setup_phase:
-		return
-	if _attack_dialog != null:
-		_attack_dialog.queue_free()
-		_attack_dialog = null
-		return
-	_show_modify_bench_dialog()
-
-
-func _show_modify_bench_dialog() -> void:
-	var panel := MatchUIUtils.make_panel()
-	panel.custom_minimum_size = Vector2(320, 80)
-	var vbox := panel.get_child(0) as VBoxContainer
-
-	var title := Label.new()
-	title.text = "Modify Bench Slots"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 16)
-	vbox.add_child(title)
-
-	var row := HBoxContainer.new()
-	var lbl := Label.new()
-	lbl.text = "Bench Slots (3–5):"
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var spin := SpinBox.new()
-	spin.min_value = 3
-	spin.max_value = 5
-	spin.value     = _main.manager.bench_slot_count
-	row.add_child(lbl)
-	row.add_child(spin)
-	vbox.add_child(row)
-
-	var apply_btn := Button.new()
-	apply_btn.text = "Apply"
-	apply_btn.pressed.connect(func() -> void:
-		panel.queue_free()
-		_attack_dialog = null
-		_apply_bench_count_change(int(spin.value))
-	)
-	vbox.add_child(apply_btn)
-
-	var cancel := Button.new()
-	cancel.text = "Cancel"
-	cancel.pressed.connect(func() -> void:
-		panel.queue_free()
-		_attack_dialog = null
-	)
-	vbox.add_child(cancel)
-
-	_hud.add_child(panel)
-	_attack_dialog = panel
-
-
-func _apply_bench_count_change(new_count: int) -> void:
-	_main._bench_slots = new_count
-	_bench_overflow_queue = _main.manager.set_bench_count(new_count)
-	_main.board.set_bench_count(new_count)
-	_process_bench_overflow()
-
-
-func _process_bench_overflow() -> void:
-	if _bench_overflow_queue.is_empty():
-		return
-	var entry: Dictionary = _bench_overflow_queue.pop_front()
-	var pid: int = entry["pid"]
-	var displaced_slot: String = entry["displaced_slot"]
-
-	var displaced_inst: PokemonInstance = _main.manager.board_position.get_instance(displaced_slot)
-	if displaced_inst == null:
-		_process_bench_overflow()
-		return
-
-	for m in range(1, _main._bench_slots + 1):
-		var target := "p%d_bench%d" % [pid, m]
-		if _main.manager.board_position.get_instance(target) == null:
-			_main.manager.board_position.move(displaced_slot, target)
-			_process_bench_overflow()
-			return
-
-	var discard_options: Array[String] = []
-	for m in range(1, 6):
-		var sid := "p%d_bench%d" % [pid, m]
-		if _main.manager.board_position.get_instance(sid) != null:
-			discard_options.append(sid)
-
-	var dname := displaced_inst.card.display_name if displaced_inst.card != null else "Pokémon"
-
-	var panel := MatchUIUtils.make_panel()
-	panel.custom_minimum_size = Vector2(400, 80)
-	var vbox := panel.get_child(0) as VBoxContainer
-
-	var title := Label.new()
-	title.text = "P%d: %s needs a bench spot.\nDiscard a Pokémon to make room:" % [pid, dname]
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(title)
-
-	for discard_slot in discard_options:
-		var discard_inst: PokemonInstance = _main.manager.board_position.get_instance(discard_slot)
-		var pname := discard_inst.card.display_name \
-				if discard_inst != null and discard_inst.card != null else discard_slot
-		var hp_str := " (%d/%d HP)" % [discard_inst.current_hp, discard_inst.max_hp] \
-				if discard_inst != null else ""
-		var btn := Button.new()
-		btn.text = "%s%s" % [pname, hp_str]
-		var _ds := discard_slot
-		var _dn := pname
-		btn.pressed.connect(func() -> void:
-			panel.queue_free()
-			var chosen: PokemonInstance = _main.manager.board_position.get_instance(_ds)
-			if chosen != null:
-				_main.manager.board_position.clear(_ds)
-				var released := chosen.release_cards()
-				_main.manager.game_position.discard_all(pid, released)
-				chosen.queue_free()
-				_main._log("[Bench] P%d: %s discarded — bench reduced." % [pid, _dn])
-			_bench_overflow_queue.push_front(entry)
-			_process_bench_overflow()
-		)
-		vbox.add_child(btn)
-
-	_hud.add_child(panel)
 
 
 ## ---------------------------------------------------------------------------
@@ -573,7 +439,6 @@ func on_game_won(player_id: int) -> void:
 		_main.end_turn_button.disabled  = false
 		if _main._attack_button  != null: _main._attack_button.disabled  = false
 		if _main._retreat_button != null: _main._retreat_button.disabled = false
-		if _main._bench_button   != null: _main._bench_button.disabled   = false
 		_main._reset_game()
 	)
 	vbox.add_child(btn)
@@ -586,52 +451,56 @@ func on_game_won(player_id: int) -> void:
 
 func on_energy_discard_choice_required(
 		_player_id: int, eligible: Array, count: int, _attacker_slot: String) -> void:
-	var panel := MatchUIUtils.make_panel()
-	var vbox  := panel.get_child(0) as VBoxContainer
-
-	var header := Label.new()
-	header.text = "Choose %d energy card%s to discard:" % [count, "s" if count > 1 else ""]
-	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(header)
-
-	var selected: Array[int] = []
-
-	var confirm_btn := Button.new()
-	confirm_btn.text = "Confirm (%d/%d selected)" % [0, count]
-	confirm_btn.disabled = true
-
-	for i in eligible.size():
-		var card: CardData = eligible[i]
-		var cb := CheckBox.new()
-		cb.text = card.display_name if card != null else "Energy"
-		var idx := i
-		cb.toggled.connect(func(on: bool) -> void:
-			if on:
-				if not selected.has(idx):
-					selected.append(idx)
-			else:
-				selected.erase(idx)
-			confirm_btn.text = "Confirm (%d/%d selected)" % [selected.size(), count]
-			confirm_btn.disabled = selected.size() != count
-		)
-		vbox.add_child(cb)
-
-	confirm_btn.pressed.connect(func() -> void:
-		_main.manager.resolve_energy_discard_choice(selected)
-		panel.queue_free()
+	var header := "Choose %d energy card%s to discard:" % [count, "s" if count > 1 else ""]
+	_show_energy_choice_dialog(header, eligible, count,
+		func(sel: Array[int]) -> void:
+			_main.manager.resolve_energy_discard_choice(sel)
 	)
-	vbox.add_child(confirm_btn)
-
-	_hud.add_child(panel)
 
 
 func on_retreat_energy_choice_required(
 		_player_id: int, eligible: Array, count: int, _active_slot: String) -> void:
+	var header := "Retreat — choose %d energy card%s to discard:" % [count, "s" if count > 1 else ""]
+	_show_energy_choice_dialog(header, eligible, count,
+		func(sel: Array[int]) -> void:
+			_main.manager.resolve_retreat_energy_choice(sel)
+	)
+
+
+## Returns true when every entry in [eligible] is an EnergyCardData with the
+## same energy_type — meaning the player has no meaningful choice and we can
+## just auto-pick the first [count] indices.
+func _energy_choice_is_degenerate(eligible: Array) -> bool:
+	if eligible.size() < 2:
+		return true
+	if not (eligible[0] is EnergyCardData):
+		return false
+	var first_type: int = (eligible[0] as EnergyCardData).energy_type
+	for c: CardData in eligible:
+		if not (c is EnergyCardData):
+			return false
+		if (c as EnergyCardData).energy_type != first_type:
+			return false
+	return true
+
+
+func _show_energy_choice_dialog(header_text: String, eligible: Array, count: int, on_confirm: Callable) -> void:
+	if _energy_choice_is_degenerate(eligible):
+		var auto_indices: Array[int] = []
+		for i in range(mini(count, eligible.size())):
+			auto_indices.append(i)
+		on_confirm.call(auto_indices)
+		return
+
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+
 	var panel := MatchUIUtils.make_panel()
 	var vbox  := panel.get_child(0) as VBoxContainer
 
 	var header := Label.new()
-	header.text = "Retreat — choose %d energy card%s to discard:" % [count, "s" if count > 1 else ""]
+	header.text = header_text
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(header)
 
@@ -643,8 +512,10 @@ func on_retreat_energy_choice_required(
 
 	for i in eligible.size():
 		var card: CardData = eligible[i]
+		var info := MatchUIUtils.energy_label_and_color(card)
 		var cb := CheckBox.new()
-		cb.text = card.display_name if card != null else "Energy"
+		cb.text = info["label"]
+		cb.add_theme_color_override("font_color", info["color"])
 		var idx := i
 		cb.toggled.connect(func(on: bool) -> void:
 			if on:
@@ -658,9 +529,12 @@ func on_retreat_energy_choice_required(
 		vbox.add_child(cb)
 
 	confirm_btn.pressed.connect(func() -> void:
-		_main.manager.resolve_retreat_energy_choice(selected)
+		var to_send: Array[int] = selected.duplicate()
 		panel.queue_free()
+		_attack_dialog = null
+		on_confirm.call(to_send)
 	)
 	vbox.add_child(confirm_btn)
 
 	_hud.add_child(panel)
+	_attack_dialog = panel

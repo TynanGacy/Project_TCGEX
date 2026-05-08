@@ -77,7 +77,6 @@ var _in_placement_phase: bool = false
 var _reset_button:      Button = null
 var _attack_button:     Button = null
 var _retreat_button:    Button = null
-var _bench_button:       Button = null
 var _save_state_button:  Button = null
 var _load_state_button:  Button = null
 var _back_to_menu_button: Button = null
@@ -135,11 +134,6 @@ func _ready() -> void:
 	_retreat_button.text = "Retreat"
 	_retreat_button.pressed.connect(_on_retreat_pressed)
 	end_turn_button.get_parent().add_child(_retreat_button)
-
-	_bench_button = Button.new()
-	_bench_button.text = "Modify Bench"
-	_bench_button.pressed.connect(_on_modify_bench_pressed)
-	end_turn_button.get_parent().add_child(_bench_button)
 
 	_save_state_button = Button.new()
 	_save_state_button.text = "Save State"
@@ -414,10 +408,6 @@ func _on_retreat_pressed() -> void:
 	_dialog_mgr.on_retreat_pressed()
 
 
-func _on_modify_bench_pressed() -> void:
-	_dialog_mgr.on_modify_bench_pressed()
-
-
 func _on_prize_selection_required(player_id: int) -> void:
 	_dialog_mgr.on_prize_selection_required(player_id)
 
@@ -444,7 +434,6 @@ func _on_game_won(player_id: int) -> void:
 	end_turn_button.disabled  = true
 	if _attack_button  != null: _attack_button.disabled  = true
 	if _retreat_button != null: _retreat_button.disabled = true
-	if _bench_button   != null: _bench_button.disabled   = true
 	_dialog_mgr.on_game_won(player_id)
 
 
