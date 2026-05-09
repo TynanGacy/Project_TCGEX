@@ -1,0 +1,95 @@
+[gd_scene load_steps=4 format=3 uid="uid://card_browser_scene"]
+
+[ext_resource type="Script" path="res://scenes/card_browser/card_browser.gd" id="1_browser"]
+[ext_resource type="Script" path="res://scenes/ui/card_grid.gd" id="2_grid"]
+[ext_resource type="Script" path="res://scenes/ui/card_filter_bar.gd" id="3_filter"]
+
+[node name="CardBrowser" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_browser")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.12, 0.15, 1)
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BackButton" type="Button" parent="Layout/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+text = "← Back"
+
+[node name="Title" type="Label" parent="Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Card List"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 24
+
+[node name="FilterBar" type="HFlowContainer" parent="Layout"]
+layout_mode = 2
+script = ExtResource("3_filter")
+
+[node name="CardGrid" type="VBoxContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("2_grid")
+
+[node name="ZoomOverlay" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -340.0
+offset_right = 240.0
+offset_bottom = 340.0
+
+[node name="Margin" type="MarginContainer" parent="ZoomOverlay"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="V" type="VBoxContainer" parent="ZoomOverlay/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Art" type="TextureRect" parent="ZoomOverlay/Margin/V"]
+layout_mode = 2
+custom_minimum_size = Vector2(440, 480)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CardName" type="Label" parent="ZoomOverlay/Margin/V"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+
+[node name="Rules" type="Label" parent="ZoomOverlay/Margin/V"]
+layout_mode = 2
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 13

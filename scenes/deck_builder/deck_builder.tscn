@@ -1,0 +1,189 @@
+[gd_scene load_steps=5 format=3 uid="uid://deck_builder_scene"]
+
+[ext_resource type="Script" path="res://scenes/deck_builder/deck_builder.gd" id="1_builder"]
+[ext_resource type="Script" path="res://scenes/ui/card_grid.gd" id="2_grid"]
+[ext_resource type="Script" path="res://scenes/deck_builder/deck_pane.gd" id="3_pane"]
+[ext_resource type="Script" path="res://scenes/ui/card_filter_bar.gd" id="4_filter"]
+
+[node name="DeckBuilder" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_builder")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.12, 0.15, 1)
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Status" type="VBoxContainer" parent="Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NameLabel" type="Label" parent="Layout/Header/Status"]
+layout_mode = 2
+text = "(unsaved)"
+theme_override_font_sizes/font_size = 18
+
+[node name="HBox" type="HBoxContainer" parent="Layout/Header/Status"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TotalLabel" type="Label" parent="Layout/Header/Status/HBox"]
+layout_mode = 2
+text = "0 / 60"
+theme_override_font_sizes/font_size = 16
+
+[node name="BasicsLabel" type="Label" parent="Layout/Header/Status/HBox"]
+layout_mode = 2
+text = "0 basic Pokémon"
+theme_override_font_sizes/font_size = 16
+
+[node name="ErrorsLabel" type="Label" parent="Layout/Header/Status"]
+layout_mode = 2
+text = ""
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 13
+
+[node name="Buttons" type="HBoxContainer" parent="Layout/Header"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="BackButton" type="Button" parent="Layout/Header/Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 32)
+text = "← Back"
+
+[node name="NewButton" type="Button" parent="Layout/Header/Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 32)
+text = "New"
+
+[node name="LoadButton" type="Button" parent="Layout/Header/Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 32)
+text = "Load"
+
+[node name="SaveButton" type="Button" parent="Layout/Header/Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 32)
+text = "Save"
+
+[node name="SaveAsButton" type="Button" parent="Layout/Header/Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 32)
+text = "Save As…"
+
+[node name="FilterBar" type="HFlowContainer" parent="Layout"]
+layout_mode = 2
+script = ExtResource("4_filter")
+
+[node name="Body" type="HSplitContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 0
+dragger_visibility = 0
+
+[node name="CardGrid" type="VBoxContainer" parent="Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("2_grid")
+
+[node name="Side" type="VSplitContainer" parent="Layout/Body"]
+layout_mode = 2
+
+[node name="DeckPane" type="VBoxContainer" parent="Layout/Body/Side"]
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("3_pane")
+
+[node name="Preview" type="PanelContainer" parent="Layout/Body/Side"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 380)
+
+[node name="Margin" type="MarginContainer" parent="Layout/Body/Side/Preview"]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="Aspect" type="AspectRatioContainer" parent="Layout/Body/Side/Preview/Margin"]
+layout_mode = 2
+ratio = 0.7159
+
+[node name="Art" type="TextureRect" parent="Layout/Body/Side/Preview/Margin/Aspect"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 1
+
+[node name="BottomBar" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+alignment = 2
+
+[node name="PreviewToggleButton" type="Button" parent="Layout/BottomBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(160, 28)
+text = "Hide Preview ▼"
+
+[node name="SaveDialog" type="AcceptDialog" parent="."]
+title = "Save deck"
+size = Vector2i(420, 140)
+ok_button_text = "Save"
+
+[node name="V" type="VBoxContainer" parent="SaveDialog"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 404.0
+offset_bottom = 100.0
+
+[node name="Hint" type="Label" parent="SaveDialog/V"]
+layout_mode = 2
+text = "Deck name:"
+
+[node name="NameEdit" type="LineEdit" parent="SaveDialog/V"]
+layout_mode = 2
+placeholder_text = "My Deck"
+
+[node name="OverwriteDialog" type="ConfirmationDialog" parent="."]
+title = "Overwrite deck?"
+ok_button_text = "Overwrite"
+
+[node name="PickerDialog" type="AcceptDialog" parent="."]
+title = "Load deck"
+size = Vector2i(480, 360)
+ok_button_text = "Load"
+
+[node name="V" type="VBoxContainer" parent="PickerDialog"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 464.0
+offset_bottom = 320.0
+
+[node name="Hint" type="Label" parent="PickerDialog/V"]
+layout_mode = 2
+text = "Decks ([preset] = read-only; Save As to keep your edits):"
+autowrap_mode = 2
+
+[node name="List" type="ItemList" parent="PickerDialog/V"]
+layout_mode = 2
+size_flags_vertical = 3

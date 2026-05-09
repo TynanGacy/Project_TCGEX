@@ -360,10 +360,33 @@ func deal_prizes(player_id: int, count: int = 6) -> void:
 	game_position.deal_prizes(player_id, count)
 
 
+## Test seam: forced-outcome queue. When non-empty, flip_coin / flip_coins_batch
+## pull from this FIFO before falling back to randi(). Lets tests make
+## coin-dependent effects deterministic via push_forced_flip(true|false).
+var _forced_flip_queue: Array[bool] = []
+
+
+func push_forced_flip(heads: bool) -> void:
+	_forced_flip_queue.append(heads)
+
+
+func push_forced_flips(values: Array) -> void:
+	for v in values:
+		_forced_flip_queue.append(bool(v))
+
+
+func clear_forced_flips() -> void:
+	_forced_flip_queue.clear()
+
+
 ## Flips a coin, emits coin_flipped, and returns true for heads.
 ## All coin flips in the game must route through this method so the visual fires.
 func flip_coin(label: String) -> bool:
-	var heads: bool = (randi() % 2) == 0
+	var heads: bool
+	if not _forced_flip_queue.is_empty():
+		heads = _forced_flip_queue.pop_front()
+	else:
+		heads = (randi() % 2) == 0
 	coin_flipped.emit(heads, label)
 	return heads
 
@@ -374,7 +397,12 @@ func flip_coin(label: String) -> bool:
 func flip_coins_batch(count: int, label: String) -> Array[bool]:
 	var results: Array[bool] = []
 	for _i in range(count):
-		results.append((randi() % 2) == 0)
+		var heads: bool
+		if not _forced_flip_queue.is_empty():
+			heads = _forced_flip_queue.pop_front()
+		else:
+			heads = (randi() % 2) == 0
+		results.append(heads)
 	coins_batch_flipped.emit(results, label)
 	return results
 

@@ -903,54 +903,10 @@ func _show_deck_search_grid(query: TrainerQuery) -> void:
 
 
 ## Builds one card tile (TextureRect + name label inside a styled Panel).
-## Initial state is unselected.
+## Initial state is unselected. Delegates to the reusable CardTile so the
+## visual stays in sync with the card browser and deck builder.
 func _make_card_tile(card: CardData) -> Control:
-	const TILE_W: int = 200
-	const TILE_H: int = 300
-	const ART_H:  int = 252
-
-	var outer := Panel.new()
-	outer.custom_minimum_size = Vector2(TILE_W, TILE_H)
-	outer.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	var unselected_style := StyleBoxFlat.new()
-	unselected_style.bg_color = Color(0.10, 0.10, 0.12, 1.0)
-	unselected_style.set_corner_radius_all(8)
-	unselected_style.set_border_width_all(2)
-	unselected_style.border_color = Color(0.25, 0.25, 0.30, 1.0)
-	outer.add_theme_stylebox_override("panel", unselected_style)
-	outer.set_meta("unselected_style", unselected_style)
-
-	var selected_style := StyleBoxFlat.new()
-	selected_style.bg_color = Color(0.10, 0.16, 0.10, 1.0)
-	selected_style.set_corner_radius_all(8)
-	selected_style.set_border_width_all(4)
-	selected_style.border_color = Color(0.40, 0.95, 0.40, 1.0)
-	outer.set_meta("selected_style", selected_style)
-
-	var v := VBoxContainer.new()
-	v.set_anchors_preset(Control.PRESET_FULL_RECT)
-	v.add_theme_constant_override("separation", 4)
-	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	outer.add_child(v)
-
-	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(TILE_W - 12, ART_H)
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.texture = card.art
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(art)
-
-	var label := Label.new()
-	label.text = card.display_name
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	label.add_theme_font_size_override("font_size", 12)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(label)
-
-	return outer
+	return CardTile.create_match(card)
 
 
 ## Swaps the tile's stylebox between selected and unselected.
