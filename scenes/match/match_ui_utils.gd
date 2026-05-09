@@ -38,3 +38,14 @@ static func format_attack_cost(atk: AttackData) -> String:
 	if parts.is_empty():
 		return "[–]"
 	return "[%s]" % "".join(parts)
+
+
+## Returns the display label and tint color for an energy CardData entry,
+## suitable for decorating checkboxes in energy-discard pickers.
+static func energy_label_and_color(card: CardData) -> Dictionary:
+	var name_str := card.display_name if card != null else "Energy"
+	var type_str := ""
+	if card is EnergyCardData:
+		type_str = PokemonCardData.energy_type_to_string((card as EnergyCardData).energy_type)
+	var label := "%s — %s" % [name_str, type_str.capitalize()] if type_str != "" else name_str
+	return {"label": label, "color": AttachmentDisplay.energy_color(card)}

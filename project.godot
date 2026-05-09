@@ -20,8 +20,8 @@ config/icon="res://icon.svg"
 ManagerSystemSingleton="*res://autoload/manager_system.gd"
 GameStateManager="*res://autoload/game_state_manager.gd"
 SleevesManager="*res://autoload/sleeves_manager.gd"
-_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 MCPInputServer="*res://autoload/mcp_input_server.gd"
+_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]
 

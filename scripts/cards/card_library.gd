@@ -152,6 +152,9 @@ func _parse_trainer(d: Dictionary) -> TrainerCardData:
 		"TOOL":      card.trainer_kind = TrainerCardData.TrainerKind.TOOL
 		_:           card.trainer_kind = TrainerCardData.TrainerKind.ITEM
 
+	card.effect_key    = d.get("effect_key", "")
+	card.effect_params = d.get("effect_params", {})
+
 	return card
 
 

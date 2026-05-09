@@ -35,10 +35,10 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("No Pokémon in active slot.")
 	if active_inst.card == null:
 		return ActionResult.fail("Active Pokémon has no card data.")
-	if active_inst.attached_energy.size() < active_inst.card.retreat_cost:
+	if active_inst.attached_energy.size() < maxi(0, active_inst.card.retreat_cost - StadiumEffects.retreat_discount_for(active_inst.card, manager)):
 		return ActionResult.fail(
 			"Not enough energy to retreat (need %d, have %d)." % [
-				active_inst.card.retreat_cost,
+				maxi(0, active_inst.card.retreat_cost - StadiumEffects.retreat_discount_for(active_inst.card, manager)),
 				active_inst.attached_energy.size(),
 			]
 		)
@@ -62,7 +62,8 @@ func validate(manager) -> ActionResult:
 
 func apply(manager) -> void:
 	var active_inst: PokemonInstance = manager.board_position.get_instance(active_slot)
-	var cost: int = active_inst.card.retreat_cost
+	var cost: int = maxi(0, active_inst.card.retreat_cost \
+			- StadiumEffects.retreat_discount_for(active_inst.card, manager))
 
 	## When there are more energies than the cost, the player must choose which to discard.
 	if cost > 0 and active_inst.attached_energy.size() > cost:

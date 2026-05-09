@@ -3,5 +3,7 @@
   "display_name": "Energy Restore",
   "card_type": "TRAINER",
   "trainer_kind": "ITEM",
-  "rules_text": "Flip 3 coins. For each heads, put a Basic Energy card from your discard pile into your hand. If you don't have that many basic Energy cards in your discard pile, put all of them into your hand."
+  "rules_text": "Flip 3 coins. For each heads, put a Basic Energy card from your discard pile into your hand. If you don't have that many basic Energy cards in your discard pile, put all of them into your hand.",
+  "effect_key": "recover_basic_energy_from_discard",
+  "effect_params": { "flips": 3 }
 }

@@ -27,12 +27,17 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Not your main phase.")
 	if not (manager.game_position.hands[player_id] as Array).has(card):
 		return ActionResult.fail("Item is not in your hand.")
+	var effect_check := TrainerResolver.validate(card, manager, player_id)
+	if not effect_check.ok:
+		return effect_check
 	return ActionResult.success()
 
 
 func apply(manager) -> void:
 	manager.game_position.take_from_hand(player_id, card)
 	manager.game_position.put_in_discard(player_id, card)
+	if manager.trainer_resolver != null:
+		manager.trainer_resolver.dispatch(card, manager, player_id)
 
 
 func description() -> String:

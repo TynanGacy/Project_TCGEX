@@ -69,8 +69,7 @@ POST http://localhost:9080/input
 ```
 
 Known button labels in the main scene: `Developer Mode`, `Start Game`,
-`Load State`, `Save State`, `End Turn`, `Reset`, `Attack`, `Retreat`,
-`Modify Bench`.
+`Load State`, `Save State`, `End Turn`, `Reset`, `Attack`, `Retreat`.
 
 ### godot-ai MCP — key tools
 - `editor_state` — check readiness, Godot version, current scene

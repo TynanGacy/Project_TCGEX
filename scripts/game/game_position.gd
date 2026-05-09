@@ -108,6 +108,37 @@ func deal_prizes(player_id: int, count: int) -> void:
 	prizes_changed.emit(player_id)
 
 
+## Removes [card] from the player's deck (first occurrence).  Returns true
+## on success.  Used by trainer-card searches (Pokéball, Energy Search, etc.).
+func take_from_deck(player_id: int, card: CardData) -> bool:
+	var deck: Array = decks[player_id]
+	var idx := deck.find(card)
+	if idx < 0:
+		return false
+	deck.remove_at(idx)
+	deck_changed.emit(player_id)
+	return true
+
+
+## Removes [card] from the player's discard (first occurrence).  Returns
+## true on success.  Used by Energy Restore / Energy Recycle System.
+func take_from_discard(player_id: int, card: CardData) -> bool:
+	var pile: Array = discards[player_id]
+	var idx := pile.find(card)
+	if idx < 0:
+		return false
+	pile.remove_at(idx)
+	discard_changed.emit(player_id)
+	return true
+
+
+## Appends [card] onto the bottom of the player's deck (front of array;
+## the top is the back).  Used by Energy Recycle "shuffle into deck".
+func put_in_deck(player_id: int, card: CardData) -> void:
+	(decks[player_id] as Array).push_front(card)
+	deck_changed.emit(player_id)
+
+
 ## Removes [card] from the player's hand (if present).  Returns true on
 ## success.  Used by the Manager when a card moves from hand to a
 ## PokemonInstance or to the discard pile.

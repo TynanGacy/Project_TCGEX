@@ -10,9 +10,11 @@ var _hud: CanvasLayer = null
 ## Active attack/retreat/prize/promotion dialog (at most one open at a time).
 var _attack_dialog: Control = null
 
-## Queue of {pid, slot_id} dicts for Pokemon that couldn't be auto-relocated
-## when the bench slot count was reduced.  Processed one at a time.
-var _bench_overflow_queue: Array = []
+## Deck-search overlay state (kept separately so it can coexist with attack
+## dialogs without interfering with their lifecycle).  When minimised, the
+## main panel is hidden and `_deck_search_restore_btn` is shown instead.
+var _deck_search_panel: Control = null
+var _deck_search_restore_btn: Button = null
 
 
 func init(main_node: Node) -> void:
@@ -24,7 +26,7 @@ func clear() -> void:
 	if _attack_dialog != null:
 		_attack_dialog.queue_free()
 		_attack_dialog = null
-	_bench_overflow_queue.clear()
+	_close_deck_search()
 
 
 ## ---------------------------------------------------------------------------
@@ -214,7 +216,7 @@ func _show_retreat_dialog() -> void:
 	var vbox := panel.get_child(0) as VBoxContainer
 
 	var title := Label.new()
-	title.text = "Choose Pokémon to Retreat"
+	title.text = "Retreat — choose active Pokémon"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 16)
 	vbox.add_child(title)
@@ -254,7 +256,7 @@ func _pick_bench_for_retreat(pid: int, active_slot: String, bench_options: Array
 	var vbox := panel.get_child(0) as VBoxContainer
 
 	var title := Label.new()
-	title.text = "Choose Bench Replacement"
+	title.text = "Retreat — choose bench replacement"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 16)
 	vbox.add_child(title)
@@ -286,135 +288,6 @@ func _pick_bench_for_retreat(pid: int, active_slot: String, bench_options: Array
 func _submit_retreat(pid: int, active_slot: String, bench_slot: String) -> void:
 	var action := ActionRetreat.new(pid, active_slot, bench_slot)
 	_main._authority.request_action(action)
-
-
-## ---------------------------------------------------------------------------
-## Modify Bench dialog
-## ---------------------------------------------------------------------------
-
-func on_modify_bench_pressed() -> void:
-	if _main._setup_dialog != null or _main._in_setup_phase:
-		return
-	if _attack_dialog != null:
-		_attack_dialog.queue_free()
-		_attack_dialog = null
-		return
-	_show_modify_bench_dialog()
-
-
-func _show_modify_bench_dialog() -> void:
-	var panel := MatchUIUtils.make_panel()
-	panel.custom_minimum_size = Vector2(320, 80)
-	var vbox := panel.get_child(0) as VBoxContainer
-
-	var title := Label.new()
-	title.text = "Modify Bench Slots"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 16)
-	vbox.add_child(title)
-
-	var row := HBoxContainer.new()
-	var lbl := Label.new()
-	lbl.text = "Bench Slots (3–5):"
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var spin := SpinBox.new()
-	spin.min_value = 3
-	spin.max_value = 5
-	spin.value     = _main.manager.bench_slot_count
-	row.add_child(lbl)
-	row.add_child(spin)
-	vbox.add_child(row)
-
-	var apply_btn := Button.new()
-	apply_btn.text = "Apply"
-	apply_btn.pressed.connect(func() -> void:
-		panel.queue_free()
-		_attack_dialog = null
-		_apply_bench_count_change(int(spin.value))
-	)
-	vbox.add_child(apply_btn)
-
-	var cancel := Button.new()
-	cancel.text = "Cancel"
-	cancel.pressed.connect(func() -> void:
-		panel.queue_free()
-		_attack_dialog = null
-	)
-	vbox.add_child(cancel)
-
-	_hud.add_child(panel)
-	_attack_dialog = panel
-
-
-func _apply_bench_count_change(new_count: int) -> void:
-	_main._bench_slots = new_count
-	_bench_overflow_queue = _main.manager.set_bench_count(new_count)
-	_main.board.set_bench_count(new_count)
-	_process_bench_overflow()
-
-
-func _process_bench_overflow() -> void:
-	if _bench_overflow_queue.is_empty():
-		return
-	var entry: Dictionary = _bench_overflow_queue.pop_front()
-	var pid: int = entry["pid"]
-	var displaced_slot: String = entry["displaced_slot"]
-
-	var displaced_inst: PokemonInstance = _main.manager.board_position.get_instance(displaced_slot)
-	if displaced_inst == null:
-		_process_bench_overflow()
-		return
-
-	for m in range(1, _main._bench_slots + 1):
-		var target := "p%d_bench%d" % [pid, m]
-		if _main.manager.board_position.get_instance(target) == null:
-			_main.manager.board_position.move(displaced_slot, target)
-			_process_bench_overflow()
-			return
-
-	var discard_options: Array[String] = []
-	for m in range(1, 6):
-		var sid := "p%d_bench%d" % [pid, m]
-		if _main.manager.board_position.get_instance(sid) != null:
-			discard_options.append(sid)
-
-	var dname := displaced_inst.card.display_name if displaced_inst.card != null else "Pokémon"
-
-	var panel := MatchUIUtils.make_panel()
-	panel.custom_minimum_size = Vector2(400, 80)
-	var vbox := panel.get_child(0) as VBoxContainer
-
-	var title := Label.new()
-	title.text = "P%d: %s needs a bench spot.\nDiscard a Pokémon to make room:" % [pid, dname]
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(title)
-
-	for discard_slot in discard_options:
-		var discard_inst: PokemonInstance = _main.manager.board_position.get_instance(discard_slot)
-		var pname := discard_inst.card.display_name \
-				if discard_inst != null and discard_inst.card != null else discard_slot
-		var hp_str := " (%d/%d HP)" % [discard_inst.current_hp, discard_inst.max_hp] \
-				if discard_inst != null else ""
-		var btn := Button.new()
-		btn.text = "%s%s" % [pname, hp_str]
-		var _ds := discard_slot
-		var _dn := pname
-		btn.pressed.connect(func() -> void:
-			panel.queue_free()
-			var chosen: PokemonInstance = _main.manager.board_position.get_instance(_ds)
-			if chosen != null:
-				_main.manager.board_position.clear(_ds)
-				var released := chosen.release_cards()
-				_main.manager.game_position.discard_all(pid, released)
-				chosen.queue_free()
-				_main._log("[Bench] P%d: %s discarded — bench reduced." % [pid, _dn])
-			_bench_overflow_queue.push_front(entry)
-			_process_bench_overflow()
-		)
-		vbox.add_child(btn)
-
-	_hud.add_child(panel)
 
 
 ## ---------------------------------------------------------------------------
@@ -573,7 +446,6 @@ func on_game_won(player_id: int) -> void:
 		_main.end_turn_button.disabled  = false
 		if _main._attack_button  != null: _main._attack_button.disabled  = false
 		if _main._retreat_button != null: _main._retreat_button.disabled = false
-		if _main._bench_button   != null: _main._bench_button.disabled   = false
 		_main._reset_game()
 	)
 	vbox.add_child(btn)
@@ -586,52 +458,56 @@ func on_game_won(player_id: int) -> void:
 
 func on_energy_discard_choice_required(
 		_player_id: int, eligible: Array, count: int, _attacker_slot: String) -> void:
-	var panel := MatchUIUtils.make_panel()
-	var vbox  := panel.get_child(0) as VBoxContainer
-
-	var header := Label.new()
-	header.text = "Choose %d energy card%s to discard:" % [count, "s" if count > 1 else ""]
-	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(header)
-
-	var selected: Array[int] = []
-
-	var confirm_btn := Button.new()
-	confirm_btn.text = "Confirm (%d/%d selected)" % [0, count]
-	confirm_btn.disabled = true
-
-	for i in eligible.size():
-		var card: CardData = eligible[i]
-		var cb := CheckBox.new()
-		cb.text = card.display_name if card != null else "Energy"
-		var idx := i
-		cb.toggled.connect(func(on: bool) -> void:
-			if on:
-				if not selected.has(idx):
-					selected.append(idx)
-			else:
-				selected.erase(idx)
-			confirm_btn.text = "Confirm (%d/%d selected)" % [selected.size(), count]
-			confirm_btn.disabled = selected.size() != count
-		)
-		vbox.add_child(cb)
-
-	confirm_btn.pressed.connect(func() -> void:
-		_main.manager.resolve_energy_discard_choice(selected)
-		panel.queue_free()
+	var header := "Choose %d energy card%s to discard:" % [count, "s" if count > 1 else ""]
+	_show_energy_choice_dialog(header, eligible, count,
+		func(sel: Array[int]) -> void:
+			_main.manager.resolve_energy_discard_choice(sel)
 	)
-	vbox.add_child(confirm_btn)
-
-	_hud.add_child(panel)
 
 
 func on_retreat_energy_choice_required(
 		_player_id: int, eligible: Array, count: int, _active_slot: String) -> void:
+	var header := "Retreat — choose %d energy card%s to discard:" % [count, "s" if count > 1 else ""]
+	_show_energy_choice_dialog(header, eligible, count,
+		func(sel: Array[int]) -> void:
+			_main.manager.resolve_retreat_energy_choice(sel)
+	)
+
+
+## Returns true when every entry in [eligible] is an EnergyCardData with the
+## same energy_type — meaning the player has no meaningful choice and we can
+## just auto-pick the first [count] indices.
+func _energy_choice_is_degenerate(eligible: Array) -> bool:
+	if eligible.size() < 2:
+		return true
+	if not (eligible[0] is EnergyCardData):
+		return false
+	var first_type: int = (eligible[0] as EnergyCardData).energy_type
+	for c: CardData in eligible:
+		if not (c is EnergyCardData):
+			return false
+		if (c as EnergyCardData).energy_type != first_type:
+			return false
+	return true
+
+
+func _show_energy_choice_dialog(header_text: String, eligible: Array, count: int, on_confirm: Callable) -> void:
+	if _energy_choice_is_degenerate(eligible):
+		var auto_indices: Array[int] = []
+		for i in range(mini(count, eligible.size())):
+			auto_indices.append(i)
+		on_confirm.call(auto_indices)
+		return
+
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+
 	var panel := MatchUIUtils.make_panel()
 	var vbox  := panel.get_child(0) as VBoxContainer
 
 	var header := Label.new()
-	header.text = "Retreat — choose %d energy card%s to discard:" % [count, "s" if count > 1 else ""]
+	header.text = header_text
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(header)
 
@@ -643,8 +519,10 @@ func on_retreat_energy_choice_required(
 
 	for i in eligible.size():
 		var card: CardData = eligible[i]
+		var info := MatchUIUtils.energy_label_and_color(card)
 		var cb := CheckBox.new()
-		cb.text = card.display_name if card != null else "Energy"
+		cb.text = info["label"]
+		cb.add_theme_color_override("font_color", info["color"])
 		var idx := i
 		cb.toggled.connect(func(on: bool) -> void:
 			if on:
@@ -658,9 +536,740 @@ func on_retreat_energy_choice_required(
 		vbox.add_child(cb)
 
 	confirm_btn.pressed.connect(func() -> void:
-		_main.manager.resolve_retreat_energy_choice(selected)
+		var to_send: Array[int] = selected.duplicate()
 		panel.queue_free()
+		_attack_dialog = null
+		on_confirm.call(to_send)
 	)
 	vbox.add_child(confirm_btn)
 
 	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## ---------------------------------------------------------------------------
+## Trainer-effect query dialog
+## ---------------------------------------------------------------------------
+
+## Routed from match.gd when TrainerResolver emits player_query_requested.
+## Dispatches by query.kind to the right picker.  All pickers ultimately
+## resolve via _main.manager.trainer_resolver.resolve_query(response).
+func on_trainer_query_requested(query: TrainerQuery) -> void:
+	match query.kind:
+		TrainerQuery.Kind.CHOOSE_OWN_POKEMON, \
+		TrainerQuery.Kind.CHOOSE_OWN_BENCH, \
+		TrainerQuery.Kind.CHOOSE_OPPONENT_BENCH, \
+		TrainerQuery.Kind.CHOOSE_OPPONENT_POKEMON:
+			_show_pokemon_slot_picker(query)
+		TrainerQuery.Kind.CHOOSE_FROM_HAND, \
+		TrainerQuery.Kind.CHOOSE_FROM_LIST:
+			_show_deck_search_grid(query)
+		TrainerQuery.Kind.CHOOSE_ENERGY_ON_POKEMON:
+			_show_energy_on_pokemon_picker(query)
+		TrainerQuery.Kind.REORDER_TOP_OF_DECK:
+			_show_deck_reorder_grid(query)
+		TrainerQuery.Kind.GENERIC_CHOICE:
+			_show_generic_choice(query)
+		_:
+			push_warning("DialogManager: unhandled trainer query kind %d" % query.kind)
+			_main.manager.trainer_resolver.resolve_query(null)
+
+
+## Generic Pokémon slot picker: one button per slot ID listed in
+## query.options.  Sends the chosen slot id back to the resolver.
+func _show_pokemon_slot_picker(query: TrainerQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+
+	var resolver = _main.manager.trainer_resolver
+
+	if query.options.is_empty():
+		push_warning("DialogManager: trainer query has no options — auto-cancelling.")
+		resolver.resolve_query(null)
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(360, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Choose a Pokémon"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	for sid_variant in query.options:
+		var sid: String = str(sid_variant)
+		var inst: PokemonInstance = _main.manager.board_position.get_instance(sid)
+		var label_text: String
+		if inst == null or inst.card == null:
+			label_text = sid
+		else:
+			label_text = "%s — %s (%d/%d)" % [
+				_slot_label(sid), inst.card.display_name,
+				inst.current_hp, inst.max_hp,
+			]
+		var btn := Button.new()
+		btn.text = label_text
+		var captured_sid := sid
+		btn.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query(captured_sid)
+		)
+		vbox.add_child(btn)
+
+	## Cancel button — sends null and the handler treats it as a no-op.
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+		resolver.resolve_query(null)
+	)
+	vbox.add_child(cancel)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Hand / generic card-list picker: checkbox list bounded by
+## query.min_selections / query.max_selections.  Sends back Array[CardData].
+##
+## When max_selections = 0, only a Cancel button is offered (used by deck
+## searches that whiffed — empty list).
+func _show_hand_card_picker(query: TrainerQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+
+	var resolver = _main.manager.trainer_resolver
+	var max_sel: int = mini(query.max_selections, query.options.size())
+	var min_sel: int = mini(query.min_selections, max_sel)
+	if query.options.is_empty() or max_sel <= 0:
+		resolver.resolve_query([])
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(360, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Choose card(s)"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	var selected: Array[int] = []
+	var confirm_btn := Button.new()
+
+	var update_confirm := func() -> void:
+		confirm_btn.text = "Confirm (%d / %d–%d)" % [selected.size(), min_sel, max_sel]
+		confirm_btn.disabled = selected.size() < min_sel or selected.size() > max_sel
+
+	for i in query.options.size():
+		var card: CardData = query.options[i] as CardData
+		if card == null:
+			continue
+		var cb := CheckBox.new()
+		cb.text = card.display_name
+		var idx := i
+		cb.toggled.connect(func(on: bool) -> void:
+			if on:
+				if not selected.has(idx):
+					selected.append(idx)
+			else:
+				selected.erase(idx)
+			update_confirm.call()
+		)
+		vbox.add_child(cb)
+
+	confirm_btn.pressed.connect(func() -> void:
+		var to_send: Array[CardData] = []
+		for idx in selected:
+			var c: CardData = query.options[idx] as CardData
+			if c != null:
+				to_send.append(c)
+		panel.queue_free()
+		_attack_dialog = null
+		resolver.resolve_query(to_send)
+	)
+	update_confirm.call()
+	vbox.add_child(confirm_btn)
+
+	if min_sel == 0:
+		var cancel := Button.new()
+		cancel.text = "Cancel"
+		cancel.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query([])
+		)
+		vbox.add_child(cancel)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Generic text-choice picker: options are arbitrary strings, returns the
+## selected string.  Used for mode prompts (e.g. Energy Recycle System).
+func _show_generic_choice(query: TrainerQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.trainer_resolver
+	if query.options.is_empty():
+		resolver.resolve_query(null)
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(320, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Choose"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	for opt_variant in query.options:
+		var label_text: String = str(opt_variant)
+		var btn := Button.new()
+		btn.text = label_text
+		var captured := label_text
+		btn.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query(captured)
+		)
+		vbox.add_child(btn)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+		resolver.resolve_query(null)
+	)
+	vbox.add_child(cancel)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Slay-the-Spire-style deck/discard search overlay.
+##
+## Renders the candidate cards as a scrollable grid of card-art tiles.
+## Click a tile to toggle selection (bordered when selected); confirm when
+## the count is in [min_selections, max_selections].  A Minimise button
+## hides the overlay so the player can inspect the board, with a floating
+## Restore button to bring it back.  Selection state is preserved across
+## minimise / restore.
+##
+## Sends back Array[CardData] via trainer_resolver.resolve_query().
+func _show_deck_search_grid(query: TrainerQuery) -> void:
+	if _deck_search_panel != null:
+		_deck_search_panel.queue_free()
+		_deck_search_panel = null
+	if _deck_search_restore_btn != null:
+		_deck_search_restore_btn.queue_free()
+		_deck_search_restore_btn = null
+
+	var resolver = _main.manager.trainer_resolver
+	var max_sel: int = mini(query.max_selections, query.options.size())
+	var min_sel: int = mini(query.min_selections, max_sel)
+	if query.options.is_empty() or max_sel <= 0:
+		resolver.resolve_query([])
+		return
+
+	## Backdrop covers the full HUD with a semi-transparent fade.
+	var backdrop := ColorRect.new()
+	backdrop.color = Color(0.0, 0.0, 0.0, 0.65)
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	## Centred container holding header / grid / footer.
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(960, 720)
+	center.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+
+	## Header bar.
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 16)
+	var title := Label.new()
+	title.text = query.prompt if query.prompt != "" else "Choose card(s)"
+	title.add_theme_font_size_override("font_size", 22)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+
+	var status := Label.new()
+	status.add_theme_font_size_override("font_size", 16)
+	header.add_child(status)
+
+	var minimise_btn := Button.new()
+	minimise_btn.text = "Minimise"
+	header.add_child(minimise_btn)
+	vbox.add_child(header)
+
+	## Card grid in a scroll container.
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(920, 560)
+	vbox.add_child(scroll)
+
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	scroll.add_child(grid)
+
+	## Footer with Confirm and (optional) Cancel.
+	var footer := HBoxContainer.new()
+	footer.alignment = BoxContainer.ALIGNMENT_END
+	footer.add_theme_constant_override("separation", 12)
+	var cancel_btn := Button.new()
+	cancel_btn.text = "Cancel" if min_sel == 0 else "Skip"
+	cancel_btn.disabled = min_sel > 0
+	footer.add_child(cancel_btn)
+	var confirm_btn := Button.new()
+	footer.add_child(confirm_btn)
+	vbox.add_child(footer)
+
+	var selected: Array[int] = []
+	var tiles: Array[Control] = []
+
+	var update_status := func() -> void:
+		status.text = "%d / %d–%d selected" % [selected.size(), min_sel, max_sel]
+		confirm_btn.text = "Confirm (%d)" % selected.size()
+		confirm_btn.disabled = selected.size() < min_sel or selected.size() > max_sel
+
+	## Build a tile per candidate.
+	for i in query.options.size():
+		var card: CardData = query.options[i] as CardData
+		if card == null:
+			continue
+		var idx := i
+		var tile := _make_card_tile(card)
+		tile.gui_input.connect(func(event: InputEvent) -> void:
+			if not (event is InputEventMouseButton):
+				return
+			var mb := event as InputEventMouseButton
+			if not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
+				return
+			if selected.has(idx):
+				selected.erase(idx)
+			else:
+				if selected.size() >= max_sel:
+					return  ## already at cap
+				selected.append(idx)
+			_set_tile_selected(tile, selected.has(idx))
+			update_status.call()
+		)
+		grid.add_child(tile)
+		tiles.append(tile)
+
+	confirm_btn.pressed.connect(func() -> void:
+		var to_send: Array[CardData] = []
+		for sel_idx in selected:
+			var c: CardData = query.options[sel_idx] as CardData
+			if c != null:
+				to_send.append(c)
+		_close_deck_search()
+		resolver.resolve_query(to_send)
+	)
+	cancel_btn.pressed.connect(func() -> void:
+		_close_deck_search()
+		resolver.resolve_query([])
+	)
+
+	minimise_btn.pressed.connect(func() -> void:
+		_minimise_deck_search()
+	)
+
+	update_status.call()
+
+	_hud.add_child(backdrop)
+	_deck_search_panel = backdrop
+
+
+## Builds one card tile (TextureRect + name label inside a styled Panel).
+## Initial state is unselected.
+func _make_card_tile(card: CardData) -> Control:
+	const TILE_W: int = 200
+	const TILE_H: int = 300
+	const ART_H:  int = 252
+
+	var outer := Panel.new()
+	outer.custom_minimum_size = Vector2(TILE_W, TILE_H)
+	outer.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var unselected_style := StyleBoxFlat.new()
+	unselected_style.bg_color = Color(0.10, 0.10, 0.12, 1.0)
+	unselected_style.set_corner_radius_all(8)
+	unselected_style.set_border_width_all(2)
+	unselected_style.border_color = Color(0.25, 0.25, 0.30, 1.0)
+	outer.add_theme_stylebox_override("panel", unselected_style)
+	outer.set_meta("unselected_style", unselected_style)
+
+	var selected_style := StyleBoxFlat.new()
+	selected_style.bg_color = Color(0.10, 0.16, 0.10, 1.0)
+	selected_style.set_corner_radius_all(8)
+	selected_style.set_border_width_all(4)
+	selected_style.border_color = Color(0.40, 0.95, 0.40, 1.0)
+	outer.set_meta("selected_style", selected_style)
+
+	var v := VBoxContainer.new()
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.add_theme_constant_override("separation", 4)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	outer.add_child(v)
+
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(TILE_W - 12, ART_H)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.texture = card.art
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(art)
+
+	var label := Label.new()
+	label.text = card.display_name
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	label.add_theme_font_size_override("font_size", 12)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(label)
+
+	return outer
+
+
+## Swaps the tile's stylebox between selected and unselected.
+func _set_tile_selected(tile: Control, is_selected: bool) -> void:
+	var key: String = "selected_style" if is_selected else "unselected_style"
+	if tile.has_meta(key):
+		tile.add_theme_stylebox_override("panel", tile.get_meta(key))
+
+
+## Hide the deck-search panel and show a floating Restore button.  Selection
+## state is preserved on the panel because we only set visible = false.
+func _minimise_deck_search() -> void:
+	if _deck_search_panel == null:
+		return
+	_deck_search_panel.visible = false
+	if _deck_search_restore_btn != null:
+		_deck_search_restore_btn.queue_free()
+	var btn := Button.new()
+	btn.text = "Restore Search ▲"
+	btn.add_theme_font_size_override("font_size", 14)
+	btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	btn.position = Vector2(-220, 60)
+	btn.size = Vector2(200, 36)
+	btn.pressed.connect(func() -> void:
+		if _deck_search_panel != null:
+			_deck_search_panel.visible = true
+		if _deck_search_restore_btn != null:
+			_deck_search_restore_btn.queue_free()
+			_deck_search_restore_btn = null
+	)
+	_hud.add_child(btn)
+	_deck_search_restore_btn = btn
+
+
+## Tear down both the panel and the restore button.
+func _close_deck_search() -> void:
+	if _deck_search_panel != null:
+		_deck_search_panel.queue_free()
+		_deck_search_panel = null
+	if _deck_search_restore_btn != null:
+		_deck_search_restore_btn.queue_free()
+		_deck_search_restore_btn = null
+
+
+## Grid-based reorder dialog (PokéNav step 2).  Shows each candidate as a
+## card-art tile; click to assign sequential positions (1 = drawn first).
+## A position badge appears on selected tiles.  Confirm enabled when every
+## tile has been ordered.  Same minimise / restore behaviour as the search
+## grid.  Sends back Array[CardData] in chosen order.
+func _show_deck_reorder_grid(query: TrainerQuery) -> void:
+	if _deck_search_panel != null:
+		_deck_search_panel.queue_free()
+		_deck_search_panel = null
+	if _deck_search_restore_btn != null:
+		_deck_search_restore_btn.queue_free()
+		_deck_search_restore_btn = null
+
+	var resolver = _main.manager.trainer_resolver
+	if query.options.is_empty():
+		resolver.resolve_query([])
+		return
+
+	var backdrop := ColorRect.new()
+	backdrop.color = Color(0.0, 0.0, 0.0, 0.65)
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(960, 720)
+	center.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 16)
+	var title := Label.new()
+	title.text = query.prompt if query.prompt != "" else "Click cards in draw order"
+	title.add_theme_font_size_override("font_size", 22)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var status := Label.new()
+	status.add_theme_font_size_override("font_size", 16)
+	status.text = "0 / %d ordered" % query.options.size()
+	header.add_child(status)
+	var minimise_btn := Button.new()
+	minimise_btn.text = "Minimise"
+	header.add_child(minimise_btn)
+	vbox.add_child(header)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(920, 520)
+	vbox.add_child(scroll)
+
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	scroll.add_child(grid)
+
+	var footer := HBoxContainer.new()
+	footer.alignment = BoxContainer.ALIGNMENT_END
+	footer.add_theme_constant_override("separation", 12)
+	var reset_btn := Button.new()
+	reset_btn.text = "Reset Order"
+	footer.add_child(reset_btn)
+	var confirm_btn := Button.new()
+	footer.add_child(confirm_btn)
+	vbox.add_child(footer)
+
+	var ordered_indices: Array[int] = []
+	var tiles: Array[Control] = []
+	var badges: Array[Label] = []
+
+	var update_status := func() -> void:
+		status.text = "%d / %d ordered" % [ordered_indices.size(), query.options.size()]
+		confirm_btn.text = "Confirm (%d)" % ordered_indices.size()
+		confirm_btn.disabled = ordered_indices.size() != query.options.size()
+
+	for i in query.options.size():
+		var card: CardData = query.options[i] as CardData
+		if card == null:
+			continue
+		var idx := i
+		var tile := _make_card_tile(card)
+
+		## Position badge: hidden until clicked.
+		var badge := Label.new()
+		badge.text = ""
+		badge.visible = false
+		badge.add_theme_font_size_override("font_size", 28)
+		badge.add_theme_color_override("font_color", Color.WHITE)
+		badge.add_theme_color_override("font_outline_color", Color.BLACK)
+		badge.add_theme_constant_override("outline_size", 4)
+		badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		badge.position = Vector2(8, 8)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tile.add_child(badge)
+		badges.append(badge)
+
+		tile.gui_input.connect(func(event: InputEvent) -> void:
+			if not (event is InputEventMouseButton):
+				return
+			var mb := event as InputEventMouseButton
+			if not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
+				return
+			if ordered_indices.has(idx):
+				return  ## click Reset Order to redo
+			ordered_indices.append(idx)
+			_set_tile_selected(tile, true)
+			badge.text = str(ordered_indices.size())
+			badge.visible = true
+			update_status.call()
+		)
+		grid.add_child(tile)
+		tiles.append(tile)
+
+	confirm_btn.pressed.connect(func() -> void:
+		var to_send: Array[CardData] = []
+		for ord_idx in ordered_indices:
+			var c: CardData = query.options[ord_idx] as CardData
+			if c != null:
+				to_send.append(c)
+		_close_deck_search()
+		resolver.resolve_query(to_send)
+	)
+
+	reset_btn.pressed.connect(func() -> void:
+		ordered_indices.clear()
+		for j in tiles.size():
+			_set_tile_selected(tiles[j], false)
+			badges[j].visible = false
+		update_status.call()
+	)
+
+	minimise_btn.pressed.connect(func() -> void:
+		_minimise_deck_search()
+	)
+
+	update_status.call()
+
+	_hud.add_child(backdrop)
+	_deck_search_panel = backdrop
+
+
+## Energy-on-Pokémon picker: lists each EnergyCardData in query.options
+## (energies attached to whichever Pokémon the handler chose previously).
+## Sends back the chosen EnergyCardData (single).
+func _show_energy_on_pokemon_picker(query: TrainerQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.trainer_resolver
+	if query.options.is_empty():
+		resolver.resolve_query(null)
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(360, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Choose an Energy"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	for c_variant in query.options:
+		var card: CardData = c_variant as CardData
+		if card == null:
+			continue
+		var info := MatchUIUtils.energy_label_and_color(card)
+		var btn := Button.new()
+		btn.text = info["label"]
+		btn.add_theme_color_override("font_color", info["color"])
+		var captured: CardData = card
+		btn.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query(captured)
+		)
+		vbox.add_child(btn)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+		resolver.resolve_query(null)
+	)
+	vbox.add_child(cancel)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Top-of-deck reorder picker: shows the cards in query.options face-up; the
+## player clicks them in their desired DRAW order (first click = next drawn).
+## Sends back Array[CardData] in chosen draw order.
+func _show_top_of_deck_reorder(query: TrainerQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.trainer_resolver
+	if query.options.is_empty():
+		resolver.resolve_query([])
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(420, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Click cards in draw order"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	var status := Label.new()
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status.text = "0 / %d picked" % query.options.size()
+	vbox.add_child(status)
+
+	var ordered: Array[CardData] = []
+	var buttons: Array[Button] = []
+
+	for i in query.options.size():
+		var card: CardData = query.options[i] as CardData
+		var btn := Button.new()
+		btn.text = "%s" % (card.display_name if card != null else "?")
+		var captured: CardData = card
+		var captured_btn: Button = btn
+		btn.pressed.connect(func() -> void:
+			if ordered.has(captured) or captured == null:
+				return
+			ordered.append(captured)
+			captured_btn.text = "%d. %s" % [ordered.size(), captured.display_name]
+			captured_btn.disabled = true
+			status.text = "%d / %d picked" % [ordered.size(), query.options.size()]
+			if ordered.size() == query.options.size():
+				panel.queue_free()
+				_attack_dialog = null
+				resolver.resolve_query(ordered.duplicate())
+		)
+		vbox.add_child(btn)
+		buttons.append(btn)
+
+	## Reset button so the player can start over if they misclicked.
+	var reset := Button.new()
+	reset.text = "Reset Order"
+	reset.pressed.connect(func() -> void:
+		ordered.clear()
+		for j in buttons.size():
+			var b := buttons[j]
+			var c: CardData = query.options[j] as CardData
+			b.text = c.display_name if c != null else "?"
+			b.disabled = false
+		status.text = "0 / %d picked" % query.options.size()
+	)
+	vbox.add_child(reset)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Pretty-prints a slot id like "p0_active1" → "Active 1".
+static func _slot_label(slot_id: String) -> String:
+	if slot_id.contains("active1"): return "Active 1"
+	if slot_id.contains("active2"): return "Active 2"
+	if slot_id.contains("bench1"):  return "Bench 1"
+	if slot_id.contains("bench2"):  return "Bench 2"
+	if slot_id.contains("bench3"):  return "Bench 3"
+	if slot_id.contains("bench4"):  return "Bench 4"
+	if slot_id.contains("bench5"):  return "Bench 5"
+	return slot_id

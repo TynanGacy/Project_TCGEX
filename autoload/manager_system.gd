@@ -77,6 +77,7 @@ signal retreat_energy_choice_required(player_id: int, eligible: Array[CardData],
 var board_position: BoardPosition = null
 var game_position:  GamePosition = null
 var attack_resolver: AttackResolver = null
+var trainer_resolver: TrainerResolver = null
 
 ## Set by the match scene in _ready(); cleared by full_reset() on match exit.
 ## Used by AttackResolver and cleanup phases for animation sequencing.
@@ -248,6 +249,9 @@ func _ready() -> void:
 	attack_resolver = AttackResolver.new()
 	attack_resolver.name = "AttackResolver"
 	add_child(attack_resolver)
+	trainer_resolver = TrainerResolver.new()
+	trainer_resolver.name = "TrainerResolver"
+	add_child(trainer_resolver)
 
 	board_position.slot_changed.connect(_on_slot_changed)
 	board_position.overflow_escalation.connect(_on_overflow_escalation)
@@ -304,6 +308,9 @@ func request_action_async(action: GameAction) -> ActionResult:
 	var result := request_action(action)
 	if result.ok and action is ActionAttack and attack_resolver.is_resolving():
 		await attack_resolver.pipeline_completed
+	if result.ok and trainer_resolver != null and trainer_resolver.is_resolving() \
+			and (action is ActionPlayItem or action is ActionPlaySupporter or action is ActionPlayStadium):
+		await trainer_resolver.pipeline_completed
 	return result
 
 
@@ -560,6 +567,7 @@ func full_reset() -> void:
 	board_position   = null
 	game_position    = null
 	attack_resolver  = null
+	trainer_resolver = null
 	animation_manager = null
 
 

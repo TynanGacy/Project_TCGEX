@@ -77,7 +77,6 @@ var _in_placement_phase: bool = false
 var _reset_button:      Button = null
 var _attack_button:     Button = null
 var _retreat_button:    Button = null
-var _bench_button:       Button = null
 var _save_state_button:  Button = null
 var _load_state_button:  Button = null
 var _back_to_menu_button: Button = null
@@ -88,6 +87,7 @@ var _save_load_mgr: SaveLoadManager = null
 ## Match-local nodes (moved from autoload so they free with this scene).
 var _anim_manager:    Node = null
 var _effect_handlers: Node = null
+var _trainer_handlers: Node = null
 
 ## Deferred end-of-turn: set when an attack commits; cleared after prize
 ## selection and promotion both resolve so we don't end the turn too early.
@@ -101,6 +101,8 @@ func _ready() -> void:
 	add_child(_anim_manager)
 	_effect_handlers = load("res://scenes/match/effect_handlers.gd").new()
 	add_child(_effect_handlers)
+	_trainer_handlers = load("res://scenes/match/trainer_handlers.gd").new()
+	add_child(_trainer_handlers)
 	ManagerSystemSingleton.animation_manager = _anim_manager
 
 	_pile_mgr = PileVisualManager.new()
@@ -135,11 +137,6 @@ func _ready() -> void:
 	_retreat_button.text = "Retreat"
 	_retreat_button.pressed.connect(_on_retreat_pressed)
 	end_turn_button.get_parent().add_child(_retreat_button)
-
-	_bench_button = Button.new()
-	_bench_button.text = "Modify Bench"
-	_bench_button.pressed.connect(_on_modify_bench_pressed)
-	end_turn_button.get_parent().add_child(_bench_button)
 
 	_save_state_button = Button.new()
 	_save_state_button.text = "Save State"
@@ -187,6 +184,8 @@ func _ready() -> void:
 	_anim_manager.set_coin_overlay(_coin_flip_overlay)
 	manager.energy_discard_choice_required.connect(_on_energy_discard_choice_required)
 	manager.retreat_energy_choice_required.connect(_on_retreat_energy_choice_required)
+	if manager.trainer_resolver != null:
+		manager.trainer_resolver.player_query_requested.connect(_on_trainer_query_requested)
 
 	_dialog_mgr.init(self)
 	_input_mgr.init(self)
@@ -414,10 +413,6 @@ func _on_retreat_pressed() -> void:
 	_dialog_mgr.on_retreat_pressed()
 
 
-func _on_modify_bench_pressed() -> void:
-	_dialog_mgr.on_modify_bench_pressed()
-
-
 func _on_prize_selection_required(player_id: int) -> void:
 	_dialog_mgr.on_prize_selection_required(player_id)
 
@@ -444,7 +439,6 @@ func _on_game_won(player_id: int) -> void:
 	end_turn_button.disabled  = true
 	if _attack_button  != null: _attack_button.disabled  = true
 	if _retreat_button != null: _retreat_button.disabled = true
-	if _bench_button   != null: _bench_button.disabled   = true
 	_dialog_mgr.on_game_won(player_id)
 
 
@@ -456,6 +450,10 @@ func _on_energy_discard_choice_required(
 func _on_retreat_energy_choice_required(
 		player_id: int, eligible: Array, count: int, active_slot: String) -> void:
 	_dialog_mgr.on_retreat_energy_choice_required(player_id, eligible, count, active_slot)
+
+
+func _on_trainer_query_requested(query: TrainerQuery) -> void:
+	_dialog_mgr.on_trainer_query_requested(query)
 
 
 ## ---------------------------------------------------------------------------
