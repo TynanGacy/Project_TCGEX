@@ -132,7 +132,8 @@ func test_coin_fail_no_damage_when_blocked() -> void:
 ## ── Group E: coin_discard_energy ───────────────────────────────────────────
 
 func test_coin_discard_energy_fires_on_tails() -> void:
-	## Synthesise a coin_discard_energy effect on a test attacker.
+	## Synthesise a coin_discard_energy effect on a test attacker. The coin
+	## is forced to tails via push_forced_flip so this test is deterministic.
 	var b   := _make_builder()
 	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
@@ -145,10 +146,17 @@ func test_coin_discard_energy_fires_on_tails() -> void:
 	att.card.attacks[0].effect_key    = "coin_discard_energy"
 	att.card.attacks[0].effect_params = {"type": "FIRE", "count": 1}
 
+	## false = tails → coin_discard_energy fires and discards 1 Fire energy.
+	mgr.push_forced_flip(false)
 	await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
-	## Either fire was discarded (tails) or kept (heads) — energy count = 0 or 1.
-	assert_true(att.attached_energy.size() <= 1,
-		"At most 1 energy left (fire may have been discarded on tails)")
+	assert_eq(att.attached_energy.size(), 1,
+		"tails: fire energy should have been discarded, leaving only grass")
+	## And the surviving energy should be the grass, not the fire.
+	assert_eq((att.attached_energy[0] as CardData).card_id, "RS_104_grass_energy")
+
+	## Free the Node3D-backed PokemonInstances so they don't leak as orphans.
+	att.queue_free()
+	tgt.queue_free()
 
 
 ## ── Group F: retreat_lock ──────────────────────────────────────────────────

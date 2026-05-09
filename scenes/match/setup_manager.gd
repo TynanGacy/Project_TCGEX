@@ -103,6 +103,9 @@ func show_setup_dialog() -> void:
 	vbox.add_child(HSeparator.new())
 
 	var deck_options := DeckLoader.get_valid_decks()
+	var user_decks := DeckIO.list_user_decks()
+	for entry: Dictionary in user_decks:
+		deck_options.append({"path": entry["path"], "label": "[user] " + (entry["label"] as String)})
 
 	var p1_deck_row := HBoxContainer.new()
 	var p1_deck_lbl := Label.new()
