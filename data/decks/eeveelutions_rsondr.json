@@ -1,0 +1,29 @@
+{
+  "_comment": "Eeveelutions Toolbox — RS/SS/DR-only. Stage 1 toolbox built around SS Eeveelutions, Eevee Signs of Evolution, and Rainbow/Multi Energy. Mid-tier (Average / Above-Average) difficulty: no ex Pokémon, max ~70 damage/turn, weak to Fighting.",
+  "_comment2": "Find valid card_id values by browsing data/cards/**/*.json",
+  "cards": [
+    { "card_id": "SS_63_eevee",                "count": 4 },
+    { "card_id": "SS_16_espeon",               "count": 2 },
+    { "card_id": "SS_5_flareon",               "count": 2 },
+    { "card_id": "SS_6_jolteon",               "count": 2 },
+    { "card_id": "SS_24_umbreon",              "count": 2 },
+    { "card_id": "SS_25_vaporeon",             "count": 2 },
+    { "card_id": "SS_60_dunsparce",            "count": 3 },
+
+    { "card_id": "SS_88_rare_candy",           "count": 3 },
+    { "card_id": "RS_89_professor_birch",      "count": 3 },
+    { "card_id": "RS_88_pok_nav",              "count": 3 },
+    { "card_id": "RS_90_energy_search",        "count": 2 },
+    { "card_id": "RS_92_switch",               "count": 2 },
+    { "card_id": "RS_91_potion",               "count": 2 },
+    { "card_id": "RS_85_oran_berry",           "count": 2 },
+    { "card_id": "RS_83_lady_outing",          "count": 2 },
+
+    { "card_id": "RS_95_rainbow_energy",       "count": 4 },
+    { "card_id": "SS_93_multi_energy",         "count": 4 },
+    { "card_id": "RS_108_fire_energy",         "count": 4 },
+    { "card_id": "RS_106_water_energy",        "count": 4 },
+    { "card_id": "RS_109_lightning_energy",    "count": 4 },
+    { "card_id": "RS_107_psychic_energy",      "count": 4 }
+  ]
+}

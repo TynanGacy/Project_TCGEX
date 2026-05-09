@@ -1,0 +1,26 @@
+{
+  "_comment": "Beautifly/Dustox 'Bug Spread' — RS/SS/DR mono-Grass Stage 2 status/heal-tank deck. Wurmple (RS_78) Signs of Evolution searches both halves of its own line; Beautifly heals 10 from each of your Pokémon while hitting for 50; Dustox locks the active in double-poison (20/turn between turns) and Gusts for 50. Supported by a Nincada→Ninjask line: Nincada's Poison Breath chains with Dustox Toxic, and Ninjask's Quick Touch attacks for 30 while moving any number of Grass Energy to the next active when it pivots — perfect for powering up a benched Beautifly/Dustox. Heavy basic-search package (Poké Ball, Lanette's, Birch) ensures fast Wurmple drops.",
+  "_comment2": "Find valid card_id values by browsing data/cards/**/*.json",
+  "cards": [
+    { "card_id": "RS_78_wurmple",              "count": 4 },
+    { "card_id": "RS_43_silcoon",              "count": 2 },
+    { "card_id": "RS_26_cascoon",              "count": 2 },
+    { "card_id": "RS_2_beautifly",             "count": 3 },
+    { "card_id": "RS_6_dustox",                "count": 3 },
+    { "card_id": "DR_66_nincada",              "count": 2 },
+    { "card_id": "DR_18_ninjask",              "count": 2 },
+    { "card_id": "SS_60_dunsparce",            "count": 2 },
+
+    { "card_id": "SS_88_rare_candy",           "count": 4 },
+    { "card_id": "RS_86_pok_ball",             "count": 4 },
+    { "card_id": "RS_89_professor_birch",      "count": 3 },
+    { "card_id": "RS_88_pok_nav",              "count": 3 },
+    { "card_id": "SS_87_lanette_s_net_search", "count": 2 },
+    { "card_id": "SS_89_wally_s_training",     "count": 2 },
+    { "card_id": "RS_92_switch",               "count": 2 },
+    { "card_id": "RS_91_potion",               "count": 2 },
+    { "card_id": "RS_85_oran_berry",           "count": 2 },
+
+    { "card_id": "RS_104_grass_energy",        "count": 16 }
+  ]
+}
