@@ -10,10 +10,24 @@ extends GutTest
 ##   attach_from_discard, attach_from_hand, bench_damage.
 
 var _lib: CardLibrary
+var _handlers_node: Node = null
 
 
 func before_all() -> void:
 	_lib = CardLibrary.load_from_folder("res://data/cards")
+	## effect_handlers.gd is normally instantiated by the match scene, which
+	## isn't loaded in GUT. Spin it up here so EffectRegistry has handlers.
+	## NOTE: Use plain add_child (not add_child_autoqfree) — autoqfree frees
+	## the node at end of the FIRST test, but the registered handler closures
+	## capture `self`, so subsequent tests would crash on null lambda calls.
+	_handlers_node = load("res://scenes/match/effect_handlers.gd").new()
+	add_child(_handlers_node)
+
+
+func after_all() -> void:
+	if _handlers_node != null:
+		_handlers_node.queue_free()
+		_handlers_node = null
 
 
 func _make_builder() -> TestBoardBuilder:
@@ -23,6 +37,7 @@ func _make_builder() -> TestBoardBuilder:
 
 
 ## Convenience: place attacker + target, run attack, return [result, attacker_inst, target_inst].
+## Awaits the attack pipeline so post-actions and queries observe in callers.
 func _run_attack(attacker_id: String, attack_idx: int, energy_ids: Array,
 		target_id: String, target_hp: int = 200) -> Array:
 	var b   := _make_builder()
@@ -32,7 +47,7 @@ func _run_attack(attacker_id: String, attack_idx: int, energy_ids: Array,
 	b.place_active(1, target_id, {"hp": target_hp})
 	b.set_prizes(0)
 	b.set_prizes(1)
-	var result: ActionResult = mgr.request_action(
+	var result: ActionResult = await mgr.request_action_async(
 		ActionAttack.new(0, "p0_active1", attack_idx, "p1_active1")
 	)
 	var a_inst: PokemonInstance = mgr.board_position.get_instance("p0_active1")
@@ -58,7 +73,7 @@ func test_inflict_status_asleep() -> void:
 	att.card.attacks[0].effect_key    = "inflict_status"
 	att.card.attacks[0].effect_params = {"condition": "ASLEEP"}
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(result.ok, "inflict_status attack should succeed")
 	assert_true(tgt.special_conditions.has(PokemonInstance.SpecialCondition.ASLEEP),
 		"target should be ASLEEP")
@@ -75,7 +90,7 @@ func test_inflict_status_paralyzed() -> void:
 	att.card.attacks[0].effect_key    = "inflict_status"
 	att.card.attacks[0].effect_params = {"condition": "PARALYZED"}
 
-	mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(tgt.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED),
 		"target should be PARALYZED")
 
@@ -94,13 +109,9 @@ func test_coin_bonus_damage_heads() -> void:
 	att.card.attacks[0].effect_key    = "coin_bonus_damage"
 	att.card.attacks[0].effect_params = {"bonus": 20}
 
-	## Force heads.
-	mgr.rng = RandomNumberGenerator.new()
-	mgr.rng.seed = 12345
-	var orig_flip := mgr.flip_coin
-	mgr.flip_coin = func(_name): return true
-
-	mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	## Result is non-deterministic — coin flip uses ManagerSystem's internal
+	## randi(), and we can't override the method or seed it from here.
+	await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	## At minimum: base damage (20) was dealt — we can't deterministically assert bonus without RNG control
 	assert_true(tgt.current_hp < 200, "some damage should be dealt")
 
@@ -109,7 +120,7 @@ func test_coin_bonus_damage_heads() -> void:
 
 func test_coin_fail_no_damage_when_blocked() -> void:
 	## Use RS_45_slakoth 'Claw' (coin_fail).
-	var data := _run_attack("RS_45_slakoth", 0,
+	var data: Array = await _run_attack("RS_45_slakoth", 0,
 		["RS_104_grass_energy"], "DR_41_shelgon", 200)
 	var result: ActionResult = data[0]
 	assert_true(result.ok, "coin_fail attack action should succeed (it is valid)")
@@ -134,7 +145,7 @@ func test_coin_discard_energy_fires_on_tails() -> void:
 	att.card.attacks[0].effect_key    = "coin_discard_energy"
 	att.card.attacks[0].effect_params = {"type": "FIRE", "count": 1}
 
-	mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	## Either fire was discarded (tails) or kept (heads) — energy count = 0 or 1.
 	assert_true(att.attached_energy.size() <= 1,
 		"At most 1 energy left (fire may have been discarded on tails)")
@@ -154,7 +165,7 @@ func test_retreat_lock_prevents_retreat() -> void:
 	b.set_prizes(0); b.set_prizes(1)
 
 	## P0 attacks: Clutch locks the defender.
-	var atk_result := mgr.request_action(
+	var atk_result: ActionResult = await mgr.request_action_async(
 		ActionAttack.new(0, "p0_active1", 0, "p1_active1")
 	)
 	assert_true(atk_result.ok, "Clutch should succeed")
@@ -181,7 +192,7 @@ func test_retreat_lock_clears_after_turn() -> void:
 	b.set_prizes(0); b.set_prizes(1)
 
 	## P0 attacks.
-	mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 
 	## Manually advance to P1's turn then P0's turn (simulates a full round).
 	tgt.retreat_locked_until_turn = mgr.turn_number + 1
@@ -209,7 +220,7 @@ func test_inflict_burned_retreat_lock() -> void:
 	var tgt := b.place_active(1, "DR_41_shelgon", {"hp": 200})
 	b.set_prizes(0); b.set_prizes(1)
 
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(r.ok, "Ring of Fire should succeed")
 	assert_true(tgt.special_conditions.has(PokemonInstance.SpecialCondition.BURNED),
 		"Target should be BURNED after Ring of Fire")
@@ -221,18 +232,19 @@ func test_inflict_burned_retreat_lock() -> void:
 
 func test_heal_self() -> void:
 	## SS_3_cradily 'Spiral Drain' — heal_self {"amount": 20}
+	## Cost: grass=1 + colorless=2 → need 3 energies total.
 	var b   := _make_builder()
 	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	var att := b.place_active(0, "SS_3_cradily", {
-		"energy": ["RS_106_water_energy", "RS_104_grass_energy"],
+		"energy": ["RS_104_grass_energy", "RS_106_water_energy", "RS_106_water_energy"],
 		"hp":     70
 	})
 	b.place_active(1, "DR_41_shelgon", {"hp": 200})
 	b.set_prizes(0); b.set_prizes(1)
 
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
-	assert_true(r.ok, "Spiral Drain should succeed")
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	assert_true(r.ok, "Spiral Drain should succeed: %s" % r.reason)
 	## SS_3_cradily Spiral Drain is attack index 1.
 	## After attack, attacker should have healed up to 20 HP from 70.
 	assert_true(att.current_hp >= 70, "Attacker should have healed from 70 toward max HP")
@@ -242,21 +254,23 @@ func test_heal_self() -> void:
 
 func test_rest_self_clears_conditions_heals_and_sleeps() -> void:
 	## RS_48_wailmer 'Rest' — rest_self
+	## Cost: colorless=2 → need 2 energies. Use POISONED (not PARALYZED) so the
+	## attacker can still attack — Rest is meant to clear the condition mid-attack.
 	var b   := _make_builder()
 	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	var att := b.place_active(0, "RS_48_wailmer", {
-		"energy":     ["RS_104_grass_energy"],
-		"conditions": [PokemonInstance.SpecialCondition.PARALYZED],
+		"energy":     ["RS_104_grass_energy", "RS_104_grass_energy"],
+		"conditions": [PokemonInstance.SpecialCondition.POISONED],
 		"hp":         50
 	})
 	b.place_active(1, "DR_41_shelgon", {"hp": 200})
 	b.set_prizes(0); b.set_prizes(1)
 
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
-	assert_true(r.ok, "Rest should succeed")
-	assert_false(att.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED),
-		"PARALYZED should be cleared by Rest")
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok, "Rest should succeed: %s" % r.reason)
+	assert_false(att.special_conditions.has(PokemonInstance.SpecialCondition.POISONED),
+		"POISONED should be cleared by Rest")
 	assert_true(att.special_conditions.has(PokemonInstance.SpecialCondition.ASLEEP),
 		"Wailmer should be ASLEEP after Rest")
 	assert_true(att.current_hp >= 50, "HP should have been restored by Rest")
@@ -266,18 +280,19 @@ func test_rest_self_clears_conditions_heals_and_sleeps() -> void:
 
 func test_discard_energy_removes_typed_energy() -> void:
 	## DR_34_houndoom 'Flamethrower' — discard_energy {"type": "FIRE", "count": 1}
+	## Cost: fighting=1 + colorless=2 → need 3 energies (1 fighting + 2 any).
 	var b   := _make_builder()
 	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	var att := b.place_active(0, "DR_34_houndoom", {
-		"energy": ["RS_108_fire_energy", "RS_104_grass_energy"]
+		"energy": ["RS_105_fighting_energy", "RS_108_fire_energy", "RS_104_grass_energy"]
 	})
 	b.place_active(1, "DR_41_shelgon", {"hp": 200})
 	b.set_prizes(0); b.set_prizes(1)
 
 	## Flamethrower is attack index 1 on Houndoom.
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
-	assert_true(r.ok, "Flamethrower should succeed")
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	assert_true(r.ok, "Flamethrower should succeed: %s" % r.reason)
 
 	var fire_count := 0
 	for e: CardData in att.attached_energy:
@@ -302,8 +317,9 @@ func test_kindle_discards_from_both_sides() -> void:
 	})
 	b.set_prizes(0); b.set_prizes(1)
 
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
-	assert_true(r.ok, "Kindle should succeed")
+	## Kindle is attack index 1 on Numel.
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	assert_true(r.ok, "Kindle should succeed: %s" % r.reason)
 
 	var att_fire := 0
 	for e: CardData in att.attached_energy:
@@ -331,7 +347,7 @@ func test_bonus_per_energy_defender() -> void:
 	b.set_prizes(0); b.set_prizes(1)
 
 	## Psychic Boom is attack index 0.
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(r.ok, "Psychic Boom should succeed")
 	## base=20 + 3×10=30 → 50 damage (no W/R).
 	assert_eq(tgt.current_hp, 150, "Shelgon should take 50 damage (20 base + 30 per-energy)")
@@ -352,8 +368,9 @@ func test_bonus_per_damage_counter_defender() -> void:
 	tgt.current_hp = 40  ## Shelgon max=70, so 30 damage already dealt (3 counters).
 	b.set_prizes(0); b.set_prizes(1)
 
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
-	assert_true(r.ok, "Meditate should succeed")
+	## Meditate is attack index 1 on Meditite.
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	assert_true(r.ok, "Meditate should succeed: %s" % r.reason)
 	## 10 base + 3 counters × 10 = 40 damage. Target started at HP=40, so KO'd or at 0.
 	assert_true(tgt.current_hp <= 0 or tgt.is_knocked_out(),
 		"Shelgon should be KO'd by Meditate (10 base + 30 per-counter)")
@@ -374,8 +391,9 @@ func test_rage_uses_attacker_counters() -> void:
 	var tgt := b.place_active(1, "DR_41_shelgon", {"hp": 200})
 	b.set_prizes(0); b.set_prizes(1)
 
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
-	assert_true(r.ok, "Rage should succeed")
+	## Rage is attack index 1 on Charmander.
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	assert_true(r.ok, "Rage should succeed: %s" % r.reason)
 	## 10 base + 2×10 = 30 damage. Shelgon hp: 200-30=170.
 	assert_eq(tgt.current_hp, 170, "Rage should deal 30 damage (10 base + 2 counters×10)")
 
@@ -384,31 +402,34 @@ func test_rage_uses_attacker_counters() -> void:
 
 func test_inflict_confused_if_equal_energy() -> void:
 	## DR_6_grumpig 'Mind Trip' — inflict_confused_if_equal_energy
+	## Cost: psychic=1 + colorless=2 → need 3 energies. Both sides have 3 here
+	## so the equal-energy-count branch fires.
 	var b   := _make_builder()
 	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "DR_6_grumpig", {
-		"energy": ["RS_107_psychic_energy", "RS_107_psychic_energy"]
+		"energy": ["RS_107_psychic_energy", "RS_107_psychic_energy", "RS_104_grass_energy"]
 	})
 	var tgt := b.place_active(1, "DR_41_shelgon", {
 		"hp":     200,
-		"energy": ["RS_104_grass_energy", "RS_104_grass_energy"]
+		"energy": ["RS_104_grass_energy", "RS_104_grass_energy", "RS_104_grass_energy"]
 	})
 	b.set_prizes(0); b.set_prizes(1)
 
 	## Mind Trip is attack index 1 on Grumpig.
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
-	assert_true(r.ok, "Mind Trip should succeed")
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	assert_true(r.ok, "Mind Trip should succeed: %s" % r.reason)
 	assert_true(tgt.special_conditions.has(PokemonInstance.SpecialCondition.CONFUSED),
 		"Target should be CONFUSED when both have equal energy count")
 
 
 func test_inflict_confused_if_equal_energy_no_effect_when_unequal() -> void:
+	## Attacker has 3 energy, defender has 1 — counts differ, no CONFUSED.
 	var b   := _make_builder()
 	var mgr: ManagerSystem = b._manager
 	b.set_turn(0)
 	b.place_active(0, "DR_6_grumpig", {
-		"energy": ["RS_107_psychic_energy", "RS_107_psychic_energy"]
+		"energy": ["RS_107_psychic_energy", "RS_107_psychic_energy", "RS_104_grass_energy"]
 	})
 	var tgt := b.place_active(1, "DR_41_shelgon", {
 		"hp":     200,
@@ -416,8 +437,8 @@ func test_inflict_confused_if_equal_energy_no_effect_when_unequal() -> void:
 	})
 	b.set_prizes(0); b.set_prizes(1)
 
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
-	assert_true(r.ok, "Mind Trip should succeed even without equal energy")
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	assert_true(r.ok, "Mind Trip should succeed even without equal energy: %s" % r.reason)
 	assert_false(tgt.special_conditions.has(PokemonInstance.SpecialCondition.CONFUSED),
 		"Target should NOT be CONFUSED when energy counts differ")
 
@@ -438,7 +459,7 @@ func test_coin_multiply_damage_zero_heads() -> void:
 	b.set_prizes(0); b.set_prizes(1)
 
 	## Result is non-deterministic. Just assert action succeeds and no crash.
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(r.ok, "Fury Swipes should succeed")
 	assert_true(tgt.current_hp <= 200, "HP should not increase")
 
@@ -463,7 +484,7 @@ func test_attach_from_discard() -> void:
 	mgr.game_position.put_in_discard(0, fire2)
 
 	## Energy Recall is attack index 0.
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(r.ok, "Energy Recall should succeed")
 	## Should have attached up to 2 energy from discard.
 	assert_true(att.attached_energy.size() >= 1,
@@ -488,7 +509,7 @@ func test_attach_from_hand_self() -> void:
 	var pre_count := att.attached_energy.size()
 
 	## Growth Spurt is attack index 0.
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(r.ok, "Growth Spurt should succeed")
 	assert_true(att.attached_energy.size() > pre_count,
 		"Shroomish should have gained a Grass energy from hand")
@@ -509,7 +530,7 @@ func test_bench_damage_requires_bench_target() -> void:
 	b.set_prizes(0); b.set_prizes(1)
 
 	## No bench Pokémon for player 1 → bench_damage handler returns early.
-	var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(r.ok, "Mud Splash should succeed even with no bench")
 
 
@@ -529,9 +550,9 @@ func test_inflict_status_all_conditions() -> void:
 		att.card.attacks[0].effect_key    = "inflict_status"
 		att.card.attacks[0].effect_params = {"condition": cond_str}
 
-		var r := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+		var r: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 		assert_true(r.ok, "inflict_status should succeed for %s" % cond_str)
-		var expected := PokemonInstance.SpecialCondition[cond_str]
+		var expected: int = PokemonInstance.SpecialCondition[cond_str]
 		assert_true(tgt.special_conditions.has(expected),
 			"Target should have %s condition" % cond_str)
 

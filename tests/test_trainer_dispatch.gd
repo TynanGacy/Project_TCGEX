@@ -87,7 +87,8 @@ func test_dispatch_runs_apply_and_post_apply_in_order() -> void:
 	add_child_autoqfree(resolver)
 	var card := _make_card(TrainerCardData.TrainerKind.ITEM, "ordered")
 	resolver.dispatch(card, null, 0)
-	await resolver.pipeline_completed
+	if resolver.is_resolving():
+		await resolver.pipeline_completed
 	assert_eq(calls, ["apply", "post"])
 	assert_false(resolver.is_resolving())
 
@@ -102,7 +103,8 @@ func test_dispatch_passes_params_to_context() -> void:
 	add_child_autoqfree(resolver)
 	var card := _make_card(TrainerCardData.TrainerKind.ITEM, "captures", {"x": 7})
 	resolver.dispatch(card, null, 0)
-	await resolver.pipeline_completed
+	if resolver.is_resolving():
+		await resolver.pipeline_completed
 	assert_eq(captured.size(), 1)
 	assert_eq(captured[0], {"x": 7})
 
@@ -123,12 +125,15 @@ func test_dispatch_awaits_player_query_response() -> void:
 	var emitted_queries: Array = []
 	resolver.player_query_requested.connect(func(q: TrainerQuery) -> void:
 		emitted_queries.append(q)
-		# Simulate UI response on the next frame.
-		resolver.resolve_query("chosen_card_id")
+		# Simulate UI response on the next frame — call_deferred so the
+		# resolver has time to reach `await player_query_resolved` before
+		# we emit the response.
+		resolver.resolve_query.call_deferred("chosen_card_id")
 	)
 	var card := _make_card(TrainerCardData.TrainerKind.ITEM, "with_query")
 	resolver.dispatch(card, null, 0)
-	await resolver.pipeline_completed
+	if resolver.is_resolving():
+		await resolver.pipeline_completed
 	assert_eq(emitted_queries.size(), 1)
 	assert_eq(emitted_queries[0].prompt, "Pick something")
 	assert_eq(seen_response, ["chosen_card_id"])

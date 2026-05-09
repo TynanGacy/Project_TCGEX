@@ -245,13 +245,28 @@ func _register_handlers() -> void:
 			)
 	))
 
-	## Kindle — discard 1 fire from attacker AND 1 any from target
+	## Kindle — discard 1 fire from attacker AND 1 any from target.
+	## Inlined (no helper-method calls) so the post-action lambda doesn't rely
+	## on resolving instance methods through captured `self` — that path was
+	## silently no-op'ing in tests.
 	EffectRegistry.register_def("kindle", EffectDefinition.single(
 		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
 		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
 			ctx.add_post_action(func() -> void:
-				_discard_typed(ctx, PokemonCardData.EnergyType.FIRE, 1)
-				_discard_typed_from(ctx.target, ctx.manager, 1 - ctx.player_id, 1)
+				## Discard 1 Fire energy from attacker.
+				var att_energy: Array = ctx.attacker.attached_energy
+				for i in range(att_energy.size()):
+					var e = att_energy[i]
+					if e is EnergyCardData and (e as EnergyCardData).energy_type == PokemonCardData.EnergyType.FIRE:
+						att_energy.remove_at(i)
+						ctx.manager.game_position.put_in_discard(ctx.player_id, e)
+						break
+				## Discard 1 (any) energy from target.
+				var tgt_energy: Array = ctx.target.attached_energy
+				if not tgt_energy.is_empty():
+					var e2 = tgt_energy[0]
+					tgt_energy.remove_at(0)
+					ctx.manager.game_position.put_in_discard(1 - ctx.player_id, e2)
 			)
 	))
 
@@ -279,15 +294,19 @@ func _register_handlers() -> void:
 	EffectRegistry.register_def("bonus_per_damage_counter", EffectDefinition.single(
 		AttackResolver.Phase.DAMAGE_CALC,
 		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
-			var mult: int      = ctx.attack.effect_params.get("multiplier", 10)
-			var source: String = ctx.attack.effect_params.get("source", "defender")
-			var inst: PokemonInstance = ctx.attacker if source == "attacker" else ctx.target
-			var counters: int = (inst.max_hp - inst.current_hp) / 10
 			var effect := QueuedEffect.new()
 			effect.category = QueuedEffect.Category.ATTACKER_MODIFIER
 			effect.source_key = "bonus_per_damage_counter"
-			effect.description = "%d counters × %d" % [counters, mult]
-			effect.execute = func(c: AttackContext) -> void: c.bonus_damage += counters * mult
+			effect.description = "bonus_per_damage_counter"
+			## Compute everything inside the execute lambda from `c` directly —
+			## avoids any closure-capture quirks with locals from the outer
+			## handler. (Previous outer-capture form silently dealt only base.)
+			effect.execute = func(c: AttackContext) -> void:
+				var src: String = c.attack.effect_params.get("source", "defender")
+				var m: int      = int(c.attack.effect_params.get("multiplier", 10))
+				var who: PokemonInstance = c.attacker if src == "attacker" else c.target
+				var ctrs: int   = (who.max_hp - who.current_hp) / 10
+				c.bonus_damage += ctrs * m
 			queue.append(effect)
 	))
 
