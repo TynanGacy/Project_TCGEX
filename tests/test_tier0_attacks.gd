@@ -93,7 +93,7 @@ func test_all_tier0_base_damage() -> void:
 		b.set_prizes(0)
 		b.set_prizes(1)
 
-		var result: ActionResult = mgr.request_action(
+		var result: ActionResult = await mgr.request_action_async(
 			ActionAttack.new(0, "p0_active1", atk_idx, "p1_active1")
 		)
 		assert_true(result.ok,
@@ -122,7 +122,7 @@ func test_weakness_doubles_damage() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
 	assert_true(result.ok, "Pika Bolt should succeed: " + result.reason)
 
 	var target: PokemonInstance = mgr.board_position.get_instance("p1_active1")
@@ -146,7 +146,7 @@ func test_weakness_applies_to_matching_type() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
 	assert_true(result.ok, result.reason)
 
 	var target: PokemonInstance = mgr.board_position.get_instance("p1_active1")
@@ -174,7 +174,7 @@ func test_resistance_reduces_damage_by_30() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(result.ok, result.reason)
 
 	var target: PokemonInstance = mgr.board_position.get_instance("p1_active1")
@@ -197,7 +197,7 @@ func test_resistance_does_not_apply_to_wrong_type() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(result.ok, result.reason)
 
 	var target: PokemonInstance = mgr.board_position.get_instance("p1_active1")
@@ -220,7 +220,7 @@ func test_both_weakness_and_resistance_can_combine() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(result.ok, result.reason)
 
 	var target: PokemonInstance = mgr.board_position.get_instance("p1_active1")
@@ -245,7 +245,7 @@ func test_ko_clears_defending_slot() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(result.ok, result.reason)
 
 	var former_slot: PokemonInstance = mgr.board_position.get_instance("p1_active1")
@@ -264,10 +264,20 @@ func test_ko_removes_one_prize() -> void:
 	b.set_prizes(0, 6)
 	b.set_prizes(1, 6)
 
-	mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 
+	## resolve_knockout queues a prize but does NOT auto-take it — the player
+	## submits ActionTakePrize. Verify the queue, then take a prize and confirm
+	## the count decremented.
+	assert_eq(mgr.prize_selection_phase_for, 0,
+		"P0 should be in prize-selection phase after KO'ing the active")
+	assert_eq(mgr.game_position.prizes_remaining(0), 6,
+		"Prize is queued but not yet taken")
+
+	var take: ActionResult = mgr.request_action(ActionTakePrize.new(0, 0))
+	assert_true(take.ok, "P0 should be able to take prize 0: %s" % take.reason)
 	assert_eq(mgr.game_position.prizes_remaining(0), 5,
-		"P0 should have taken one prize after the KO")
+		"P0 should have 5 prizes remaining after taking one")
 
 
 func test_partial_damage_does_not_ko() -> void:
@@ -276,7 +286,7 @@ func test_partial_damage_does_not_ko() -> void:
 	var mgr: ManagerSystem = b._manager
 	TestFixtures.basic_combat(b)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(result.ok, result.reason)
 
 	var target: PokemonInstance = mgr.board_position.get_instance("p1_active1")
@@ -297,7 +307,7 @@ func test_attack_rejected_with_no_energy() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_false(result.ok, "Attack should fail with no energy")
 
 
@@ -314,7 +324,7 @@ func test_attack_rejected_with_wrong_typed_energy() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_false(result.ok, "Crawdaunt Guillotine should reject without Water energy")
 	assert_string_contains(result.reason.to_lower(), "water",
 		"Rejection reason should mention the missing energy type")
@@ -330,7 +340,7 @@ func test_attack_rejected_with_insufficient_colorless() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_false(result.ok, "Rollout should reject with only 1 energy")
 
 
@@ -341,7 +351,7 @@ func test_attack_accepted_with_exact_typed_plus_colorless() -> void:
 	var mgr: ManagerSystem = b._manager
 	TestFixtures.typed_plus_colorless_cost(b)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 1, "p1_active1"))
 	assert_true(result.ok, "Metal Claw with exact energy should succeed: " + result.reason)
 
 	var target: PokemonInstance = mgr.board_position.get_instance("p1_active1")
@@ -357,7 +367,7 @@ func test_paralyzed_attacker_cannot_attack() -> void:
 	var mgr: ManagerSystem = b._manager
 	TestFixtures.paralyzed_cannot_attack(b)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_false(result.ok, "Paralyzed Pokémon should not be able to attack")
 	assert_string_contains(result.reason.to_lower(), "paralyzed")
 
@@ -367,7 +377,7 @@ func test_asleep_attacker_cannot_attack() -> void:
 	var mgr: ManagerSystem = b._manager
 	TestFixtures.asleep_cannot_attack(b)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_false(result.ok, "Asleep Pokémon should not be able to attack")
 	assert_string_contains(result.reason.to_lower(), "asleep")
 
@@ -379,10 +389,10 @@ func test_cannot_attack_twice_in_one_turn() -> void:
 	var mgr: ManagerSystem = b._manager
 	TestFixtures.basic_combat(b)
 
-	var first  := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var first: ActionResult  = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_true(first.ok, "First attack should succeed")
 
-	var second := mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	var second: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 	assert_false(second.ok, "Second attack in same turn should be rejected")
 
 
@@ -391,7 +401,7 @@ func test_cannot_attack_during_opponents_turn() -> void:
 	var mgr: ManagerSystem = b._manager
 	TestFixtures.basic_combat(b)
 	## Turn is set to P0; P1 tries to attack from their own slot → wrong player.
-	var result := mgr.request_action(ActionAttack.new(1, "p1_active1", 0, "p0_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(1, "p1_active1", 0, "p0_active1"))
 	assert_false(result.ok, "P1 cannot attack on P0's turn")
 
 
@@ -405,7 +415,7 @@ func test_cannot_attack_from_bench() -> void:
 	b.set_prizes(0)
 	b.set_prizes(1)
 
-	var result := mgr.request_action(ActionAttack.new(0, "p0_bench1", 0, "p1_active1"))
+	var result: ActionResult = await mgr.request_action_async(ActionAttack.new(0, "p0_bench1", 0, "p1_active1"))
 	assert_false(result.ok, "Cannot attack from a bench slot")
 
 
@@ -421,7 +431,7 @@ func test_tier0_attack_dispatches_no_effect_key() -> void:
 	var b   := _make_builder()
 	var mgr: ManagerSystem = b._manager
 	TestFixtures.basic_combat(b)
-	mgr.request_action(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	await mgr.request_action_async(ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
 
 	assert_false(called, "Empty effect_key should never invoke a handler")
 	EffectRegistry.clear()
