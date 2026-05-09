@@ -27,6 +27,9 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Supporter is not in your hand.")
 	if not manager.can_play_supporter(player_id):
 		return ActionResult.fail("Cannot play a Supporter this turn.")
+	var effect_check := TrainerResolver.validate(card, manager, player_id)
+	if not effect_check.ok:
+		return effect_check
 	return ActionResult.success()
 
 
@@ -34,6 +37,8 @@ func apply(manager) -> void:
 	manager.game_position.take_from_hand(player_id, card)
 	manager.game_position.put_in_discard(player_id, card)
 	manager.supporter_played_this_turn[player_id] = true
+	if manager.trainer_resolver != null:
+		manager.trainer_resolver.dispatch(card, manager, player_id)
 
 
 func description() -> String:

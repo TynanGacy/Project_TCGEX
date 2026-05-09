@@ -84,6 +84,11 @@ static func _card_from_json(data: Dictionary) -> CardData:
 				for atk_dict in data["attacks"] as Array:
 					if atk_dict is Dictionary:
 						pcard.attacks.append(_parse_attack(atk_dict as Dictionary))
+		elif card is TrainerCardData:
+			var tcard := card as TrainerCardData
+			tcard.rules_text    = data.get("rules_text", "")
+			tcard.effect_key    = data.get("effect_key", "")
+			tcard.effect_params = data.get("effect_params", {})
 		return card
 
 	push_warning("_card_from_json: unhandled card_type '%s' for %s" % [data.get("card_type"), data.get("card_id")])

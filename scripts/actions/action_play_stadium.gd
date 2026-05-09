@@ -29,6 +29,9 @@ func validate(manager) -> ActionResult:
 	## (classic "same-name Stadium" rule).
 	if manager.active_stadium != null and manager.active_stadium.card_id == card.card_id:
 		return ActionResult.fail("A Stadium with the same name is already in play.")
+	var effect_check := TrainerResolver.validate(card, manager, player_id)
+	if not effect_check.ok:
+		return effect_check
 	return ActionResult.success()
 
 
@@ -41,6 +44,8 @@ func apply(manager) -> void:
 	manager.active_stadium       = card
 	manager.active_stadium_owner = player_id
 	manager.stadium_changed.emit(card, player_id)
+	if manager.trainer_resolver != null:
+		manager.trainer_resolver.dispatch(card, manager, player_id)
 
 
 func description() -> String:

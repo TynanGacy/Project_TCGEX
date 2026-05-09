@@ -87,6 +87,7 @@ var _save_load_mgr: SaveLoadManager = null
 ## Match-local nodes (moved from autoload so they free with this scene).
 var _anim_manager:    Node = null
 var _effect_handlers: Node = null
+var _trainer_handlers: Node = null
 
 ## Deferred end-of-turn: set when an attack commits; cleared after prize
 ## selection and promotion both resolve so we don't end the turn too early.
@@ -100,6 +101,8 @@ func _ready() -> void:
 	add_child(_anim_manager)
 	_effect_handlers = load("res://scenes/match/effect_handlers.gd").new()
 	add_child(_effect_handlers)
+	_trainer_handlers = load("res://scenes/match/trainer_handlers.gd").new()
+	add_child(_trainer_handlers)
 	ManagerSystemSingleton.animation_manager = _anim_manager
 
 	_pile_mgr = PileVisualManager.new()
@@ -181,6 +184,8 @@ func _ready() -> void:
 	_anim_manager.set_coin_overlay(_coin_flip_overlay)
 	manager.energy_discard_choice_required.connect(_on_energy_discard_choice_required)
 	manager.retreat_energy_choice_required.connect(_on_retreat_energy_choice_required)
+	if manager.trainer_resolver != null:
+		manager.trainer_resolver.player_query_requested.connect(_on_trainer_query_requested)
 
 	_dialog_mgr.init(self)
 	_input_mgr.init(self)
@@ -445,6 +450,10 @@ func _on_energy_discard_choice_required(
 func _on_retreat_energy_choice_required(
 		player_id: int, eligible: Array, count: int, active_slot: String) -> void:
 	_dialog_mgr.on_retreat_energy_choice_required(player_id, eligible, count, active_slot)
+
+
+func _on_trainer_query_requested(query: TrainerQuery) -> void:
+	_dialog_mgr.on_trainer_query_requested(query)
 
 
 ## ---------------------------------------------------------------------------

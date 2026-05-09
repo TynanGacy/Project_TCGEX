@@ -3,5 +3,9 @@
   "display_name": "High Pressure System",
   "card_type": "TRAINER",
   "trainer_kind": "STADIUM",
-  "rules_text": "This card stays in play when you play it. Discard this card if another Stadium card comes into play.\nEach player pays Colorless less to retreat his or her Fire and Water Pokémon."
+  "rules_text": "This card stays in play when you play it. Discard this card if another Stadium card comes into play.\nEach player pays Colorless less to retreat his or her Fire and Water Pokémon.",
+  "effect_key": "stadium_passive",
+  "effect_params": {
+    "retreat_discount": { "types": ["FIRE", "WATER"], "amount": 1 }
+  }
 }
