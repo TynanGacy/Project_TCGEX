@@ -16,7 +16,13 @@
       "name": "Water Gun",
       "base_damage": 10,
       "text": "Does 10 damage plus 10 more damage for each Water Energy attached to Mudkip but not used to pay for this attack's Energy cost. You can't add more than 20 damage in this way.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "extra_energy_beyond_cost",
+        "per_unit": 10,
+        "max_units": 2
+      }
     }
   ]
 }

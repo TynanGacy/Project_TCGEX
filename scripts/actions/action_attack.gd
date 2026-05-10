@@ -41,6 +41,9 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("%s is Asleep and cannot attack." % attacker.card.display_name)
 	if attacker.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED):
 		return ActionResult.fail("%s is Paralyzed and cannot attack." % attacker.card.display_name)
+	if attacker.cant_attack_until_turn != -1 \
+			and manager.turn_number <= attacker.cant_attack_until_turn:
+		return ActionResult.fail("%s cannot attack this turn." % attacker.card.display_name)
 	if attacker.card == null or attack_index < 0 or attack_index >= attacker.card.attacks.size():
 		return ActionResult.fail("Invalid attack index %d." % attack_index)
 

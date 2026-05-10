@@ -74,8 +74,21 @@ func begin_attack(action, manager) -> void:
 			pipeline_completed.emit()
 			return
 		await _wait_for_animations()
-	EffectRegistry.dispatch_phase(attack.effect_key, Phase.CONDITIONALS, ctx, ctx.effect_queue)
+	EffectRegistry.dispatch_phase_for_attack(attack, Phase.CONDITIONALS, ctx, ctx.effect_queue)
 	await _wait_for_animations()
+
+	## Tier-3 multi-turn defender immunity: if the primary target has an active
+	## effect_immune_until_turn flag (Agility, Iron Defense, etc.), the attack
+	## is wholly blocked — no damage and no post-damage effects.
+	var primary_tgt: PokemonInstance = manager.board_position.get_instance(action.target_slot)
+	if primary_tgt != null and primary_tgt.effect_immune_until_turn != -1 \
+			and manager.turn_number <= primary_tgt.effect_immune_until_turn:
+		manager.log_message.emit(
+			"%s is immune to all effects this turn — attack does nothing." %
+				(primary_tgt.card.display_name if primary_tgt.card != null else "Target")
+		)
+		ctx.attack_blocked = true
+
 	if ctx.attack_blocked:
 		_is_resolving = false
 		pipeline_completed.emit()
@@ -83,12 +96,12 @@ func begin_attack(action, manager) -> void:
 
 	## Step 4: Pre-damage effects.
 	ctx.current_phase = Phase.PRE_DAMAGE_EFFECTS
-	EffectRegistry.dispatch_phase(attack.effect_key, Phase.PRE_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
+	EffectRegistry.dispatch_phase_for_attack(attack, Phase.PRE_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
 	await _wait_for_animations()
 
 	## Step 5: Damage calculation.
 	ctx.current_phase = Phase.DAMAGE_CALC
-	EffectRegistry.dispatch_phase(attack.effect_key, Phase.DAMAGE_CALC, ctx, ctx.effect_queue)
+	EffectRegistry.dispatch_phase_for_attack(attack, Phase.DAMAGE_CALC, ctx, ctx.effect_queue)
 	await _wait_for_animations()
 
 	## Execute attacker modifiers immediately so bonus_damage is ready for W/R.
@@ -119,13 +132,18 @@ func begin_attack(action, manager) -> void:
 		entry.final_amount    = ActionAttack._compute_damage(
 			entry.base_amount, attacker, hit_target
 		)
+		# Tier-3 damage immunity (Scrunch, Dragon Dance): zero damage but allow
+		# non-damage effects to still resolve.
+		if hit_target.damage_immune_until_turn != -1 \
+				and manager.turn_number <= hit_target.damage_immune_until_turn:
+			entry.final_amount = 0
 		if sid == action.target_slot:
 			ctx.final_damage = entry.final_amount
 		ctx.damage_queue.append(entry)
 
 	## Step 6: Post-damage effects.
 	ctx.current_phase = Phase.POST_DAMAGE_EFFECTS
-	EffectRegistry.dispatch_phase(attack.effect_key, Phase.POST_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
+	EffectRegistry.dispatch_phase_for_attack(attack, Phase.POST_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
 	await _wait_for_animations()
 
 	## Step 7: Nullification (placeholder — no abilities implemented yet).

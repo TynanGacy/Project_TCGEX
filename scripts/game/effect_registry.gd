@@ -34,6 +34,40 @@ static func dispatch_phase(key: String, phase: int, ctx: AttackContext,
 		def.phase_handlers[phase].call(ctx, queue)
 
 
+## Dispatches an attack's primary `effect_key` plus any entries in its
+## `effect_chain`. Each chain entry is `{"key": String, "params": Dictionary}`.
+## Handlers read `ctx.attack.effect_params`, so we temporarily swap the
+## attack reference around each chain entry's dispatch.
+static func dispatch_phase_for_attack(attack: AttackData, phase: int,
+		ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+	dispatch_phase(attack.effect_key, phase, ctx, queue)
+	if attack.effect_chain.is_empty():
+		return
+	var saved: AttackData = ctx.attack
+	for raw in attack.effect_chain:
+		if not (raw is Dictionary):
+			continue
+		var entry: Dictionary = raw
+		var sub := AttackData.new()
+		# Preserve the parent attack's identity so log lines / costs stay sensible.
+		sub.name = saved.name
+		sub.base_damage = saved.base_damage
+		sub.cost_colorless = saved.cost_colorless
+		sub.cost_fire = saved.cost_fire
+		sub.cost_water = saved.cost_water
+		sub.cost_grass = saved.cost_grass
+		sub.cost_lightning = saved.cost_lightning
+		sub.cost_psychic = saved.cost_psychic
+		sub.cost_fighting = saved.cost_fighting
+		sub.cost_darkness = saved.cost_darkness
+		sub.cost_metal = saved.cost_metal
+		sub.effect_key = str(entry.get("key", ""))
+		sub.effect_params = entry.get("params", {}) if entry.get("params", {}) is Dictionary else {}
+		ctx.attack = sub
+		dispatch_phase(sub.effect_key, phase, ctx, queue)
+	ctx.attack = saved
+
+
 static func has_definition(key: String) -> bool:
 	return key != "" and _definitions.has(key)
 

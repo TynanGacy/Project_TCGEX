@@ -23,7 +23,14 @@
       "base_damage": 100,
       "text": "Does 100 damage minus 10 damage for each damage counter on Wailord ex.",
       "cost_water": 3,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "damage_counters_attacker",
+        "per_unit": 10,
+        "direction": "subtract",
+        "min_damage": 0
+      }
     }
   ]
 }

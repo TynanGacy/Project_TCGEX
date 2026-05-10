@@ -21,3 +21,9 @@ class_name AttackData
 @export var effect_key: String = ""
 ## Runtime configuration for parameterized effect handlers.
 @export var effect_params: Dictionary = {}
+
+## Optional chain of additional effects to dispatch alongside `effect_key`.
+## Each entry is `{"key": "...", "params": {...}}`. Used for multi-effect
+## attacks like Slack Off (heal_self + cant_attack_next_turn) where neither
+## handler subsumes the other.
+@export var effect_chain: Array = []

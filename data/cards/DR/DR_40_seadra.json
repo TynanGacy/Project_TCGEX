@@ -16,7 +16,11 @@
       "name": "Agility",
       "base_damage": 20,
       "text": "Flip a coin. If heads, prevent all effects of an attack, including damage, done to Seadra during your opponent's next turn.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "effect_immune_next_turn",
+      "effect_params": {
+        "coin_gate": true
+      }
     },
     {
       "name": "Waterfall",
