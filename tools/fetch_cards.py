@@ -72,6 +72,7 @@ SET_ABBREVIATIONS = {
     "pop4": "P4",   # POP Series 4
     "pop5": "P5",   # POP Series 5
     "np":   "NP",   # Nintendo Black Star Promos
+    "wb1":  "WB",   # Poke Card Creator Pack
     "tk1a": "T1",   # Various Trainer Kits (latias)
     "tk1o": "T2",   # Various Trainer Kits (latios)
     "tk2m": "T3",   # Various Trainer Kits (Minun)
@@ -80,7 +81,13 @@ SET_ABBREVIATIONS = {
     "advp_ja":   "J2",   # Various Japanese Exclusives (Owner's Pokemon)
     "miscp_ja":  "J3",   # Various Japanese Exclusives (Champion Trainers)
     "playp_ja":  "J4",   # Various Japanese Exclusives (Pokemon Card Fan etc.)
-    "pcgp_ja":   "J5",   # Various Japanese Exclusives (Imakuni's Whismur Line)
+    "pcgp_ja":   "J5",   # Various Japanese Exclusives (Aura's Lucario etc.)
+    # still missing in API: 
+        # Movie Commemoration VS Pack - Sky-Splitting Deoxys: A variety of named Pokemon
+        # Master Kit: Aura's Lucario ex
+        # Movie Commemoration VS Pack - Aura's Lucario: A variety of named Pokemon and Time Flower
+        # Gift Box Mew/Lucario: Folklore's Lucario
+        # Movie Commemoration VS Pack - Sea's Manaphy: A variety of named Pokemon
     }
 
 def set_abbrev(card: dict) -> str:
