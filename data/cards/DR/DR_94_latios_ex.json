@@ -10,19 +10,13 @@
   "weakness": "COLORLESS",
   "resistance": "GRASS",
   "retreat_cost": 2,
-  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Energy Stream",
       "base_damage": 10,
       "text": "Flip a coin. If heads, search your discard pile for a basic Energy card and attach it to Latios ex.",
-      "cost_colorless": 1,
-      "effect_key": "attach_from_discard",
-      "effect_params": {
-        "type": "ANY",
-        "count": 1,
-        "coin_gate": true
-      }
+      "cost_colorless": 1
     },
     {
       "name": "Luster Purge",
@@ -30,12 +24,8 @@
       "text": "Discard 3 Energy attached to Latios ex.",
       "cost_grass": 1,
       "cost_lightning": 1,
-      "cost_colorless": 1,
-      "effect_key": "discard_energy",
-      "effect_params": {
-        "type": "ANY",
-        "count": 3
-      }
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Rare Holo EX"
 }

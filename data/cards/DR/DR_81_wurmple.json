@@ -15,20 +15,15 @@
     {
       "name": "Call for Friends",
       "base_damage": 0,
-      "text": "Search your deck for Grass Basic Pok\u00e9mon and put as many of them as you like onto your Bench. Shuffle your deck afterward.",
-      "cost_colorless": 1,
-      "effect_key": "search_deck_basic_to_bench",
-      "effect_params": {"pokemon_type": "GRASS", "count": 5}
+      "text": "Search your deck for Grass Basic Pokémon and put as many of them as you like onto your Bench. Shuffle your deck afterward.",
+      "cost_colorless": 1
     },
     {
       "name": "String Shot",
       "base_damage": 10,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Paralyzed.",
-      "cost_colorless": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "PARALYZED"
-      }
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Common"
 }

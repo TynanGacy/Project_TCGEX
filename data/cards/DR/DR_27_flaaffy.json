@@ -16,12 +16,7 @@
       "name": "Energy Recall",
       "base_damage": 0,
       "text": "Attach up to 2 basic Energy cards from your discard pile to Flaaffy.",
-      "cost_lightning": 1,
-      "effect_key": "attach_from_discard",
-      "effect_params": {
-        "type": "ANY",
-        "count": 2
-      }
+      "cost_lightning": 1
     },
     {
       "name": "Lightning Ball",
@@ -30,5 +25,6 @@
       "cost_lightning": 1,
       "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

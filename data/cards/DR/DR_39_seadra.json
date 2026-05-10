@@ -16,13 +16,7 @@
       "name": "Energy Cannon",
       "base_damage": 20,
       "text": "Does 20 damage plus 10 more damage for each Energy attached to Seadra but not used to pay for this attack's Energy cost. You can't add more than 20 damage in this way.",
-      "cost_water": 1,
-      "effect_key": "damage_scaling",
-      "effect_params": {
-        "basis": "extra_energy_beyond_cost",
-        "per_unit": 10,
-        "max_units": 2
-      }
+      "cost_water": 1
     },
     {
       "name": "Water Arrow",
@@ -31,5 +25,6 @@
       "cost_water": 1,
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

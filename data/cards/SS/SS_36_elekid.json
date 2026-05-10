@@ -18,5 +18,6 @@
       "text": "Search your deck for a basic Energy card and attach it to 1 of your Pokémon. Shuffle your deck afterward.",
       "cost_lightning": 1
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

@@ -14,14 +14,10 @@
   "attacks": [
     {
       "name": "Max Energy Source",
-      "base_damage": 0,
+      "base_damage": 10,
       "text": "Does 10 damage times the amount of Energy attached to all of your Active Pokémon.",
-      "cost_colorless": 1,
-      "effect_key": "damage_scaling",
-      "effect_params": {
-        "basis": "energy_attached_actives_own",
-        "per_unit": 10
-      }
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Rare Holo"
 }

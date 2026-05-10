@@ -15,12 +15,9 @@
     {
       "name": "Poison Needle",
       "base_damage": 10,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Poisoned.",
-      "cost_fighting": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "POISONED"
-      }
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Poisoned.",
+      "cost_fighting": 1
     }
-  ]
+  ],
+  "rarity": "Common"
 }

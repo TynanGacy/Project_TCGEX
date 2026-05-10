@@ -22,12 +22,8 @@
       "name": "Rend",
       "base_damage": 30,
       "text": "If the Defending Pokémon has any damage counters on it, this attack does 30 damage plus 20 more damage.",
-      "cost_colorless": 3,
-      "effect_key": "conditional_bonus_damage",
-      "effect_params": {
-        "condition": "defender_has_damage_counters",
-        "bonus": 20
-      }
+      "cost_colorless": 3
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

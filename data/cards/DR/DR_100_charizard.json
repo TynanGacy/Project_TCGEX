@@ -17,13 +17,7 @@
       "base_damage": 30,
       "text": "Flip a coin. If heads, search your discard pile for 2 Fire Energy cards and attach them to Charizard (1 if there is only 1).",
       "cost_fire": 1,
-      "cost_colorless": 1,
-      "effect_key": "attach_from_discard",
-      "effect_params": {
-        "type": "FIRE",
-        "count": 2,
-        "coin_gate": true
-      }
+      "cost_colorless": 1
     },
     {
       "name": "Flame Pillar",
@@ -32,5 +26,6 @@
       "cost_fire": 1,
       "cost_colorless": 3
     }
-  ]
+  ],
+  "rarity": "Rare Secret"
 }

@@ -10,24 +10,21 @@
   "weakness": "FIGHTING",
   "resistance": "PSYCHIC",
   "retreat_cost": 1,
-  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Double Scratch",
       "base_damage": 10,
       "text": "Flip 2 coins. This attack does 10 damage times the number of heads.",
-      "effect_key": "coin_multiply_damage",
-      "cost_darkness": 1,
-      "effect_params": {
-        "flips": 2
-      }
+      "cost_darkness": 1
     },
     {
       "name": "Beat Up",
       "base_damage": 20,
-      "text": "Flip a coin for each of your Pok\u00e9mon in play (including Sneasel ex). This attack does 20 damage times the number of heads.",
+      "text": "Flip a coin for each of your Pokémon in play (including Sneasel ex). This attack does 20 damage times the number of heads.",
       "cost_darkness": 2,
       "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Rare Holo EX"
 }

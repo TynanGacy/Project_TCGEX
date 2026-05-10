@@ -15,19 +15,16 @@
     {
       "name": "Thundershock",
       "base_damage": 20,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Paralyzed.",
-      "cost_colorless": 2,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "PARALYZED"
-      }
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 2
     },
     {
       "name": "Gigashock",
       "base_damage": 40,
-      "text": "Does 10 damage to 2 of your opponent's Benched Pok\u00e9mon (1 if there is only 1). (Don't apply Weakness and Resistance for Benched Pok\u00e9mon.)",
+      "text": "Does 10 damage to 2 of your opponent's Benched Pokémon (1 if there is only 1). (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_lightning": 1,
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

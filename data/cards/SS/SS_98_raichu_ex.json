@@ -10,29 +10,21 @@
   "weakness": "FIGHTING",
   "resistance": "NONE",
   "retreat_cost": 1,
-  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Dazzle Blast",
       "base_damage": 20,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Confused.",
-      "cost_lightning": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "CONFUSED"
-      }
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "cost_lightning": 1
     },
     {
       "name": "Mega Thunderbolt",
       "base_damage": 120,
       "text": "Discard all Energy cards attached to Raichu ex.",
       "cost_lightning": 2,
-      "cost_colorless": 1,
-      "effect_key": "discard_energy",
-      "effect_params": {
-        "type": "ANY",
-        "count": -1
-      }
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Rare Holo EX"
 }

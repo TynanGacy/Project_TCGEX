@@ -22,13 +22,9 @@
       "name": "Fireworks",
       "base_damage": 30,
       "text": "Flip a coin. If tails, discard a Fire Energy card attached to Torchic.",
-      "effect_key": "coin_discard_energy",
       "cost_fire": 1,
-      "cost_colorless": 1,
-      "effect_params": {
-        "type": "FIRE",
-        "count": 1
-      }
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Common"
 }

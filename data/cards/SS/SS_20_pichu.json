@@ -18,5 +18,6 @@
       "text": "Search your discard pile for up to 2 basic Energy cards and attach them to 1 of your Pokémon. Put 1 damage counter on that Pokémon for each Energy card attached in this way.",
       "cost_lightning": 1
     }
-  ]
+  ],
+  "rarity": "Rare"
 }

@@ -43,6 +43,26 @@ func cards_by_set() -> Dictionary:
 	return out
 
 
+## Returns every distinct rarity string present in the loaded card pool,
+## sorted by Pokémon-TCG tier order. Used by the deck-builder filter bar to
+## populate its Rarity multi-select.
+func all_rarities() -> Array[String]:
+	var seen: Dictionary = {}
+	for c in all_cards():
+		for r in (c as CardData).rarities:
+			seen[str(r)] = true
+	var out: Array[String] = []
+	for k in seen.keys():
+		out.append(str(k))
+	out.sort_custom(func(a: String, b: String):
+		var ra := CardTextFormat._rank_one(a)
+		var rb := CardTextFormat._rank_one(b)
+		if ra != rb:
+			return ra < rb
+		return a < b)
+	return out
+
+
 ## Loads (and caches) the art Texture2D for a card_id, or null if missing.
 func load_art(card_id: String) -> Texture2D:
 	if _art_cache.has(card_id):

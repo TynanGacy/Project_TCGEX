@@ -211,7 +211,8 @@ def transform_pokemon(card: dict) -> dict:
     name_slug  = slugify(card["name"])
     abbrev      = set_abbrev(card)
     card_number = card.get("number", "0")
-    
+    rarities = [card["rarity"]] if card.get("rarity") else []
+
     return {
         "card_id": f"{abbrev}_{card_number}_{name_slug}",
         "name_slug":    name_slug,
@@ -226,6 +227,7 @@ def transform_pokemon(card: dict) -> dict:
         "retreat_cost": int(card.get("convertedRetreatCost") or 0),
         "rules_text":   rules_text,
         "attacks":      attacks_out,
+        "rarities":     rarities,
     }
 
 
@@ -247,6 +249,7 @@ def transform_trainer(card: dict) -> dict:
     name_slug   = slugify(card["name"])
     abbrev      = set_abbrev(card)
     card_number = card.get("number", "0")
+    rarities    = [card["rarity"]] if card.get("rarity") else []
 
     return {
         "card_id": f"{abbrev}_{card_number}_{name_slug}",
@@ -254,19 +257,17 @@ def transform_trainer(card: dict) -> dict:
         "card_type":    "TRAINER",
         "trainer_kind": trainer_kind,
         "rules_text":   rules_text,
+        "rarities":     rarities,
     }
 
 
 def transform_energy(card: dict) -> dict:
-    subtypes = [s.lower() for s in card.get("subtypes", [])]
-    types    = card.get("types") or []
-
-    if types:
-        energy_type = normalise_type(types[0])
-    elif "double" in " ".join(subtypes):
-        energy_type = "COLORLESS"
-    else:
-        energy_type = "COLORLESS"
+    ## Faithful copy of what the API exposes. The pokemontcg.io API leaves
+    ## `types` empty on basic energies and does not encode the
+    ## "Rainbow / Multi count as every type" rule — those are gameplay
+    ## concerns, derived from the card name in CardLibrary at load time.
+    types = card.get("types") or []
+    energy_type = normalise_type(types[0]) if types else "COLORLESS"
 
     rules_parts = card.get("rules") or []
     rules_text  = "\n".join(rules_parts)
@@ -274,6 +275,7 @@ def transform_energy(card: dict) -> dict:
     name_slug   = slugify(card["name"])
     abbrev      = set_abbrev(card)
     card_number = card.get("number", "0")
+    rarities    = [card["rarity"]] if card.get("rarity") else []
 
     return {
         "card_id": f"{abbrev}_{card_number}_{name_slug}",
@@ -282,6 +284,7 @@ def transform_energy(card: dict) -> dict:
         "energy_type":  energy_type,
         "provides":     1,
         "rules_text":   rules_text,
+        "rarities":     rarities,
     }
 
 

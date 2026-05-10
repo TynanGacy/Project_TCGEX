@@ -15,13 +15,9 @@
     {
       "name": "Super Singe",
       "base_damage": 20,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Burned.",
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Burned.",
       "cost_fire": 1,
-      "cost_colorless": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "BURNED"
-      }
+      "cost_colorless": 1
     },
     {
       "name": "Ram",
@@ -30,5 +26,6 @@
       "cost_fire": 1,
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

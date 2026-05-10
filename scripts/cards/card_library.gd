@@ -97,6 +97,7 @@ func _parse_pokemon(d: Dictionary) -> PokemonCardData:
 	card.display_name = d.get("display_name", "")
 	card.card_type    = CardData.CardType.POKEMON
 	card.rules_text   = d.get("rules_text", "")
+	card.rarities     = _parse_rarities(d)
 
 	var stage_str: String = d.get("stage", "BASIC")
 	match stage_str:
@@ -111,6 +112,7 @@ func _parse_pokemon(d: Dictionary) -> PokemonCardData:
 	card.hp_max       = int(d.get("hp_max", 50))
 	card.retreat_cost = int(d.get("retreat_cost", 1))
 	card.pokemon_type = _parse_energy_type(d.get("pokemon_type", "COLORLESS"))
+	card.extra_types  = _parse_energy_type_array(d.get("extra_types", []))
 	card.weakness     = _parse_energy_type(d.get("weakness", "NONE"))
 	card.resistance   = _parse_energy_type(d.get("resistance", "NONE"))
 
@@ -133,9 +135,54 @@ func _parse_energy(d: Dictionary) -> EnergyCardData:
 	card.display_name = d.get("display_name", "")
 	card.card_type    = CardData.CardType.ENERGY
 	card.rules_text   = d.get("rules_text", "")
+	card.rarities     = _parse_rarities(d)
 	card.energy_type  = _parse_energy_type(d.get("energy_type", "COLORLESS"))
+	card.extra_types  = _parse_energy_type_array(d.get("extra_types", []))
 	card.provides     = int(d.get("provides", 1))
+	_apply_energy_provision_rules(card)
 	return card
+
+
+## Game-mechanic layer over the raw JSON. The fetcher stays faithful to the
+## pokemontcg.io API (which leaves basic-energy `types` empty and doesn't
+## encode the Rainbow/Multi "any type" rule), and we apply the provision
+## rules here so the deck-builder energy filter groups cards by what they
+## actually provide:
+##   - Basic energies (Grass / Fire / Water / Lightning / Psychic /
+##     Fighting): primary type derived from name; no extras.
+##   - Darkness / Metal: primary type set; provide their own type.
+##   - Rainbow / Multi: COLORLESS primary plus every other type as extras —
+##     they match any energy filter, including Colorless.
+##   - Anything else (Double Colorless, unknown specials): left as authored.
+func _apply_energy_provision_rules(card: EnergyCardData) -> void:
+	var slug := _energy_name_slug(card.card_id)
+	var ET := PokemonCardData.EnergyType
+	var basic_type := {
+		"grass_energy":     ET.GRASS,
+		"fire_energy":      ET.FIRE,
+		"water_energy":     ET.WATER,
+		"lightning_energy": ET.LIGHTNING,
+		"psychic_energy":   ET.PSYCHIC,
+		"fighting_energy":  ET.FIGHTING,
+		"darkness_energy":  ET.DARKNESS,
+		"metal_energy":     ET.METAL,
+	}
+	if slug == "rainbow_energy" or slug == "multi_energy":
+		card.energy_type = ET.COLORLESS
+		card.extra_types = [
+			int(ET.GRASS), int(ET.FIRE), int(ET.WATER), int(ET.LIGHTNING),
+			int(ET.PSYCHIC), int(ET.FIGHTING), int(ET.DARKNESS), int(ET.METAL),
+		]
+	elif basic_type.has(slug):
+		card.energy_type = basic_type[slug]
+
+
+## Pulls the name portion ("grass_energy") off a card_id like "RS_104_grass_energy".
+func _energy_name_slug(card_id: String) -> String:
+	var parts := card_id.split("_", false, 2)
+	if parts.size() < 3:
+		return ""
+	return parts[2]
 
 
 func _parse_trainer(d: Dictionary) -> TrainerCardData:
@@ -144,6 +191,7 @@ func _parse_trainer(d: Dictionary) -> TrainerCardData:
 	card.display_name = d.get("display_name", "")
 	card.card_type    = CardData.CardType.TRAINER
 	card.rules_text   = d.get("rules_text", "")
+	card.rarities     = _parse_rarities(d)
 
 	var kind_str: String = d.get("trainer_kind", "ITEM")
 	match kind_str:
@@ -189,6 +237,33 @@ func _parse_ability(d: Dictionary) -> AbilityData:
 		"POKE_POWER": abil.kind = AbilityData.AbilityKind.POKE_POWER
 		_:            abil.kind = AbilityData.AbilityKind.POKE_BODY
 	return abil
+
+
+## Reads rarity from a card JSON, supporting either the new "rarities" array
+## or the legacy single "rarity" string. Empty/missing yields an empty array.
+func _parse_rarities(d: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	if d.has("rarities") and d["rarities"] is Array:
+		for v in d["rarities"] as Array:
+			var s := str(v).strip_edges()
+			if s != "":
+				out.append(s)
+		return out
+	var legacy := str(d.get("rarity", "")).strip_edges()
+	if legacy != "":
+		out.append(legacy)
+	return out
+
+
+func _parse_energy_type_array(v: Variant) -> Array[int]:
+	var out: Array[int] = []
+	if not (v is Array):
+		return out
+	for s in v as Array:
+		var t := _parse_energy_type(str(s))
+		if t != PokemonCardData.EnergyType.NONE:
+			out.append(int(t))
+	return out
 
 
 func _parse_energy_type(s: String) -> PokemonCardData.EnergyType:

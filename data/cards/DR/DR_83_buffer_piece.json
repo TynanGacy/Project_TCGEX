@@ -4,6 +4,5 @@
   "card_type": "TRAINER",
   "trainer_kind": "TOOL",
   "rules_text": "Attach Buffer Piece to 1 of your Pokémon that doesn't already have a Pokémon Tool attached to it. If that Pokémon is Knocked Out, discard this card.\nDamage done to the Pokémon Buffer Piece is attached to by an opponent's attack is reduced by 20 (after applying Weakness and Resistance). At the end of your opponent's turn after you played Buffer Piece, discard Buffer Piece.",
-  "effect_key": "stub_not_implemented",
-  "effect_params": {}
+  "rarity": "Uncommon"
 }

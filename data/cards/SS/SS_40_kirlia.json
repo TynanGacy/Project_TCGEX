@@ -15,20 +15,17 @@
     {
       "name": "Psyshock",
       "base_damage": 20,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Paralyzed.",
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
       "cost_psychic": 1,
-      "cost_colorless": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "PARALYZED"
-      }
+      "cost_colorless": 1
     },
     {
       "name": "Link Blast",
       "base_damage": 60,
-      "text": "If Kirlia and the Defending Pok\u00e9mon have a different amount of Energy attached to them, this attack's base damage is 30 instead of 60.",
+      "text": "If Kirlia and the Defending Pokémon have a different amount of Energy attached to them, this attack's base damage is 30 instead of 60.",
       "cost_psychic": 1,
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

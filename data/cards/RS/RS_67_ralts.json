@@ -21,13 +21,10 @@
     {
       "name": "Hypnoblast",
       "base_damage": 20,
-      "text": "The Defending Pok\u00e9mon is now Asleep.",
+      "text": "The Defending Pokémon is now Asleep.",
       "cost_psychic": 1,
-      "cost_colorless": 1,
-      "effect_key": "inflict_status",
-      "effect_params": {
-        "condition": "ASLEEP"
-      }
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Common"
 }

@@ -14,20 +14,16 @@
   "attacks": [
     {
       "name": "Water Arrow",
-      "base_damage": 20,
-      "text": "Choose 1 of your opponent's Pok\u00e9mon. This attack does 20 damage to that Pok\u00e9mon. (Don't apply Weakness and Resistance for Benched Pok\u00e9mon.)",
-      "cost_water": 1,
-      "effect_key": "bench_damage",
-      "effect_params": {
-        "amount": 20,
-        "unmodified": true
-      }
+      "base_damage": 0,
+      "text": "Choose 1 of your opponent's Pokémon. This attack does 20 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_water": 1
     },
     {
       "name": "Fast Stream",
       "base_damage": 30,
-      "text": "Move 1 Energy card attached to the Defending Pok\u00e9mon to the other Defending Pok\u00e9mon. (Ignore this effect if your opponent has only 1 Defending Pok\u00e9mon.)",
+      "text": "Move 1 Energy card attached to the Defending Pokémon to the other Defending Pokémon. (Ignore this effect if your opponent has only 1 Defending Pokémon.)",
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Rare"
 }

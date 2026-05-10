@@ -15,20 +15,16 @@
     {
       "name": "Smokescreen",
       "base_damage": 10,
-      "text": "If the Defending Pok\u00e9mon tries to attack during your opponent's next turn, your opponent flips a coin. If tails, that attack does nothing.",
+      "text": "If the Defending Pokémon tries to attack during your opponent's next turn, your opponent flips a coin. If tails, that attack does nothing.",
       "cost_fire": 1
     },
     {
       "name": "Fireworks",
       "base_damage": 40,
       "text": "Flip a coin. If tails, discard a Fire Energy card attached to Charmeleon.",
-      "effect_key": "coin_discard_energy",
       "cost_fire": 1,
-      "cost_colorless": 1,
-      "effect_params": {
-        "type": "FIRE",
-        "count": 1
-      }
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Rare Secret"
 }

@@ -16,24 +16,14 @@
       "name": "Target Slash",
       "base_damage": 10,
       "text": "If the Defending Pokémon is Seviper, this attack does 10 damage plus 30 more damage.",
-      "cost_colorless": 1,
-      "effect_key": "conditional_bonus_damage",
-      "effect_params": {
-        "condition": "defender_is_card",
-        "card_slug": "seviper",
-        "bonus": 30
-      }
+      "cost_colorless": 1
     },
     {
       "name": "Super Slash",
       "base_damage": 30,
       "text": "If the Defending Pokémon is an Evolved Pokémon, this attack does 30 damage plus 30 more damage.",
-      "cost_colorless": 3,
-      "effect_key": "conditional_bonus_damage",
-      "effect_params": {
-        "condition": "defender_is_evolved",
-        "bonus": 30
-      }
+      "cost_colorless": 3
     }
-  ]
+  ],
+  "rarity": "Rare Holo"
 }

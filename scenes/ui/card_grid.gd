@@ -67,6 +67,8 @@ func apply_filters() -> void:
 	_filtered = _pool.filter(_passes_filters)
 	var sort_key: String = str(_filters.get("sort", "default"))
 	_filtered.sort_custom(CardTextFormat.comparator_for(sort_key))
+	if bool(_filters.get("reverse", false)):
+		_filtered.reverse()
 	_rebuild_grid()
 
 
@@ -88,19 +90,31 @@ func _passes_filters(item: Variant) -> bool:
 
 	var energies: Dictionary = _filters.get("energies", {})
 	if not energies.is_empty():
-		var card_energy := -1
-		if card is PokemonCardData:
-			card_energy = (card as PokemonCardData).pokemon_type
-		elif card is EnergyCardData:
-			card_energy = (card as EnergyCardData).energy_type
-		if not energies.get(card_energy, false):
+		## A Pokémon or energy card matches if any of its types (primary plus
+		## extras) is selected. Multi/Rainbow Energy carries every type so it
+		## passes regardless of which energies are checked. Trainers/cards
+		## with no types are filtered out when energies is non-empty.
+		var card_types := CardTextFormat.card_energy_types(card)
+		if card_types.is_empty():
+			return false
+		var any := false
+		for t in card_types:
+			if energies.get(t, false):
+				any = true
+				break
+		if not any:
 			return false
 
-	var stage_id: int = int(_filters.get("stage", -1))
-	if stage_id != -1:
-		if not (card is PokemonCardData):
-			return false
-		if (card as PokemonCardData).stage != stage_id:
+	var rarities: Dictionary = _filters.get("rarities", {})
+	if not rarities.is_empty():
+		## Match if any of the card's rarities is selected. A promo+rare card
+		## thus passes both the "Promo" and "Rare" filters.
+		var any_rarity := false
+		for r in card.rarities:
+			if rarities.get(str(r), false):
+				any_rarity = true
+				break
+		if not any_rarity:
 			return false
 
 	var needle := str(_filters.get("name", "")).strip_edges().to_lower()

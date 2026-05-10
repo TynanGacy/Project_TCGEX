@@ -16,9 +16,8 @@
       "name": "Lazy Punch",
       "base_damage": 10,
       "text": "Slakoth can't attack during your next turn.",
-      "cost_colorless": 1,
-      "effect_key": "cant_attack_next_turn",
-      "effect_params": {}
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Common"
 }

@@ -15,20 +15,15 @@
     {
       "name": "Strike and Run",
       "base_damage": 0,
-      "text": "Search your deck for up to 3 Basic Pok\u00e9mon and put them onto your Bench. Shuffle your deck afterward. You may switch Dunsparce with 1 of your Benched Pok\u00e9mon.",
-      "cost_colorless": 1,
-      "effect_key": "search_deck_basic_to_bench",
-      "effect_params": {"count": 3, "or_any_basic": true}
+      "text": "Search your deck for up to 3 Basic Pokémon and put them onto your Bench. Shuffle your deck afterward. You may switch Dunsparce with 1 of your Benched Pokémon.",
+      "cost_colorless": 1
     },
     {
       "name": "Sudden Flash",
       "base_damage": 10,
-      "text": "Flip a coin. If heads, each Defending Pok\u00e9mon is now Paralyzed.",
-      "cost_colorless": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "PARALYZED"
-      }
+      "text": "Flip a coin. If heads, each Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Common"
 }

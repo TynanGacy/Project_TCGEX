@@ -73,6 +73,13 @@ static func _card_from_json(data: Dictionary) -> CardData:
 			card = _energy(data["card_id"], data["display_name"], energy_type)
 
 	if card != null:
+		var rs: Array[String] = []
+		if data.has("rarities") and data["rarities"] is Array:
+			for r in data["rarities"] as Array:
+				rs.append(str(r))
+		elif data.get("rarity", "") != "":
+			rs.append(str(data["rarity"]))
+		card.rarities = rs
 		if card is PokemonCardData:
 			var pcard := card as PokemonCardData
 			pcard.name_slug    = data.get("name_slug", data.get("card_id", ""))

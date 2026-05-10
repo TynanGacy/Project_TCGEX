@@ -2,7 +2,8 @@
   "card_id": "RS_105_fighting_energy",
   "display_name": "Fighting Energy",
   "card_type": "ENERGY",
-  "energy_type": "FIGHTING",
+  "energy_type": "COLORLESS",
   "provides": 1,
-  "rules_text": ""
+  "rules_text": "",
+  "rarity": "Common"
 }

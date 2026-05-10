@@ -16,19 +16,15 @@
       "name": "Risky Kick",
       "base_damage": 10,
       "text": "Flip a coin. If tails, this attack does nothing.",
-      "effect_key": "coin_fail",
       "cost_colorless": 1
     },
     {
       "name": "Dragon Eye",
       "base_damage": 20,
-      "text": "The Defending Pok\u00e9mon is now Asleep.",
+      "text": "The Defending Pokémon is now Asleep.",
       "cost_fire": 1,
-      "cost_water": 1,
-      "effect_key": "inflict_status",
-      "effect_params": {
-        "condition": "ASLEEP"
-      }
+      "cost_water": 1
     }
-  ]
+  ],
+  "rarity": "Common"
 }

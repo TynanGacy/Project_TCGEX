@@ -24,5 +24,6 @@
       "text": "Flip a coin. If heads, this attack does 10 damage plus 10 more damage.",
       "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Common"
 }
