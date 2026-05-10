@@ -1,0 +1,46 @@
+set release order
+
+RS
+ - NP - Kyogre/Groudon ex
+ - J1 - Imakuni's Whismur/Loudred/Exploud
+SS
+ - NP - Reverse Holo Treecko/Torchic/Mudkip, Winner Stamp Grovyle/Combusken/Marshtomp, Meowth/Pikachu
+DR
+ - NP - Latias/Latios, Cosmos Treecko/Torchic/Mudkip/Whismur, Ludicolo
+ - J2 - Owner's Treecko/Torchic/Mudkip/Kirlia/Absol
+MA
+ - NP - Jirachi, Beldum, Metang
+HL
+ - NP - Chimecho, Flygon, Tropical Wind
+ - T1 - Latias deck
+ - T2 - Latios deck
+ - J4 - All PLAY cards (need all including reprints for Pokemon Card Fan functionality)
+RG
+ - P1 - Pop series 1
+TR
+ - J5 - Treecko
+ - J5 - Pokepark
+DX
+ - J5 - Sky-splitting Deoxys, LaRousse's Munchlax, Pokemon Card Laboratory
+EM
+ - NP - Tropical Tidal Wave, Championship Arena
+ - P2 - Pop series 2
+UF
+ - J5 - Samiya's Pokemon, Sea's Manaphy(x3)
+DS
+ - NP - Celebi, Suicune, Articuno/Zapdos/Moltres ex
+LM
+ - T3 - Minun deck
+ - T4 - Plusle deck
+ - P3 - Pop series 3
+ - J5 - Aura's Lucario(x4), Rota's Pokemon, Rota's Mime Jr.
+HP
+ - NP - Pikachu
+ - P4 - Pop series 4
+ - J5 - Touch Exchange!
+CG
+ - NP - Typhlosion, Kyogre/Groudon/Rayquaza ex, Mew
+DF
+ - J5 - Samiya's Pokemon, Sea's Manaphy (x2)
+PK
+ - P5 - Pop series 5
