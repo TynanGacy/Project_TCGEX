@@ -38,6 +38,21 @@ var modifiers: Dictionary = {}
 ## ActionRetreat blocks while turn_number <= this value.  Reset to -1 on release.
 var retreat_locked_until_turn: int = -1
 
+## Tier-3 multi-turn flags. All use the same expiry convention: set to
+## `manager.turn_number + 1` to block during the controller's next turn, then
+## auto-cleared by ManagerSystem._clear_expired_per_turn_flags().
+##
+## cant_attack_until_turn   — ActionAttack rejects while turn_number <= value.
+##                            (Slack Off, Critical Move, Lazy Punch, Amnesia.)
+## damage_immune_until_turn — Attacks targeting this Pokémon do 0 damage; non-
+##                            damage effects still apply. (Scrunch.)
+## effect_immune_until_turn — Attacks targeting this Pokémon are no-ops; both
+##                            damage and post-damage effects skipped.
+##                            (Agility, Iron Defense, Super Speed.)
+var cant_attack_until_turn: int = -1
+var damage_immune_until_turn: int = -1
+var effect_immune_until_turn: int = -1
+
 ## --- Visual -----------------------------------------------------------------
 const _CARD_SCENE := preload("res://scenes/card/card.tscn")
 
@@ -661,6 +676,9 @@ func release_cards() -> Array[CardData]:
 	special_conditions.clear()
 	modifiers.clear()
 	retreat_locked_until_turn = -1
+	cant_attack_until_turn = -1
+	damage_immune_until_turn = -1
+	effect_immune_until_turn = -1
 	current_hp = 0
 	max_hp = 0
 	return out

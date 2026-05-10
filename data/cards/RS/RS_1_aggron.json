@@ -26,10 +26,16 @@
     },
     {
       "name": "Double Lariat",
-      "base_damage": 70,
+      "base_damage": 0,
       "text": "Flip 2 coins. This attack does 70 damage times the number of heads.",
       "cost_metal": 2,
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "coin_flips_heads",
+        "flips": 2,
+        "per_unit": 70
+      }
     }
   ]
 }

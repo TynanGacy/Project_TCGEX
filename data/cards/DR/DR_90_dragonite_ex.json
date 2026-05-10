@@ -17,7 +17,12 @@
       "base_damage": 70,
       "text": "Discard a Water Energy card and a Lightning Energy card attached to Dragonite ex.",
       "cost_water": 1,
-      "cost_lightning": 1
+      "cost_lightning": 1,
+      "effect_key": "discard_energy",
+      "effect_params": {"type": "WATER", "count": 1},
+      "effect_chain": [
+        {"key": "discard_energy", "params": {"type": "LIGHTNING", "count": 1}}
+      ]
     },
     {
       "name": "Giant Tail",

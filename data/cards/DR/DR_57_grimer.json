@@ -22,7 +22,12 @@
       "name": "Poison Spurt",
       "base_damage": 0,
       "text": "Discard a Grass Energy card attached to Grimer. The Defending Pokémon is now Poisoned.",
-      "cost_grass": 1
+      "cost_grass": 1,
+      "effect_key": "discard_energy",
+      "effect_params": {"type": "GRASS", "count": 1},
+      "effect_chain": [
+        {"key": "inflict_status", "params": {"condition": "POISONED"}}
+      ]
     }
   ]
 }

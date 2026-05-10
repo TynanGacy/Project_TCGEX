@@ -16,7 +16,11 @@
       "name": "Scrunch",
       "base_damage": 0,
       "text": "Flip a coin. If heads, prevent all damage done to Shelgon during your opponent's next turn. (Any other effects of attacks still happen.)",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "damage_immune_next_turn",
+      "effect_params": {
+        "coin_gate": true
+      }
     },
     {
       "name": "Rolling Attack",

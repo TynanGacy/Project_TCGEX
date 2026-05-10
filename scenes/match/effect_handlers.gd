@@ -339,13 +339,26 @@ func _register_handlers() -> void:
 	))
 
 	## ── Group L: attach energy from discard ───────────────────────────────────
-	## effect_params: {"type": "FIRE", "count": 2}
+	## effect_params:
+	##   {"type": "FIRE", "count": 2}                    # auto-attach
+	##   {"type": "FIRE", "count": 2, "coin_gate": true} # heads = attach, tails = no-op
+	##   {"type": "FIRE", "count": 2, "self_damage_per_attached": 10} # Pichu-style
 	EffectRegistry.register_def("attach_from_discard", EffectDefinition.single(
 		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
 		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
-			var type_str: String = ctx.attack.effect_params.get("type", "ANY")
-			var count: int       = ctx.attack.effect_params.get("count", 1)
+			var p: Dictionary = ctx.attack.effect_params
+			var type_str: String = p.get("type", "ANY")
+			var count: int       = p.get("count", 1)
+			var coin_gate: bool  = bool(p.get("coin_gate", false))
+			var self_dmg: int    = int(p.get("self_damage_per_attached", 0))
+			# Resolve the coin flip eagerly so it lands in the attack log even
+			# when no energy is attached afterward.
+			var pass_gate: bool = true
+			if coin_gate:
+				pass_gate = ctx.flip_coin()
 			ctx.add_post_action(func() -> void:
+				if not pass_gate:
+					return
 				var discard: Array = ctx.manager.game_position.discards[ctx.player_id]
 				var attached := 0
 				for i in range(discard.size() - 1, -1, -1):
@@ -361,7 +374,47 @@ func _register_handlers() -> void:
 					discard.remove_at(i)
 					ctx.attacker.attach_energy(c)
 					attached += 1
+				if self_dmg > 0 and attached > 0:
+					ctx.attacker.apply_damage(self_dmg * attached)
 				ctx.manager.game_position.discard_changed.emit(ctx.player_id)
+				ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
+			)
+	))
+
+
+	## ── Group L+: attach energy from deck (search & shuffle) ──────────────────
+	## effect_params: same shape as attach_from_discard but pulls from deck.
+	##   {"type": "LIGHTNING", "count": 1}
+	##   {"type": "ANY", "count": 1, "coin_gate": true}
+	EffectRegistry.register_def("attach_from_deck", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var type_str: String = p.get("type", "ANY")
+			var count: int       = p.get("count", 1)
+			var coin_gate: bool  = bool(p.get("coin_gate", false))
+			var pass_gate: bool = true
+			if coin_gate:
+				pass_gate = ctx.flip_coin()
+			ctx.add_post_action(func() -> void:
+				if not pass_gate:
+					return
+				var deck: Array = ctx.manager.game_position.decks[ctx.player_id]
+				var attached := 0
+				for i in range(deck.size() - 1, -1, -1):
+					if attached >= count:
+						break
+					var c = deck[i]
+					if not (c is EnergyCardData):
+						continue
+					if type_str != "ANY":
+						var et: int = int((c as EnergyCardData).energy_type)
+						if et != _energy_type_from_string(type_str):
+							continue
+					deck.remove_at(i)
+					ctx.attacker.attach_energy(c)
+					attached += 1
+				ctx.manager.game_position.shuffle_deck(ctx.player_id)
 				ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
 			)
 	))
@@ -441,10 +494,411 @@ func _register_handlers() -> void:
 	))
 
 
+	## ── Group R: search deck for basic Pokémon, place on bench (Tier 3 wave 5)
+	## Auto-places matching basics into the first empty bench slots up to
+	## `count`. Currently picks the first matching cards encountered (no player
+	## choice) — sufficient for Call for Family / Team Assembly / Strike and
+	## Run cases where you'd typically grab whatever you can. effect_params:
+	##   {"count": 3}                                # any basic Pokémon
+	##   {"count": 1, "name_slug": "magikarp"}       # specific card
+	##   {"count": 2, "name_slug_any_of": ["omanyte","kabuto"], "or_any_basic": true}
+	##   {"count": 1, "pokemon_type": "GRASS"}       # type-filtered basics
+	EffectRegistry.register_def("search_deck_basic_to_bench", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			ctx.add_post_action(func() -> void:
+				_search_deck_basic_to_bench(ctx, p)
+			)
+	))
+
+
+	## ── Group Q: multi-turn ongoing flags (Tier 3 wave 3) ─────────────────────
+	## All three set a "until_turn" flag on either attacker or defender that
+	## ManagerSystem._clear_expired_retreat_locks() reclaims at end of turn.
+	## effect_params: {"coin_gate": false}
+
+	## cant_attack_next_turn — flags the ATTACKER. (Slack Off, Critical Move,
+	## Lazy Punch, Slowking Amnesia self-lock, etc.)
+	EffectRegistry.register_def("cant_attack_next_turn", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			if bool(p.get("coin_gate", false)) and not ctx.flip_coin():
+				return
+			ctx.add_post_action(func() -> void:
+				ctx.attacker.cant_attack_until_turn = ctx.manager.turn_number + 1
+			)
+	))
+
+	## damage_immune_next_turn — flags the ATTACKER (self-protection). Zeros
+	## any damage targeted at this Pokémon during the opponent's next turn,
+	## but non-damage effects still apply. (Scrunch, Dragon Dance.)
+	EffectRegistry.register_def("damage_immune_next_turn", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			if bool(p.get("coin_gate", false)) and not ctx.flip_coin():
+				return
+			ctx.add_post_action(func() -> void:
+				ctx.attacker.damage_immune_until_turn = ctx.manager.turn_number + 1
+			)
+	))
+
+	## effect_immune_next_turn — flags the ATTACKER for total immunity (no
+	## damage, no post-damage effects). (Agility, Iron Defense, Super Speed.)
+	EffectRegistry.register_def("effect_immune_next_turn", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			if bool(p.get("coin_gate", false)) and not ctx.flip_coin():
+				return
+			ctx.add_post_action(func() -> void:
+				ctx.attacker.effect_immune_until_turn = ctx.manager.turn_number + 1
+			)
+	))
+
+
+	## ── Group P: conditional bonus damage (Tier 3 wave 1.5) ──────────────────
+	## Adds a flat bonus when a binary condition on the defender holds. Covers
+	## "If the Defending Pokémon is X / has X / has any damage counters …" attacks.
+	## effect_params:
+	##   {
+	##     "condition": "defender_has_damage_counters" | "defender_is_evolved"
+	##                | "defender_is_pokemon_ex" | "defender_has_status"
+	##                | "defender_is_card",
+	##     "bonus": 30,
+	##     "card_slug": "seviper"   # only for defender_is_card
+	##   }
+	EffectRegistry.register_def("conditional_bonus_damage", EffectDefinition.single(
+		AttackResolver.Phase.DAMAGE_CALC,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			if not _check_defender_condition(ctx, str(p.get("condition", ""))):
+				return
+			var bonus: int = int(p.get("bonus", 0))
+			if bonus == 0:
+				return
+			var effect := QueuedEffect.new()
+			effect.category = QueuedEffect.Category.ATTACKER_MODIFIER
+			effect.source_key = "conditional_bonus_damage"
+			effect.description = "+%d if %s" % [bonus, p.get("condition", "?")]
+			effect.execute = func(c: AttackContext) -> void: c.bonus_damage += bonus
+			queue.append(effect)
+	))
+
+
+	## ── Group O: damage scaling by board state (Tier 3 wave 1) ────────────────
+	## Generalized handler covering 60+ "X damage times Y" attacks. effect_params:
+	##   {
+	##     "basis":         <see below>,
+	##     "per_unit":      10,            # damage per counted unit
+	##     "energy_type":   "GRASS",       # optional, for *_of_type bases
+	##     "pokemon_type":  "WATER",       # optional, for bench_pokemon_of_type
+	##     "max_units":     5,             # optional cap on the count
+	##     "flips":         4              # required for coin_flips_heads basis
+	##   }
+	##
+	## Supported basis values:
+	##   damage_counters_target      - damage counters on the defender
+	##   damage_counters_attacker    - damage counters on the attacker (Flail, Rage)
+	##   energy_attached_target      - energy cards attached to the defender
+	##   energy_attached_attacker    - energy cards attached to the attacker
+	##   energy_attached_all         - energy cards on every Pokémon in play
+	##   energy_attached_own         - energy cards on attacker's whole side
+	##   energy_attached_opp         - energy cards on defender's whole side
+	##   energy_of_type_attacker     - filtered by energy_type, on the attacker
+	##   energy_of_type_target       - filtered by energy_type, on the defender
+	##   bench_pokemon_count         - own benched Pokémon
+	##   bench_pokemon_of_type       - own benched Pokémon filtered by pokemon_type
+	##   coin_flips_heads            - flip `flips` coins, count heads
+	##   coin_flips_per_energy_heads - flip 1 coin per energy on attacker, count heads
+	##   coin_flips_until_tails      - flip until tails, count heads (no upper bound)
+	##   extra_energy_beyond_cost    - energy on attacker minus this attack's cost
+	##   energy_attached_actives_own - energy on both of attacker's own active slots
+	##   energy_attached_actives_both- energy on every active slot in play (both sides)
+	##   energy_attached_pair        - attacker + defender combined
+	##   energy_types_attacker       - distinct EnergyType count on attacker
+	##   damage_counters_actives_own - sum of damage counters on both own actives
+	##   retreat_cost_target         - target Pokémon's retreat_cost (in colorless)
+	##
+	## Optional `direction: "subtract"` reverses the bonus into a damage
+	## reduction (with `min_damage` floor). Used for SS_100 Wailord Dwindling Wave.
+	EffectRegistry.register_def("damage_scaling", EffectDefinition.single(
+		AttackResolver.Phase.DAMAGE_CALC,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var basis: String = p.get("basis", "")
+			var per_unit: int = int(p.get("per_unit", 10))
+			var units: int = _count_for_basis(ctx, basis, p)
+			if p.has("max_units"):
+				units = mini(units, int(p["max_units"]))
+			if units <= 0:
+				return
+			var bonus: int = units * per_unit
+			var direction: String = str(p.get("direction", "add"))
+			var min_damage: int = int(p.get("min_damage", 0))
+			var effect := QueuedEffect.new()
+			effect.category = QueuedEffect.Category.ATTACKER_MODIFIER
+			effect.source_key = "damage_scaling"
+			effect.description = "%s × %d %s%d" % [basis, units,
+				"-" if direction == "subtract" else "+", bonus]
+			if direction == "subtract":
+				effect.execute = func(c: AttackContext) -> void:
+					c.bonus_damage -= bonus
+					# Floor: never let base+bonus drop below min_damage.
+					var total: int = c.base_damage + c.bonus_damage
+					if total < min_damage:
+						c.bonus_damage += (min_damage - total)
+			else:
+				effect.execute = func(c: AttackContext) -> void: c.bonus_damage += bonus
+			queue.append(effect)
+	))
+
+
 ## ── Helpers ───────────────────────────────────────────────────────────────────
 
 static func _condition_from_string(s: String) -> int:
 	return PokemonInstance.SpecialCondition[s.to_upper()]
+
+
+## Predicate helper for conditional_bonus_damage.
+func _check_defender_condition(ctx: AttackContext, cond: String) -> bool:
+	var t: PokemonInstance = ctx.target
+	if t == null:
+		return false
+	match cond:
+		"defender_has_damage_counters":
+			return t.current_hp < t.max_hp
+		"defender_is_evolved":
+			return t.prior_stages.size() > 0 or (t.card != null and int(t.card.stage) != 0)
+		"defender_is_pokemon_ex":
+			return t.card != null and t.card.name_slug.ends_with("_ex")
+		"defender_has_status":
+			return t.special_conditions.size() > 0
+		"defender_is_card":
+			var slug: String = str(ctx.attack.effect_params.get("card_slug", ""))
+			return t.card != null and t.card.name_slug == slug
+		"you_have_more_prizes_left":
+			# Prize cards are stored at game_position.prizes[pid] with `null`
+			# entries marking taken prizes. "More prizes left" = more remaining
+			# prize cards (i.e. fewer prizes taken).
+			var own: int = _prizes_remaining(ctx.manager, ctx.player_id)
+			var opp: int = _prizes_remaining(ctx.manager, 1 - ctx.player_id)
+			return own > opp
+		_:
+			push_warning("[conditional_bonus_damage] unknown condition: %s" % cond)
+			return false
+
+
+## Count helper for damage_scaling. Returns the unit count for the chosen basis.
+func _count_for_basis(ctx: AttackContext, basis: String, p: Dictionary) -> int:
+	match basis:
+		"damage_counters_target":
+			return _count_damage_counters(ctx.target)
+		"damage_counters_attacker":
+			return _count_damage_counters(ctx.attacker)
+		"energy_attached_target":
+			return ctx.target.attached_energy.size() if ctx.target != null else 0
+		"energy_attached_attacker":
+			return ctx.attacker.attached_energy.size() if ctx.attacker != null else 0
+		"energy_attached_all":
+			return _count_energy_side(ctx.manager, -1)
+		"energy_attached_own":
+			return _count_energy_side(ctx.manager, ctx.player_id)
+		"energy_attached_opp":
+			return _count_energy_side(ctx.manager, 1 - ctx.player_id)
+		"energy_of_type_attacker":
+			return _count_energy_of_type(ctx.attacker, str(p.get("energy_type", "ANY")))
+		"energy_of_type_target":
+			return _count_energy_of_type(ctx.target, str(p.get("energy_type", "ANY")))
+		"bench_pokemon_count":
+			return _count_bench(ctx.manager, ctx.player_id, "ANY")
+		"bench_pokemon_of_type":
+			return _count_bench(ctx.manager, ctx.player_id, str(p.get("pokemon_type", "ANY")))
+		"coin_flips_heads":
+			var flips: int = int(p.get("flips", 1))
+			return ctx.flip_coins(flips).count(true)
+		"coin_flips_per_energy_heads":
+			var n: int = ctx.attacker.attached_energy.size() if ctx.attacker != null else 0
+			if p.has("max_flips"):
+				n = mini(n, int(p["max_flips"]))
+			return ctx.flip_coins(n).count(true)
+		"coin_flips_until_tails":
+			# Cap iterations at 50 so a forced-flips queue or rigged RNG can't loop.
+			var heads: int = 0
+			for _i in range(50):
+				if ctx.flip_coin():
+					heads += 1
+				else:
+					break
+			return heads
+		"energy_attached_actives_own":
+			return _count_energy_actives(ctx.manager, ctx.player_id)
+		"energy_attached_actives_both":
+			return _count_energy_actives(ctx.manager, -1)
+		"energy_attached_pair":
+			var n_a: int = ctx.attacker.attached_energy.size() if ctx.attacker != null else 0
+			var n_t: int = ctx.target.attached_energy.size() if ctx.target != null else 0
+			return n_a + n_t
+		"energy_types_attacker":
+			return _count_energy_types(ctx.attacker)
+		"damage_counters_actives_own":
+			return _count_damage_counters_actives(ctx.manager, ctx.player_id)
+		"retreat_cost_target":
+			if ctx.target == null or ctx.target.card == null:
+				return 0
+			return int(ctx.target.card.retreat_cost)
+		"extra_energy_beyond_cost":
+			var attached: int = ctx.attacker.attached_energy.size() if ctx.attacker != null else 0
+			var cost: int = _attack_total_cost(ctx.attack)
+			return maxi(0, attached - cost)
+		_:
+			push_warning("[damage_scaling] unknown basis: %s" % basis)
+			return 0
+
+
+static func _count_damage_counters(inst: PokemonInstance) -> int:
+	if inst == null:
+		return 0
+	return (inst.max_hp - inst.current_hp) / 10
+
+
+static func _count_energy_of_type(inst: PokemonInstance, type_str: String) -> int:
+	if inst == null:
+		return 0
+	if type_str == "ANY":
+		return inst.attached_energy.size()
+	var want: int = _energy_type_from_string(type_str)
+	var n: int = 0
+	for e: CardData in inst.attached_energy:
+		if e is EnergyCardData and int((e as EnergyCardData).energy_type) == want:
+			n += 1
+	return n
+
+
+## player_id < 0 → both sides; otherwise just that player's slots.
+func _count_energy_side(mgr, player_id: int) -> int:
+	var n: int = 0
+	var slots: Array[String] = BoardPosition.all_slot_ids(player_id)
+	for sid: String in slots:
+		var inst: PokemonInstance = mgr.board_position.get_instance(sid)
+		if inst != null:
+			n += inst.attached_energy.size()
+	return n
+
+
+## Sum energy on active1+active2 for player_id (or both sides if -1).
+func _count_energy_actives(mgr, player_id: int) -> int:
+	var n: int = 0
+	var pids := [player_id] if player_id >= 0 else [0, 1]
+	for pid: int in pids:
+		for s: String in BoardPosition.ACTIVE_SLOTS:
+			var inst: PokemonInstance = mgr.board_position.get_instance("p%d_%s" % [pid, s])
+			if inst != null:
+				n += inst.attached_energy.size()
+	return n
+
+
+## Sum damage counters on active1+active2 for player_id.
+func _count_damage_counters_actives(mgr, player_id: int) -> int:
+	var n: int = 0
+	for s: String in BoardPosition.ACTIVE_SLOTS:
+		var inst: PokemonInstance = mgr.board_position.get_instance("p%d_%s" % [player_id, s])
+		if inst != null:
+			n += (inst.max_hp - inst.current_hp) / 10
+	return n
+
+
+## Wave-5 helper: pulls matching Basic Pokémon out of the player's deck and
+## drops them onto the first empty bench slots, then shuffles the deck.
+func _search_deck_basic_to_bench(ctx: AttackContext, p: Dictionary) -> void:
+	var deck: Array = ctx.manager.game_position.decks[ctx.player_id]
+	var count: int = int(p.get("count", 1))
+	var slug: String = str(p.get("name_slug", ""))
+	var slug_any: Array = p.get("name_slug_any_of", []) as Array
+	var or_any_basic: bool = bool(p.get("or_any_basic", false))
+	var type_filter: String = str(p.get("pokemon_type", "ANY"))
+	var placed: int = 0
+	for i in range(deck.size() - 1, -1, -1):
+		if placed >= count:
+			break
+		var c = deck[i]
+		if not (c is PokemonCardData):
+			continue
+		var pc := c as PokemonCardData
+		if int(pc.stage) != 0:  # Stage.BASIC = 0
+			continue
+		var matched: bool = false
+		if slug != "" and pc.name_slug == slug:
+			matched = true
+		elif slug_any.size() > 0 and slug_any.has(pc.name_slug):
+			matched = true
+		elif type_filter != "ANY":
+			if int(pc.pokemon_type) == _energy_type_from_string(type_filter):
+				matched = true
+		else:
+			# No filter set → any basic counts.
+			matched = (slug == "" and slug_any.is_empty())
+		# `or_any_basic`: even a non-matching slug counts as a fallback basic.
+		if not matched and or_any_basic:
+			matched = true
+		if not matched:
+			continue
+		var bench: String = ctx.manager.board_position.first_empty_bench(ctx.player_id)
+		if bench == "":
+			break  # bench full
+		deck.remove_at(i)
+		var inst := PokemonInstance.create(pc, ctx.player_id)
+		ctx.manager.board_position.place(bench, inst)
+		placed += 1
+	if placed > 0 or deck.size() > 0:
+		ctx.manager.game_position.shuffle_deck(ctx.player_id)
+
+
+## Number of prize cards still in [player_id]'s prize area (not yet taken).
+static func _prizes_remaining(mgr, player_id: int) -> int:
+	var n: int = 0
+	for c in mgr.game_position.prizes[player_id]:
+		if c != null:
+			n += 1
+	return n
+
+
+## Distinct EnergyType count among attacker's attached_energy.
+static func _count_energy_types(inst: PokemonInstance) -> int:
+	if inst == null:
+		return 0
+	var seen: Dictionary = {}
+	for e: CardData in inst.attached_energy:
+		if e is EnergyCardData:
+			seen[int((e as EnergyCardData).energy_type)] = true
+	return seen.size()
+
+
+static func _attack_total_cost(atk: AttackData) -> int:
+	if atk == null:
+		return 0
+	return (atk.cost_colorless + atk.cost_fire + atk.cost_water + atk.cost_grass
+		+ atk.cost_lightning + atk.cost_psychic + atk.cost_fighting
+		+ atk.cost_darkness + atk.cost_metal)
+
+
+func _count_bench(mgr, player_id: int, type_str: String) -> int:
+	var want: int = -1
+	if type_str != "ANY":
+		want = _energy_type_from_string(type_str)
+	var n: int = 0
+	for s: String in BoardPosition.BENCH_SLOTS:
+		var sid := "p%d_%s" % [player_id, s]
+		var inst: PokemonInstance = mgr.board_position.get_instance(sid)
+		if inst == null:
+			continue
+		if want < 0:
+			n += 1
+		elif inst.card != null and int(inst.card.pokemon_type) == want:
+			n += 1
+	return n
 
 
 static func _energy_type_from_string(s: String) -> int:

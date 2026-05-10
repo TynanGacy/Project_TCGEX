@@ -16,7 +16,9 @@
       "name": "Call for Friends",
       "base_damage": 0,
       "text": "Search your deck for Grass Basic Pok\u00e9mon and put as many of them as you like onto your Bench. Shuffle your deck afterward.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_deck_basic_to_bench",
+      "effect_params": {"pokemon_type": "GRASS", "count": 5}
     },
     {
       "name": "String Shot",

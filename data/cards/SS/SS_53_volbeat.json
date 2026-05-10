@@ -28,7 +28,12 @@
       "base_damage": 20,
       "text": "If the Defending Pok\u00e9mon is affected by a Special Condition, this attack does 20 damage plus 20 more damage.",
       "cost_grass": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "conditional_bonus_damage",
+      "effect_params": {
+        "condition": "defender_has_status",
+        "bonus": 20
+      }
     }
   ]
 }

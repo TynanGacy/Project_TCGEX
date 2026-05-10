@@ -27,7 +27,12 @@
       "base_damage": 40,
       "text": "Does 40 damage plus 10 more damage for each Colorless Energy in the Defending Pok\u00e9mon's Retreat Cost (after applying effects to the Retreat Cost).",
       "cost_grass": 2,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "retreat_cost_target",
+        "per_unit": 10
+      }
     }
   ]
 }

@@ -634,9 +634,20 @@ func _clear_expired_retreat_locks() -> void:
 	for p in range(2):
 		for s: String in ["active1", "active2", "bench1", "bench2", "bench3", "bench4", "bench5"]:
 			var inst: PokemonInstance = board_position.get_instance("p%d_%s" % [p, s])
-			if inst != null and inst.retreat_locked_until_turn != -1 \
+			if inst == null:
+				continue
+			if inst.retreat_locked_until_turn != -1 \
 					and inst.retreat_locked_until_turn < turn_number:
 				inst.retreat_locked_until_turn = -1
+			if inst.cant_attack_until_turn != -1 \
+					and inst.cant_attack_until_turn < turn_number:
+				inst.cant_attack_until_turn = -1
+			if inst.damage_immune_until_turn != -1 \
+					and inst.damage_immune_until_turn < turn_number:
+				inst.damage_immune_until_turn = -1
+			if inst.effect_immune_until_turn != -1 \
+					and inst.effect_immune_until_turn < turn_number:
+				inst.effect_immune_until_turn = -1
 
 
 ## Between-turn effects (step 12).  Iterates both players' active Pokemon.
