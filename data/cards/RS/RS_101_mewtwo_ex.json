@@ -16,12 +16,7 @@
       "name": "Energy Absorption",
       "base_damage": 0,
       "text": "Attach up to 2 Energy cards from your discard pile to Mewtwo ex.",
-      "cost_psychic": 1,
-      "effect_key": "attach_from_discard",
-      "effect_params": {
-        "type": "ANY",
-        "count": 2
-      }
+      "cost_psychic": 1
     },
     {
       "name": "Psyburn",
@@ -30,5 +25,6 @@
       "cost_psychic": 2,
       "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Rare Holo EX"
 }

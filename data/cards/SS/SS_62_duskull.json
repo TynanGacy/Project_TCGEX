@@ -15,19 +15,15 @@
     {
       "name": "Haunt",
       "base_damage": 0,
-      "text": "Put 1 damage counter on the Defending Pok\u00e9mon.",
+      "text": "Put 1 damage counter on the Defending Pokémon.",
       "cost_psychic": 1
     },
     {
       "name": "Dark Mind",
       "base_damage": 10,
-      "text": "Does 10 damage to 1 of your opponent's Benched Pok\u00e9mon. (Don't apply Weakness and Resistance for Benched Pok\u00e9mon.)",
-      "cost_colorless": 2,
-      "effect_key": "bench_damage",
-      "effect_params": {
-        "amount": 10,
-        "unmodified": true
-      }
+      "text": "Does 10 damage to 1 of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Common"
 }

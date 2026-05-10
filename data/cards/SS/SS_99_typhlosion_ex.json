@@ -10,23 +10,22 @@
   "weakness": "FIGHTING",
   "resistance": "NONE",
   "retreat_cost": 2,
-  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Ring of Fire",
       "base_damage": 40,
-      "text": "The Defending Pok\u00e9mon is now Burned, and can't retreat until the end of your opponent's next turn.",
+      "text": "The Defending Pokémon is now Burned, and can't retreat until the end of your opponent's next turn.",
       "cost_fire": 1,
-      "cost_colorless": 2,
-      "effect_key": "inflict_burned_retreat_lock",
-      "effect_params": {}
+      "cost_colorless": 2
     },
     {
       "name": "Split Blast",
       "base_damage": 100,
-      "text": "Discard 1 Energy card attached to Typhlosion ex. If your opponent has more than 1 Defending Pok\u00e9mon, you may do 50 damage to each of them instead.",
+      "text": "Discard 1 Energy card attached to Typhlosion ex. If your opponent has more than 1 Defending Pokémon, you may do 50 damage to each of them instead.",
       "cost_fire": 3,
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Rare Holo EX"
 }

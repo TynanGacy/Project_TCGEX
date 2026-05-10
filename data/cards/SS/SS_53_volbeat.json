@@ -15,25 +15,16 @@
     {
       "name": "Toxic Vibration",
       "base_damage": 0,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Poisoned. If tails, the Defending Pok\u00e9mon is now Asleep.",
-      "cost_colorless": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "heads_condition": "POISONED",
-        "tails_condition": "ASLEEP"
-      }
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Poisoned. If tails, the Defending Pokémon is now Asleep.",
+      "cost_colorless": 1
     },
     {
       "name": "Pester",
       "base_damage": 20,
-      "text": "If the Defending Pok\u00e9mon is affected by a Special Condition, this attack does 20 damage plus 20 more damage.",
+      "text": "If the Defending Pokémon is affected by a Special Condition, this attack does 20 damage plus 20 more damage.",
       "cost_grass": 1,
-      "cost_colorless": 1,
-      "effect_key": "conditional_bonus_damage",
-      "effect_params": {
-        "condition": "defender_has_status",
-        "bonus": 20
-      }
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

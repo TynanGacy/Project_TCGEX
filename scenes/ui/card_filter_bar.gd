@@ -6,11 +6,13 @@ extends HFlowContainer
 ##
 ## Filter dictionary shape:
 ##   {
-##     "sets":     Dictionary[String     -> true]   (set prefix selected)
-##     "types":    Dictionary[CardType   -> true]
-##     "energies": Dictionary[EnergyType -> true]
-##     "stage":    int  (-1 == any; otherwise PokemonCardData.Stage value)
-##     "name":     String  (substring match, case-insensitive)
+##     "sets":      Dictionary[String     -> true]   (set prefix selected)
+##     "types":     Dictionary[CardType   -> true]
+##     "energies":  Dictionary[EnergyType -> true]
+##     "rarities":  Dictionary[String     -> true]   (rarity label selected)
+##     "name":      String  (substring match, case-insensitive)
+##     "sort":      String  (key passed to CardTextFormat.comparator_for)
+##     "reverse":   bool    (true → flip the sorted result)
 ##   }
 
 signal filters_changed(filters: Dictionary)
@@ -18,12 +20,14 @@ signal filters_changed(filters: Dictionary)
 var _selected_sets: Dictionary = {}
 var _selected_types: Dictionary = {}
 var _selected_energies: Dictionary = {}
+var _selected_rarities: Dictionary = {}
 
 var _set_menu: MenuButton = null
 var _type_menu: MenuButton = null
 var _energy_menu: MenuButton = null
-var _stage_opt: OptionButton = null
+var _rarity_menu: MenuButton = null
 var _sort_opt: OptionButton = null
+var _dir_opt: OptionButton = null
 var _name_edit: LineEdit = null
 
 
@@ -36,13 +40,23 @@ func _ready() -> void:
 
 func get_filters() -> Dictionary:
 	return {
-		"sets":     _selected_sets.duplicate(),
-		"types":    _selected_types.duplicate(),
-		"energies": _selected_energies.duplicate(),
-		"stage":    _stage_opt.get_selected_id() if _stage_opt != null else -1,
-		"name":     _name_edit.text if _name_edit != null else "",
-		"sort":     _sort_value(),
+		"sets":      _selected_sets.duplicate(),
+		"types":     _selected_types.duplicate(),
+		"energies":  _selected_energies.duplicate(),
+		"rarities":  _selected_rarities.duplicate(),
+		"name":      _name_edit.text if _name_edit != null else "",
+		"sort":      _sort_value(),
+		"reverse":   _direction_value(),
 	}
+
+
+func _direction_value() -> bool:
+	if _dir_opt == null:
+		return false
+	var idx := _dir_opt.selected
+	if idx < 0:
+		return false
+	return bool(_dir_opt.get_item_metadata(idx))
 
 
 func _sort_value() -> String:
@@ -59,11 +73,12 @@ func _sort_value() -> String:
 # ---------------------------------------------------------------------------
 
 func _build() -> void:
-	_set_menu    = _add_multi_menu("Set",    "All sets",   _selected_sets,     _set_options())
-	_type_menu   = _add_multi_menu("Type",   "Any type",   _selected_types,    _type_options())
-	_energy_menu = _add_multi_menu("Energy", "Any energy", _selected_energies, _energy_options())
-	_stage_opt   = _add_single_option("Stage", _stage_options())
+	_set_menu    = _add_multi_menu("Set",    "All sets",     _selected_sets,     _set_options())
+	_type_menu   = _add_multi_menu("Type",   "Any type",     _selected_types,    _type_options())
+	_energy_menu = _add_multi_menu("Energy", "Any energy",   _selected_energies, _energy_options())
+	_rarity_menu = _add_multi_menu("Rarity", "Any rarity",   _selected_rarities, _rarity_options())
 	_sort_opt    = _add_sort_option("Sort", _sort_options())
+	_dir_opt     = _add_sort_option("Order", _direction_options())
 
 	var name_box := HBoxContainer.new()
 	name_box.add_theme_constant_override("separation", 4)
@@ -110,19 +125,29 @@ func _energy_options() -> Array:
 	]
 
 
-func _stage_options() -> Array:
+func _rarity_options() -> Array:
+	## Sourced from the loaded card pool so the menu only ever lists rarities
+	## that actually exist. CardDatabase.all_rarities() returns them in
+	## Pokémon-TCG tier order.
+	var out: Array = []
+	for r in CardDatabase.all_rarities():
+		out.append([r, r])
+	return out
+
+
+func _direction_options() -> Array:
+	## (label, metadata) — false keeps the comparator's natural order, true
+	## reverses the sorted result. Applies to whichever Sort key is active.
 	return [
-		["Any",     -1],
-		["Basic",   PokemonCardData.Stage.BASIC],
-		["Stage 1", PokemonCardData.Stage.STAGE1],
-		["Stage 2", PokemonCardData.Stage.STAGE2],
+		["Default", false],
+		["Reverse", true],
 	]
 
 
 func _sort_options() -> Array:
 	## (label, metadata-key) pairs. The key is what CardGrid passes to
-	## CardTextFormat.comparator_for(). Rarity and Collection are placeholders
-	## that currently fall back to the default order (see card_text_format.gd).
+	## CardTextFormat.comparator_for(). Collection is still a placeholder
+	## that falls back to the default order (see card_text_format.gd).
 	return [
 		["Set & number",  "default"],
 		["Type",          "type"],
@@ -202,28 +227,11 @@ func _multi_label(sel_dict: Dictionary, mb: MenuButton) -> String:
 
 
 # ---------------------------------------------------------------------------
-# Single-select option (Stage)
+# Sort option
 # ---------------------------------------------------------------------------
 
-func _add_single_option(label_text: String, entries: Array) -> OptionButton:
-	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	var lbl := Label.new()
-	lbl.text = "%s:" % label_text
-	box.add_child(lbl)
-	var opt := OptionButton.new()
-	for entry in entries:
-		opt.add_item(entry[0])
-		opt.set_item_id(opt.item_count - 1, entry[1])
-	opt.item_selected.connect(func(_i): _emit())
-	box.add_child(opt)
-	add_child(box)
-	return opt
-
-
-## Like _add_single_option but stores a String metadata key per item rather
-## than relying on the integer item_id. Used for the Sort dropdown so the
-## selected entry round-trips through to CardTextFormat.comparator_for().
+## Stores a String metadata key per item so the selected entry round-trips
+## through to CardTextFormat.comparator_for().
 func _add_sort_option(label_text: String, entries: Array) -> OptionButton:
 	var box := HBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)

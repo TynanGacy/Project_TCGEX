@@ -15,22 +15,15 @@
     {
       "name": "Bind",
       "base_damage": 0,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Paralyzed.",
-      "cost_colorless": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "PARALYZED"
-      }
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
+      "cost_colorless": 1
     },
     {
       "name": "Rock Smash",
       "base_damage": 10,
       "text": "Flip a coin. If heads, this attack does 10 damage plus 20 more damage.",
-      "effect_key": "coin_bonus_damage",
-      "cost_colorless": 2,
-      "effect_params": {
-        "bonus": 20
-      }
+      "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Common"
 }

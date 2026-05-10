@@ -15,19 +15,16 @@
     {
       "name": "Dragon Dance",
       "base_damage": 0,
-      "text": "During your next turn, if any of your current Active Pok\u00e9mon does damage to any Defending Pok\u00e9mon, this attack does 40 more damage (before applying Weakness and Resistance).",
+      "text": "During your next turn, if any of your current Active Pokémon does damage to any Defending Pokémon, this attack does 40 more damage (before applying Weakness and Resistance).",
       "cost_colorless": 1
     },
     {
       "name": "Dragon Song",
       "base_damage": 30,
-      "text": "Each Defending Pok\u00e9mon is now Asleep.",
+      "text": "Each Defending Pokémon is now Asleep.",
       "cost_water": 1,
-      "cost_lightning": 1,
-      "effect_key": "inflict_status",
-      "effect_params": {
-        "condition": "ASLEEP"
-      }
+      "cost_lightning": 1
     }
-  ]
+  ],
+  "rarity": "Rare Holo"
 }

@@ -15,14 +15,9 @@
     {
       "name": "Lava Burn",
       "base_damage": 20,
-      "text": "Choose 1 of your opponent's Benched Pok\u00e9mon. This attack does 10 damage to that Pok\u00e9mon. (Don't apply Weakness and Resistance for Benched Pok\u00e9mon.)",
+      "text": "Choose 1 of your opponent's Benched Pokémon. This attack does 10 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_fire": 1,
-      "cost_colorless": 1,
-      "effect_key": "bench_damage",
-      "effect_params": {
-        "amount": 10,
-        "unmodified": true
-      }
+      "cost_colorless": 1
     },
     {
       "name": "Fire Spin",
@@ -31,5 +26,6 @@
       "cost_fire": 2,
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Rare Holo"
 }

@@ -11,6 +11,10 @@ enum EnergyType { NONE, FIRE, WATER, GRASS, LIGHTNING, PSYCHIC, FIGHTING, DARKNE
 @export var evolves_from: String = ""
 @export var hp_max: int = 50
 @export var pokemon_type: EnergyType = EnergyType.COLORLESS
+## Additional types beyond pokemon_type. Used by the deck-builder energy
+## filter so dual-typed Pokémon match either selection. Game logic
+## (weakness/resistance, attack costs) still keys off the primary type.
+@export var extra_types: Array[int] = []
 
 @export var weakness: EnergyType = EnergyType.NONE
 @export var resistance: EnergyType = EnergyType.NONE

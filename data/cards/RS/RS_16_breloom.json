@@ -23,13 +23,8 @@
       "base_damage": 40,
       "text": "Does 40 damage plus 10 more damage for each Fighting Energy attached to Breloom.",
       "cost_grass": 1,
-      "cost_colorless": 2,
-      "effect_key": "damage_scaling",
-      "effect_params": {
-        "basis": "energy_of_type_attacker",
-        "energy_type": "FIGHTING",
-        "per_unit": 10
-      }
+      "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Rare"
 }

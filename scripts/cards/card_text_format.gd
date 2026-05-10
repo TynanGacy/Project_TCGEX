@@ -118,13 +118,40 @@ const _ENERGY_SORT_RANK: Dictionary = {
 
 
 ## Energy type used as a sort key; cards with no energy type sort last.
+## For multi-typed cards (Multi/Rainbow Energy, dual-type Pokémon) we sort
+## by the lowest-ranked of their types so the card lands as early as possible
+## in the canonical TCG ordering — which means the Energy filter still puts
+## it next to the type the player most likely cares about.
 static func _energy_sort_key(card: CardData) -> int:
-	var t: int = -1
+	var types := card_energy_types(card)
+	if types.is_empty():
+		return 99
+	var best := 99
+	for t in types:
+		var rank := int(_ENERGY_SORT_RANK.get(t, 99))
+		if rank < best:
+			best = rank
+	return best
+
+
+## Returns every energy type a card carries — primary plus extras.
+## Multi/Rainbow-style energy cards include each standard type so the
+## deck-builder energy filter matches them under any selection.
+static func card_energy_types(card: CardData) -> Array[int]:
+	var out: Array[int] = []
 	if card is PokemonCardData:
-		t = (card as PokemonCardData).pokemon_type
+		var p := card as PokemonCardData
+		out.append(int(p.pokemon_type))
+		for t in p.extra_types:
+			if not out.has(int(t)):
+				out.append(int(t))
 	elif card is EnergyCardData:
-		t = (card as EnergyCardData).energy_type
-	return int(_ENERGY_SORT_RANK.get(t, 99))
+		var e := card as EnergyCardData
+		out.append(int(e.energy_type))
+		for t in e.extra_types:
+			if not out.has(int(t)):
+				out.append(int(t))
+	return out
 
 
 static func compare_by_type(a: CardData, b: CardData) -> bool:
@@ -145,9 +172,65 @@ static func compare_by_energy(a: CardData, b: CardData) -> bool:
 	return compare_cards(a, b)
 
 
-## Placeholder — rarity isn't in the data yet. Returns 0 for every card so
-## the comparator falls through to the set/number tiebreak.
+## Pokémon-TCG tier order: common < uncommon < rare < rare holo < rare holo ex
+## < rare secret < promo. Unknown / empty rarity sorts last. Tiebreak by set/number.
+const _RARITY_RANK := {
+	"common": 0,
+	"uncommon": 1,
+	"rare": 2,
+	"rare holo": 3,
+	"rare holo ex": 4,
+	"rare secret": 5,
+}
+
+## Rank for a single rarity string. Unknown / empty → INF (sorts last).
+static func _rank_one(s: String) -> int:
+	var key := s.strip_edges().to_lower()
+	if key == "":
+		return 1 << 30
+	if _RARITY_RANK.has(key):
+		return _RARITY_RANK[key]
+	if key.find("promo") != -1:
+		return 6
+	if key.begins_with("rare holo ex"):
+		return 4
+	if key.begins_with("rare holo"):
+		return 3
+	if key.begins_with("rare"):
+		return 2
+	return 1 << 30
+
+
+## A multi-rarity card sorts at its best (lowest) tier — that's the rarity
+## tier most players think of it as belonging to.
+static func _rarity_rank(card: CardData) -> int:
+	if card == null or card.rarities.is_empty():
+		return 1 << 30
+	var best := 1 << 30
+	for r in card.rarities:
+		var rank := _rank_one(str(r))
+		if rank < best:
+			best = rank
+	return best
+
+
+## Default rarity sort goes "best first": Rare Secret → Promo → Rare Holo EX
+## → Rare Holo → Rare → Uncommon → Common, with unknown / empty rarity always
+## last. Reverse-direction (handled in CardGrid) flips the whole list.
 static func compare_by_rarity(a: CardData, b: CardData) -> bool:
+	if b == null:
+		return a != null
+	if a == null:
+		return false
+	var ra := _rarity_rank(a)
+	var rb := _rarity_rank(b)
+	var unranked := 1 << 30
+	var unk_a := ra == unranked
+	var unk_b := rb == unranked
+	if unk_a != unk_b:
+		return not unk_a  ## known rarities before unknown
+	if ra != rb:
+		return ra > rb    ## higher tier first within the ranked group
 	return compare_cards(a, b)
 
 
@@ -161,7 +244,7 @@ static func compare_by_collection(a: CardData, b: CardData) -> bool:
 ##   "default"    — set rank (newest first) then number
 ##   "type"       — card type then default
 ##   "energy"     — energy/pokemon type then default
-##   "rarity"     — placeholder (default order)
+##   "rarity"     — Pokémon-TCG tier order then default
 ##   "collection" — placeholder (default order)
 static func comparator_for(sort_key: String) -> Callable:
 	match sort_key:
@@ -172,9 +255,10 @@ static func comparator_for(sort_key: String) -> Callable:
 		_:            return Callable(CardTextFormat, "compare_cards")
 
 
-## Rarity isn't in the source JSON yet; placeholder until the data exposes it.
 static func rarity(card: CardData) -> String:
-	return "—"
+	if card == null or card.rarities.is_empty():
+		return "—"
+	return " / ".join(card.rarities)
 
 
 ## Full one-line text-mode row.

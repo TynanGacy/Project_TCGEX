@@ -16,22 +16,15 @@
       "name": "Rest",
       "base_damage": 0,
       "text": "Remove all Special Conditions and 4 damage counters from Wailmer (all if there are less than 4). Wailmer is now Asleep.",
-      "cost_colorless": 2,
-      "effect_key": "rest_self",
-      "effect_params": {}
+      "cost_colorless": 2
     },
     {
       "name": "Water Gun",
       "base_damage": 20,
       "text": "This attack does 20 damage plus 10 more damage for each Water Energy attached to Wailmer but not used to pay for this attack's Energy cost. You can't add more than 20 damage in this way.",
       "cost_water": 1,
-      "cost_colorless": 1,
-      "effect_key": "damage_scaling",
-      "effect_params": {
-        "basis": "extra_energy_beyond_cost",
-        "per_unit": 10,
-        "max_units": 2
-      }
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

@@ -15,22 +15,16 @@
     {
       "name": "Clutch",
       "base_damage": 20,
-      "text": "The Defending Pok\u00e9mon can't retreat until the end of your opponent's next turn.",
-      "cost_colorless": 2,
-      "effect_key": "retreat_lock",
-      "effect_params": {}
+      "text": "The Defending Pokémon can't retreat until the end of your opponent's next turn.",
+      "cost_colorless": 2
     },
     {
       "name": "Flamethrower",
       "base_damage": 80,
       "text": "Discard a Fire Energy card attached to Blaziken.",
       "cost_fire": 1,
-      "cost_colorless": 3,
-      "effect_key": "discard_energy",
-      "effect_params": {
-        "type": "FIRE",
-        "count": 1
-      }
+      "cost_colorless": 3
     }
-  ]
+  ],
+  "rarity": "Rare"
 }

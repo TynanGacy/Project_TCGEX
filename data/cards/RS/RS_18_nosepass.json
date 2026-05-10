@@ -24,5 +24,6 @@
       "text": "Flip a coin. If heads, your opponent returns the Defending Pokémon and all cards attached to it to his or her hand. (If your opponent doesn't have any Benched Pokémon or other Active Pokémon, this attack does nothing.)",
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Rare"
 }

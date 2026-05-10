@@ -2,7 +2,8 @@
   "card_id": "RS_106_water_energy",
   "display_name": "Water Energy",
   "card_type": "ENERGY",
-  "energy_type": "WATER",
+  "energy_type": "COLORLESS",
   "provides": 1,
-  "rules_text": ""
+  "rules_text": "",
+  "rarity": "Common"
 }

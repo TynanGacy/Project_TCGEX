@@ -22,13 +22,8 @@
       "name": "One-Two Strike",
       "base_damage": 30,
       "text": "Flip 2 coins. This attack does 30 damage plus 20 more damage for each heads.",
-      "cost_colorless": 4,
-      "effect_key": "damage_scaling",
-      "effect_params": {
-        "basis": "coin_flips_heads",
-        "flips": 2,
-        "per_unit": 20
-      }
+      "cost_colorless": 4
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

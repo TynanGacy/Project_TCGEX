@@ -10,30 +10,21 @@
   "weakness": "GRASS",
   "resistance": "NONE",
   "retreat_cost": 2,
-  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Hydrocutter",
-      "base_damage": 0,
+      "base_damage": 40,
       "text": "Flip a number of coins equal to the amount of Energy attached to Kabutops ex. This attack does 40 damage times the number of heads. You can't flip more than 3 coins in this way.",
-      "cost_colorless": 1,
-      "effect_key": "damage_scaling",
-      "effect_params": {
-        "basis": "coin_flips_per_energy_heads",
-        "max_flips": 3,
-        "per_unit": 40
-      }
+      "cost_colorless": 1
     },
     {
       "name": "Spiral Drain",
       "base_damage": 70,
       "text": "Remove 2 damage counter from Kabutops ex (remove 1 if there is only 1).",
       "cost_fighting": 2,
-      "cost_colorless": 2,
-      "effect_key": "heal_self",
-      "effect_params": {
-        "amount": 20
-      }
+      "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Rare Holo EX"
 }

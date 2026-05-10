@@ -17,19 +17,15 @@
       "base_damage": 10,
       "text": "Does 10 damage plus 10 more damage for each damage counter on Steelix.",
       "cost_fighting": 1,
-      "cost_colorless": 2,
-      "effect_key": "bonus_per_damage_counter",
-      "effect_params": {
-        "multiplier": 10,
-        "source": "attacker"
-      }
+      "cost_colorless": 2
     },
     {
       "name": "Spinning Tail",
       "base_damage": 0,
-      "text": "Does 20 damage to each of your opponent's Pok\u00e9mon. (Don't apply Weakness and Resistance for Benched Pok\u00e9mon.)",
+      "text": "Does 20 damage to each of your opponent's Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_metal": 2,
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Rare"
 }

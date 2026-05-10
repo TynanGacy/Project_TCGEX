@@ -15,10 +15,9 @@
     {
       "name": "Gooey Thread",
       "base_damage": 10,
-      "text": "The Defending Pok\u00e9mon can't retreat until the end of your opponent's next turn.",
-      "cost_grass": 1,
-      "effect_key": "retreat_lock",
-      "effect_params": {}
+      "text": "The Defending Pokémon can't retreat until the end of your opponent's next turn.",
+      "cost_grass": 1
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

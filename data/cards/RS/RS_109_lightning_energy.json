@@ -2,7 +2,8 @@
   "card_id": "RS_109_lightning_energy",
   "display_name": "Lightning Energy",
   "card_type": "ENERGY",
-  "energy_type": "LIGHTNING",
+  "energy_type": "COLORLESS",
   "provides": 1,
-  "rules_text": ""
+  "rules_text": "",
+  "rarity": "Common"
 }

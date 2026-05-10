@@ -15,12 +15,8 @@
     {
       "name": "Confuse Ray",
       "base_damage": 10,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Confused.",
-      "cost_colorless": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "CONFUSED"
-      }
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
+      "cost_colorless": 1
     },
     {
       "name": "Moon Impact",
@@ -29,5 +25,6 @@
       "cost_darkness": 1,
       "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Rare"
 }

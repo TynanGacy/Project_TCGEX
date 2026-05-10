@@ -20,14 +20,10 @@
     },
     {
       "name": "Continuous Headbutt",
-      "base_damage": 0,
+      "base_damage": 40,
       "text": "Flip a coin until you get tails. This attack does 40 damage times the number of heads.",
-      "cost_colorless": 2,
-      "effect_key": "damage_scaling",
-      "effect_params": {
-        "basis": "coin_flips_until_tails",
-        "per_unit": 40
-      }
+      "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

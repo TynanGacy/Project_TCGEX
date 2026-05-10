@@ -4,7 +4,8 @@ extends GutTest
 ##   - default sort: set rank (DR → SS → RS) then ascending number
 ##   - alternate sort comparators: type, energy
 ##   - canonical TCG energy ordering (Grass, Fire, Water, …)
-##   - placeholder rarity / collection comparators behave like the default
+##   - rarity comparator orders by Pokémon-TCG tier; collection placeholder
+##     still matches the default until ownership data exists
 ##   - text-mode row formatting includes the trait fields the deck builder
 ##     renders into its column-aligned table
 
@@ -109,14 +110,33 @@ func test_compare_by_energy_uses_canonical_tcg_order() -> void:
 	assert_eq(observed, canonical.slice(0, observed.size()))
 
 
-func test_placeholder_comparators_match_default_until_implemented() -> void:
-	## Rarity and Collection are stubs; the deck builder should still render
-	## something sensible (the default order) when they're selected.
-	var def := _all_cards_sorted_by(CardTextFormat.comparator_for("default"))
+func test_compare_by_rarity_orders_higher_tiers_first_then_unknown_last() -> void:
+	## Default rarity sort puts the rarest tiers first, then descends to
+	## Common, with unknown / empty rarity always after the known group.
 	var rar := _all_cards_sorted_by(CardTextFormat.comparator_for("rarity"))
+	var unranked := 1 << 30
+	var prev_rank: int = unranked
+	var seen_unknown := false
+	var seen_any_ranked := false
+	for c in rar:
+		var rank: int = CardTextFormat._rarity_rank(c as CardData)
+		if rank == unranked:
+			seen_unknown = true
+			continue
+		assert_false(seen_unknown,
+			"a known-rarity card appeared after an unknown-rarity card")
+		## Known ranks must be non-increasing (higher tier first).
+		if prev_rank != unranked:
+			assert_true(rank <= prev_rank,
+				"rarity sort should be non-increasing among known tiers; got %d after %d" % [rank, prev_rank])
+		prev_rank = rank
+		seen_any_ranked = true
+	assert_true(seen_any_ranked, "expected at least one card with a known rarity tier")
+
+
+func test_collection_placeholder_matches_default_until_implemented() -> void:
+	var def := _all_cards_sorted_by(CardTextFormat.comparator_for("default"))
 	var col := _all_cards_sorted_by(CardTextFormat.comparator_for("collection"))
-	assert_eq(_card_id_list(rar), _card_id_list(def),
-		"rarity sort should currently match the default until rarity data lands")
 	assert_eq(_card_id_list(col), _card_id_list(def),
 		"collection sort should currently match the default until ownership lands")
 

@@ -15,26 +15,17 @@
     {
       "name": "Shove",
       "base_damage": 20,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Paralyzed.",
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
       "cost_fighting": 1,
-      "cost_colorless": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "PARALYZED"
-      }
+      "cost_colorless": 1
     },
     {
       "name": "Slap Down",
       "base_damage": 40,
       "text": "Flip 2 coins. This attack does 40 damage plus 10 more damage for each heads.",
       "cost_fighting": 1,
-      "cost_colorless": 2,
-      "effect_key": "damage_scaling",
-      "effect_params": {
-        "basis": "coin_flips_heads",
-        "flips": 2,
-        "per_unit": 10
-      }
+      "cost_colorless": 2
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }

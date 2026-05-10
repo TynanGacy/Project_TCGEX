@@ -10,29 +10,21 @@
   "weakness": "PSYCHIC",
   "resistance": "NONE",
   "retreat_cost": 2,
-  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Poison Breath",
       "base_damage": 10,
-      "text": "The Defending Pok\u00e9mon is now Poisoned.",
-      "cost_grass": 1,
-      "effect_key": "inflict_status",
-      "effect_params": {
-        "condition": "POISONED"
-      }
+      "text": "The Defending Pokémon is now Poisoned.",
+      "cost_grass": 1
     },
     {
       "name": "Slimy Water",
       "base_damage": 40,
-      "text": "Does 40 damage plus 10 more damage for each Colorless Energy in the Defending Pok\u00e9mon's Retreat Cost (after applying effects to the Retreat Cost).",
+      "text": "Does 40 damage plus 10 more damage for each Colorless Energy in the Defending Pokémon's Retreat Cost (after applying effects to the Retreat Cost).",
       "cost_grass": 2,
-      "cost_colorless": 1,
-      "effect_key": "damage_scaling",
-      "effect_params": {
-        "basis": "retreat_cost_target",
-        "per_unit": 10
-      }
+      "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Rare Holo EX"
 }

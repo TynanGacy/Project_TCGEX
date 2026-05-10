@@ -21,12 +21,9 @@
     {
       "name": "Singe",
       "base_damage": 0,
-      "text": "Flip a coin. If heads, the Defending Pok\u00e9mon is now Burned.",
-      "cost_fire": 1,
-      "effect_key": "coin_status",
-      "effect_params": {
-        "condition": "BURNED"
-      }
+      "text": "Flip a coin. If heads, the Defending Pokémon is now Burned.",
+      "cost_fire": 1
     }
-  ]
+  ],
+  "rarity": "Common"
 }

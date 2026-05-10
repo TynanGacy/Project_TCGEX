@@ -10,17 +10,13 @@
   "weakness": "PSYCHIC",
   "resistance": "NONE",
   "retreat_cost": 2,
-  "rules_text": "When Pok\u00e9mon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
+  "rules_text": "When Pokémon-ex has been Knocked Out, your opponent takes 2 Prize cards.",
   "attacks": [
     {
       "name": "Steady Punch",
       "base_damage": 10,
       "text": "Flip a coin. If heads, this attack does 10 damage plus 10 more damage.",
-      "effect_key": "coin_bonus_damage",
-      "cost_fighting": 1,
-      "effect_params": {
-        "bonus": 10
-      }
+      "cost_fighting": 1
     },
     {
       "name": "Sky Uppercut",
@@ -29,5 +25,6 @@
       "cost_fighting": 2,
       "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Rare Holo EX"
 }

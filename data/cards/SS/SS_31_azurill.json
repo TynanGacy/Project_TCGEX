@@ -18,5 +18,6 @@
       "text": "Search your deck for a Trainer card, show it to your opponent, and put it into your hand. Shuffle your deck afterward.",
       "cost_colorless": 1
     }
-  ]
+  ],
+  "rarity": "Uncommon"
 }
