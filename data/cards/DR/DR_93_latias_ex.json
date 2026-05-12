@@ -16,7 +16,11 @@
       "name": "Hypnoblast",
       "base_damage": 10,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Asleep.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "ASLEEP"
+      }
     },
     {
       "name": "Mist Ball",
@@ -24,7 +28,21 @@
       "text": "Discard a Fire Energy and a Water Energy attached to Latias ex.",
       "cost_fire": 1,
       "cost_water": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "discard_energy",
+      "effect_params": {
+        "type": "FIRE",
+        "count": 1
+      },
+      "effect_chain": [
+        {
+          "key": "discard_energy",
+          "params": {
+            "type": "WATER",
+            "count": 1
+          }
+        }
+      ]
     }
   ],
   "rarity": "Rare Holo EX"

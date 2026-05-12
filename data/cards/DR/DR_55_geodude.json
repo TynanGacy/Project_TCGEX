@@ -22,7 +22,12 @@
       "name": "Pebble Throw",
       "base_damage": 0,
       "text": "Choose 1 of your opponent's Benched Pokémon. This attack does 10 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
-      "cost_fighting": 1
+      "cost_fighting": 1,
+      "effect_key": "bench_damage",
+      "effect_params": {
+        "amount": 10,
+        "unmodified": true
+      }
     }
   ],
   "rarity": "Common"

@@ -16,7 +16,13 @@
       "name": "Deadly Poison",
       "base_damage": 10,
       "text": "You may discard a Grass Energy card attached to Seviper. If you do, the Defending Pokémon is now Poisoned.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "may_discard_for_status",
+      "effect_params": {
+        "type": "GRASS",
+        "count": 1,
+        "condition": "POISONED"
+      }
     },
     {
       "name": "Extra Poison",

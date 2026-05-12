@@ -16,7 +16,11 @@
       "name": "Steady Punch",
       "base_damage": 20,
       "text": "Flip a coin. If heads, this attack does 20 damage plus 10 more damage.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "coin_bonus_damage",
+      "effect_params": {
+        "bonus": 10
+      }
     },
     {
       "name": "Razor Leaf",

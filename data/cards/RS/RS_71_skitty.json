@@ -22,7 +22,8 @@
       "name": "Lunge",
       "base_damage": 30,
       "text": "Flip a coin. If tails, this attack does nothing.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "coin_fail"
     }
   ],
   "rarity": "Common"

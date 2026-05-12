@@ -16,14 +16,24 @@
       "name": "Double Kick",
       "base_damage": 20,
       "text": "Flip 2 coins. This attack does 20 damage times the number of heads.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "coin_multiply_damage",
+      "effect_params": {
+        "flips": 2
+      }
     },
     {
       "name": "Lightning Strike",
       "base_damage": 40,
       "text": "You may discard all Lightning Energy cards attached to Jolteon. If you do, this attack's base damage is 70 instead of 40.",
       "cost_lightning": 2,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "may_discard_for_bonus",
+      "effect_params": {
+        "type": "LIGHTNING",
+        "count": -1,
+        "bonus": 30
+      }
     }
   ],
   "rarity": "Rare Holo"

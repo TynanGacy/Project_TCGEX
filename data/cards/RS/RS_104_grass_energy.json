@@ -2,7 +2,7 @@
   "card_id": "RS_104_grass_energy",
   "display_name": "Grass Energy",
   "card_type": "ENERGY",
-  "energy_type": "COLORLESS",
+  "energy_type": "GRASS",
   "provides": 1,
   "rules_text": "",
   "rarity": "Common"

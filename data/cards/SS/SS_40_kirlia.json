@@ -17,7 +17,11 @@
       "base_damage": 20,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
       "cost_psychic": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "PARALYZED"
+      }
     },
     {
       "name": "Link Blast",

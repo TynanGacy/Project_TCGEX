@@ -23,7 +23,12 @@
       "base_damage": 40,
       "text": "If the Defending Pokémon is a Pokémon-ex, this attack does 40 damage plus 40 more damage.",
       "cost_fighting": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "conditional_bonus_damage",
+      "effect_params": {
+        "condition": "defender_is_pokemon_ex",
+        "bonus": 40
+      }
     }
   ],
   "rarity": "Rare Holo"

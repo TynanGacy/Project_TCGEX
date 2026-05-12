@@ -23,7 +23,12 @@
       "name": "Rainbow Burn",
       "base_damage": 30,
       "text": "Does 30 damage plus 10 more damage for each type of basic Energy card attached to Flygon.",
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "energy_types_attacker",
+        "per_unit": 10
+      }
     }
   ],
   "rarity": "Rare Holo"

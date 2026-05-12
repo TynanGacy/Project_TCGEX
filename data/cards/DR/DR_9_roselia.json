@@ -22,7 +22,11 @@
       "name": "Sleep Powder",
       "base_damage": 10,
       "text": "The Defending Pokémon is now Asleep.",
-      "cost_grass": 1
+      "cost_grass": 1,
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "ASLEEP"
+      }
     }
   ],
   "rarity": "Rare Holo"

@@ -22,7 +22,13 @@
       "name": "Hydrocannon",
       "base_damage": 50,
       "text": "Does 50 damage plus 20 more damage for each Water Energy attached to Kingdra ex but not used to pay for this attack's Energy cost. You can't add more than 40 damage in this way.",
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "extra_energy_beyond_cost",
+        "per_unit": 20,
+        "max_units": 2
+      }
     }
   ],
   "rarity": "Rare Holo EX"

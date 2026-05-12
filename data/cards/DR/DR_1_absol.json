@@ -23,7 +23,12 @@
       "base_damage": 20,
       "text": "If you have more Prize cards left than your opponent, this attack does 20 damage plus 20 more damage.",
       "cost_darkness": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "conditional_bonus_damage",
+      "effect_params": {
+        "condition": "you_have_more_prizes_left",
+        "bonus": 20
+      }
     }
   ],
   "rarity": "Rare Holo"

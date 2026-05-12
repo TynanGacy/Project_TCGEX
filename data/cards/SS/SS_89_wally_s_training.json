@@ -4,5 +4,7 @@
   "card_type": "TRAINER",
   "trainer_kind": "SUPPORTER",
   "rules_text": "You can play only one Supporter card each turn. When you play this card, put it next to your Active Pokémon. When your turn ends, discard this card.\nSearch your deck for a card that evolves from your Active Pokémon (choose 1 if there are 2) and put it on your Active Pokémon. (This counts as evolving that Pokémon.) Shuffle your deck afterward.",
-  "rarity": "Uncommon"
+  "rarity": "Uncommon",
+  "effect_key": "search_deck_evolution_and_evolve",
+  "effect_params": {}
 }

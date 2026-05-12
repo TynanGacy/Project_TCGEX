@@ -16,14 +16,23 @@
       "name": "Dazzle Blast",
       "base_damage": 20,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
-      "cost_lightning": 1
+      "cost_lightning": 1,
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "CONFUSED"
+      }
     },
     {
       "name": "Mega Thunderbolt",
       "base_damage": 120,
       "text": "Discard all Energy cards attached to Raichu ex.",
       "cost_lightning": 2,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "discard_energy",
+      "effect_params": {
+        "type": "ANY",
+        "count": -1
+      }
     }
   ],
   "rarity": "Rare Holo EX"

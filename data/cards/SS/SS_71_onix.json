@@ -16,14 +16,23 @@
       "name": "Bind",
       "base_damage": 10,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "PARALYZED"
+      }
     },
     {
       "name": "Rage",
       "base_damage": 10,
       "text": "Does 10 damage plus 10 more damage for each damage counter on Onix.",
       "cost_fighting": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "bonus_per_damage_counter",
+      "effect_params": {
+        "multiplier": 10,
+        "source": "attacker"
+      }
     }
   ],
   "rarity": "Common"

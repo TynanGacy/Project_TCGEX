@@ -16,7 +16,11 @@
       "name": "Poison Breath",
       "base_damage": 0,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Poisoned.",
-      "cost_grass": 1
+      "cost_grass": 1,
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "POISONED"
+      }
     }
   ],
   "rarity": "Common"
