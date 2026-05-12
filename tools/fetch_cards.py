@@ -110,9 +110,7 @@ TYPE_MAP = {
     "dark":      "DARKNESS",
     "metal":     "METAL",
     "steel":     "METAL",
-    "dragon":    "DRAGON",
     "colorless": "COLORLESS",
-    "fairy":     "COLORLESS",   # Fairy was retired; treat as Colorless
     "none":      "NONE",
 }
 
