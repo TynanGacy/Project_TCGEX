@@ -16,7 +16,11 @@
       "name": "Poison Breath",
       "base_damage": 0,
       "text": "The Defending Pokémon is now Poisoned.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "POISONED"
+      }
     },
     {
       "name": "Swift",

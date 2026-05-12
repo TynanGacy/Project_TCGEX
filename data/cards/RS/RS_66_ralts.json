@@ -16,7 +16,11 @@
       "name": "Confuse Ray",
       "base_damage": 10,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Confused.",
-      "cost_psychic": 1
+      "cost_psychic": 1,
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "CONFUSED"
+      }
     }
   ],
   "rarity": "Common"

@@ -18,7 +18,12 @@
       "text": "Flip a coin. If tails, discard an Energy card attached to Flygon.",
       "cost_grass": 1,
       "cost_lightning": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_discard_energy",
+      "effect_params": {
+        "type": "ANY",
+        "count": 1
+      }
     }
   ],
   "rarity": "Rare"

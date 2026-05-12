@@ -16,7 +16,16 @@
       "name": "Team Assembly",
       "base_damage": 0,
       "text": "Search your deck for Omanyte, Kabuto, or any Basic Pokémon and put as many of them as you like onto your Bench. Shuffle your deck afterward. Treat the new Benched Pokémon as Basic Pokémon.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_deck_basic_to_bench",
+      "effect_params": {
+        "name_slug_any_of": [
+          "omanyte",
+          "kabuto"
+        ],
+        "or_any_basic": true,
+        "count": 5
+      }
     },
     {
       "name": "Pierce",

@@ -16,7 +16,12 @@
       "name": "Grind",
       "base_damage": 10,
       "text": "Does 10 damage times the amount of Energy attached to Graveler.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "bonus_per_energy",
+      "effect_params": {
+        "source": "attacker",
+        "multiplier": 10
+      }
     },
     {
       "name": "Big Explosion",

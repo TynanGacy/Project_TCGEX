@@ -16,7 +16,9 @@
       "name": "Shadow Bind",
       "base_damage": 10,
       "text": "The Defending Pokémon can't retreat until the end of your opponent's next turn.",
-      "cost_darkness": 1
+      "cost_darkness": 1,
+      "effect_key": "retreat_lock",
+      "effect_params": {}
     }
   ],
   "rarity": "Common"

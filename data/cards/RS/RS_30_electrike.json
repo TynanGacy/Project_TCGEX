@@ -16,7 +16,12 @@
       "name": "Charge",
       "base_damage": 0,
       "text": "Attach a Lightning Energy card from your discard pile to Electrike.",
-      "cost_lightning": 1
+      "cost_lightning": 1,
+      "effect_key": "attach_from_discard",
+      "effect_params": {
+        "type": "LIGHTNING",
+        "count": 1
+      }
     },
     {
       "name": "Thunder Jolt",

@@ -16,7 +16,11 @@
       "name": "Quick Attack",
       "base_damage": 10,
       "text": "Flip a coin. If heads, this attack does 10 damage plus 20 more damage.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "coin_bonus_damage",
+      "effect_params": {
+        "bonus": 20
+      }
     },
     {
       "name": "Combustion",

@@ -16,7 +16,8 @@
       "name": "Surprise Attack",
       "base_damage": 30,
       "text": "Flip a coin. If tails, this attack does nothing.",
-      "cost_grass": 1
+      "cost_grass": 1,
+      "effect_key": "coin_fail"
     }
   ],
   "rarity": "Common"

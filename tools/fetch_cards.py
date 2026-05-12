@@ -83,6 +83,7 @@ SET_ABBREVIATIONS = {
     "playp_ja":  "J4",   # Various Japanese Exclusives (Pokemon Card Fan etc.)
     "pcgp_ja":   "J5",   # Various Japanese Exclusives (Aura's Lucario etc.)
     # still missing in API: 
+        # Movie Commemoration VS Pack - Wishmaker
         # Movie Commemoration VS Pack - Sky-Splitting Deoxys: A variety of named Pokemon
         # Master Kit: Aura's Lucario ex
         # Movie Commemoration VS Pack - Aura's Lucario: A variety of named Pokemon and Time Flower
@@ -253,7 +254,6 @@ def transform_trainer(card: dict) -> dict:
     rules_parts = card.get("rules") or []
     rules_text  = "\n".join(rules_parts)
 
-    name_slug   = slugify(card["name"])
     abbrev      = set_abbrev(card)
     card_number = card.get("number", "0")
     rarities    = [card["rarity"]] if card.get("rarity") else []
@@ -268,18 +268,37 @@ def transform_trainer(card: dict) -> dict:
     }
 
 
+## Map from card-name slug → energy type for basic energies. The pokemontcg.io
+## API leaves `types` empty on these, so we derive the type from the name
+## instead of writing "COLORLESS" — otherwise loader paths that read
+## energy_type straight from JSON (e.g. TestDeckFactory) treat every basic
+## energy as Colorless.
+_BASIC_ENERGY_TYPE_BY_SLUG = {
+    "grass_energy":     "GRASS",
+    "fire_energy":      "FIRE",
+    "water_energy":     "WATER",
+    "lightning_energy": "LIGHTNING",
+    "psychic_energy":   "PSYCHIC",
+    "fighting_energy":  "FIGHTING",
+    "darkness_energy":  "DARKNESS",
+    "metal_energy":     "METAL",
+}
+
+
 def transform_energy(card: dict) -> dict:
-    ## Faithful copy of what the API exposes. The pokemontcg.io API leaves
-    ## `types` empty on basic energies and does not encode the
-    ## "Rainbow / Multi count as every type" rule — those are gameplay
-    ## concerns, derived from the card name in CardLibrary at load time.
+    ## Faithful copy of what the API exposes, with one game-mechanics override:
+    ## basic energies get their type derived from the card name since the API
+    ## doesn't carry it. Rainbow/Multi remain as authored — CardLibrary's
+    ## `_apply_energy_provision_rules` handles their "any type" behavior.
+    name_slug   = slugify(card["name"])
     types = card.get("types") or []
     energy_type = normalise_type(types[0]) if types else "COLORLESS"
+    if energy_type == "COLORLESS" and name_slug in _BASIC_ENERGY_TYPE_BY_SLUG:
+        energy_type = _BASIC_ENERGY_TYPE_BY_SLUG[name_slug]
 
     rules_parts = card.get("rules") or []
     rules_text  = "\n".join(rules_parts)
 
-    name_slug   = slugify(card["name"])
     abbrev      = set_abbrev(card)
     card_number = card.get("number", "0")
     rarities    = [card["rarity"]] if card.get("rarity") else []
@@ -362,6 +381,44 @@ def fetch_search(query: str, session: requests.Session) -> list:
         time.sleep(0.2)
     return results
 
+# Fields the pokemontcg.io API never produces but our game logic depends on.
+# Top-level entries cover trainer dispatch; nested entries apply per attack on
+# Pokemon. Keep this list in sync with scripts/cards/card_library.gd readers.
+_PRESERVE_TOP_LEVEL = ("effect_key", "effect_params")
+# effect_key / effect_params / effect_chain are never produced by the API; if
+# the on-disk file has them, the author put them there. base_damage is
+# normally API-derived, but when paired with an effect_key the author may
+# have set it to 0 (e.g. damage_scaling attacks where damage comes purely
+# from the handler). Treat that as a deliberate override.
+_PRESERVE_PER_ATTACK_FILL     = ("effect_key", "effect_params", "effect_chain")
+_PRESERVE_PER_ATTACK_OVERRIDE = ("base_damage",)
+
+
+def _merge_preserved_fields(new: dict, existing: dict) -> None:
+    """Carry hand-authored fields from existing into new."""
+    for key in _PRESERVE_TOP_LEVEL:
+        if key not in new and key in existing:
+            new[key] = existing[key]
+    new_attacks = new.get("attacks")
+    old_attacks = existing.get("attacks")
+    if not isinstance(new_attacks, list) or not isinstance(old_attacks, list):
+        return
+    by_name = {a.get("name"): a for a in old_attacks if isinstance(a, dict)}
+    for attack in new_attacks:
+        if not isinstance(attack, dict):
+            continue
+        old = by_name.get(attack.get("name"))
+        if old is None:
+            continue
+        for key in _PRESERVE_PER_ATTACK_FILL:
+            if key not in attack and key in old:
+                attack[key] = old[key]
+        if "effect_key" in old:
+            for key in _PRESERVE_PER_ATTACK_OVERRIDE:
+                if key in old and attack.get(key) != old[key]:
+                    attack[key] = old[key]
+
+
 def process_cards(cards: list, set_id: str, out_dir: str, img_dir: str, session: requests.Session) -> tuple[int, int]:
     set_folder = SET_ABBREVIATIONS.get(set_id, slugify(set_id))  # fall back to slugified set id if not in table
     set_out = os.path.join(out_dir, set_folder)
@@ -378,10 +435,20 @@ def process_cards(cards: list, set_id: str, out_dir: str, img_dir: str, session:
             skipped += 1
             continue
 
-        # Write JSON
+        # Write JSON — preserve hand-authored fields the API does not provide
+        # (effect_key, effect_params at the top level for trainers and inside
+        # each attacks[] entry for Pokemon). The fetcher mirrors pokemontcg.io
+        # faithfully, so without this merge any prior rerun wipes our internal
+        # game-logic bindings.
         out_path = os.path.join(set_out, f"{result['card_id']}.json")
         if os.path.exists(out_path):
-            print(f"  [overwrite] {set_folder}/{result['card_id']}.json")
+            print(f"  [merge] {set_folder}/{result['card_id']}.json")
+            try:
+                with open(out_path, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+                _merge_preserved_fields(result, existing)
+            except (OSError, json.JSONDecodeError) as e:
+                print(f"    warning: could not merge existing file ({e}); rewriting from scratch")
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
             f.write("\n")

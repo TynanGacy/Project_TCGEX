@@ -24,7 +24,12 @@
       "base_damage": 50,
       "text": "Discard a Fire Energy card attached to Houndoom.",
       "cost_fighting": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "discard_energy",
+      "effect_params": {
+        "type": "FIRE",
+        "count": 1
+      }
     }
   ],
   "rarity": "Uncommon"

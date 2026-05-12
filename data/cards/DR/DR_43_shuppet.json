@@ -16,7 +16,11 @@
       "name": "Hypnosis",
       "base_damage": 0,
       "text": "The Defending Pokémon is now Asleep.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "ASLEEP"
+      }
     },
     {
       "name": "Night Attack",

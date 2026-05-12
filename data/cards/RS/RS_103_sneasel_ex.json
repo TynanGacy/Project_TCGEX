@@ -16,7 +16,11 @@
       "name": "Double Scratch",
       "base_damage": 10,
       "text": "Flip 2 coins. This attack does 10 damage times the number of heads.",
-      "cost_darkness": 1
+      "cost_darkness": 1,
+      "effect_key": "coin_multiply_damage",
+      "effect_params": {
+        "flips": 2
+      }
     },
     {
       "name": "Beat Up",

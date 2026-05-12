@@ -23,7 +23,12 @@
       "base_damage": 40,
       "text": "Flip a coin. If tails, discard a Fire Energy card attached to Charmeleon.",
       "cost_fire": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_discard_energy",
+      "effect_params": {
+        "type": "FIRE",
+        "count": 1
+      }
     }
   ],
   "rarity": "Rare Secret"

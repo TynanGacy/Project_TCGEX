@@ -16,7 +16,11 @@
       "name": "Iron Defense",
       "base_damage": 0,
       "text": "Flip a coin. If heads, prevent all effects of an attack, including damage, done to Lairon during your opponent's next turn.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "effect_immune_next_turn",
+      "effect_params": {
+        "coin_gate": true
+      }
     },
     {
       "name": "Headbutt",

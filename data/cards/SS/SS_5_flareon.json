@@ -17,14 +17,23 @@
       "base_damage": 20,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Burned.",
       "cost_fire": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "BURNED"
+      }
     },
     {
       "name": "Flamethrower",
       "base_damage": 70,
       "text": "Discard a Fire Energy card attached to Flareon.",
       "cost_fire": 1,
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "discard_energy",
+      "effect_params": {
+        "type": "FIRE",
+        "count": 1
+      }
     }
   ],
   "rarity": "Rare Holo"

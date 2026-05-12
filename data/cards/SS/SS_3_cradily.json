@@ -23,7 +23,11 @@
       "base_damage": 50,
       "text": "Remove 2 damage counters from Cradily (remove 1 if there is only 1).",
       "cost_grass": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "heal_self",
+      "effect_params": {
+        "amount": 20
+      }
     }
   ],
   "rarity": "Rare Holo"

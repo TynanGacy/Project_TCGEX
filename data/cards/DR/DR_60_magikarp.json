@@ -16,7 +16,12 @@
       "name": "Call for Family",
       "base_damage": 0,
       "text": "Search your deck for Magikarp and put as many of them as you like onto your Bench. Shuffle your deck afterward.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_deck_basic_to_bench",
+      "effect_params": {
+        "name_slug": "magikarp",
+        "count": 5
+      }
     },
     {
       "name": "Tackle",

@@ -16,13 +16,25 @@
       "name": "Claw",
       "base_damage": 20,
       "text": "Flip a coin. If tails, this attack does nothing.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_fail",
+      "effect_params": {}
     },
     {
       "name": "Slack Off",
       "base_damage": 0,
       "text": "Remove all damage counters from Slakoth. Slakoth can't attack during your next turn.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "heal_self",
+      "effect_params": {
+        "amount": -1
+      },
+      "effect_chain": [
+        {
+          "key": "cant_attack_next_turn",
+          "params": {}
+        }
+      ]
     }
   ],
   "rarity": "Uncommon"

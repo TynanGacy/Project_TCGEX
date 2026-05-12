@@ -17,7 +17,11 @@
       "base_damage": 50,
       "text": "The Defending Pokémon is now Asleep.",
       "cost_water": 2,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "ASLEEP"
+      }
     }
   ],
   "rarity": "Rare Holo"

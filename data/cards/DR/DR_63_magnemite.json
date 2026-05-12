@@ -16,7 +16,11 @@
       "name": "Thundershock",
       "base_damage": 10,
       "text": "Flip a coin. If heads, the Defending Pokémon is now Paralyzed.",
-      "cost_lightning": 1
+      "cost_lightning": 1,
+      "effect_key": "coin_status",
+      "effect_params": {
+        "condition": "PARALYZED"
+      }
     }
   ],
   "rarity": "Common"

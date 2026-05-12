@@ -22,7 +22,11 @@
       "name": "Poison Barb",
       "base_damage": 0,
       "text": "The Defending Pokémon is now Poisoned.",
-      "cost_grass": 1
+      "cost_grass": 1,
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "POISONED"
+      }
     }
   ],
   "rarity": "Common"
