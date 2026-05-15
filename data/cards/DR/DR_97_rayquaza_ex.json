@@ -25,10 +25,15 @@
     },
     {
       "name": "Dragon Burst",
-      "base_damage": 40,
+      "base_damage": 0,
       "text": "Discard either all Fire Energy or all Lightning Energy attached to Rayquaza ex. This attack does 40 damage times the amount of Fire or Lightning Energy discarded.",
       "cost_fire": 1,
-      "cost_lightning": 1
+      "cost_lightning": 1,
+      "effect_key": "discard_all_of_chosen_type",
+      "effect_params": {
+        "types": ["FIRE", "LIGHTNING"],
+        "damage_per_discard": 40
+      }
     }
   ],
   "rarity": "Rare Holo EX"

@@ -28,7 +28,9 @@
       "name": "Backspin",
       "base_damage": 40,
       "text": "After your attack, you may discard 1 Energy card attached to Forretress. If you do, switch Forretress with 1 of your Benched Pokémon.",
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "may_discard_then_switch",
+      "effect_params": {}
     }
   ],
   "rarity": "Uncommon"

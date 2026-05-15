@@ -16,7 +16,9 @@
       "name": "Scam",
       "base_damage": 0,
       "text": "Look at your opponent's hand. You may have your opponent shuffle a Supporter card you find there into his or her deck. If you do, your opponent draws a card.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "look_then_may_shuffle_opp_supporter_draw_one",
+      "effect_params": {}
     },
     {
       "name": "Metal Hook",

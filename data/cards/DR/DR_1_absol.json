@@ -16,7 +16,12 @@
       "name": "Bad News",
       "base_damage": 0,
       "text": "If the number of cards in your opponent's hand is at least 6, choose a number of cards there, without looking, until your opponent has 5 cards left. Have your opponent discard the cards you chose.",
-      "cost_darkness": 1
+      "cost_darkness": 1,
+      "effect_key": "pick_blind_from_opp_hand_to_discard_until",
+      "effect_params": {
+        "threshold": 6,
+        "target_size": 5
+      }
     },
     {
       "name": "Prize Count",

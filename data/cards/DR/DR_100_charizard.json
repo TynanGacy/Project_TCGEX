@@ -30,7 +30,9 @@
       "base_damage": 60,
       "text": "You may discard a Fire Energy card attached to Charizard. If you do, choose 1 of your opponent's Benched Pokémon and do 30 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_fire": 1,
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "flame_pillar",
+      "effect_params": {}
     }
   ],
   "rarity": "Rare Secret"

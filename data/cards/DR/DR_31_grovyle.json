@@ -17,7 +17,13 @@
       "base_damage": 10,
       "text": "Flip 4 coins. If all of them are heads, this attack does 10 damage plus 60 more damage. If not, this attack does 10 damage plus 10 more damage for each heads.",
       "cost_grass": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_flips_branch_bonus",
+      "effect_params": {
+        "coin_count": 4,
+        "per_head": 10,
+        "all_heads_bonus": 60
+      }
     }
   ],
   "rarity": "Uncommon"

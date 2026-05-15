@@ -64,6 +64,13 @@ func place_active(pid: int, card_id: String, opts: Dictionary = {}) -> PokemonIn
 	return place("p%d_active1" % pid, card_id, opts)
 
 
+## Wave 18: places in p[pid]_active2 (second active slot, used in 2-active
+## matches for Fast Stream, Split Blast, and to set up "other defending"
+## scenarios for Repulsion's no-op edge case).
+func place_active2(pid: int, card_id: String, opts: Dictionary = {}) -> PokemonInstance:
+	return place("p%d_active2" % pid, card_id, opts)
+
+
 ## Shorthand: places in the first empty bench slot for [pid].
 func place_bench(pid: int, card_id: String, opts: Dictionary = {}) -> PokemonInstance:
 	var slot := _manager.board_position.first_empty_bench(pid)

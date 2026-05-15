@@ -17,7 +17,12 @@
       "base_damage": 10,
       "text": "Flip 2 coins. This attack does 10 damage times the number of heads. If either of the coins is heads, the Defending Pokémon is now Paralyzed.",
       "cost_water": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_multiply_damage",
+      "effect_params": {
+        "flips": 2,
+        "any_heads_condition": "PARALYZED"
+      }
     }
   ],
   "rarity": "Common"

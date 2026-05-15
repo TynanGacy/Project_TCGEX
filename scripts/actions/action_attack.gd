@@ -46,6 +46,9 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("%s cannot attack this turn." % attacker.card.display_name)
 	if attacker.card == null or attack_index < 0 or attack_index >= attacker.card.attacks.size():
 		return ActionResult.fail("Invalid attack index %d." % attack_index)
+	if attacker.cant_use_attack_indices_until_turn.has(attack_index) \
+			and manager.turn_number <= int(attacker.cant_use_attack_indices_until_turn[attack_index]):
+		return ActionResult.fail("%s cannot use that attack this turn." % attacker.card.display_name)
 
 	var energy_result := _check_energy(attacker, attacker.card.attacks[attack_index])
 	if not energy_result.ok:

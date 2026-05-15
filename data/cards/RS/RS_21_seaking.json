@@ -27,7 +27,9 @@
       "name": "Fast Stream",
       "base_damage": 30,
       "text": "Move 1 Energy card attached to the Defending Pokémon to the other Defending Pokémon. (Ignore this effect if your opponent has only 1 Defending Pokémon.)",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "move_one_energy_between_defenders",
+      "effect_params": {}
     }
   ],
   "rarity": "Rare"

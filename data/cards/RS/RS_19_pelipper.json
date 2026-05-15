@@ -44,7 +44,9 @@
       "base_damage": 20,
       "text": "After your attack, remove from Pelipper the number of damage counters equal to the damage you did to the Defending Pokémon. If Pelipper has fewer damage counters than that, remove all of them.",
       "cost_water": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "heal_self_by_damage_dealt",
+      "effect_params": {}
     }
   ],
   "rarity": "Rare"

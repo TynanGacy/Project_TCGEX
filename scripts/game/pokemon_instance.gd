@@ -53,6 +53,11 @@ var cant_attack_until_turn: int = -1
 var damage_immune_until_turn: int = -1
 var effect_immune_until_turn: int = -1
 
+## Per-attack-index lock (Amnesia). Maps attack index → turn number; this
+## Pokémon's attack at that index is unusable while turn_number <= value.
+## Entries auto-cleared by ManagerSystem._clear_expired_retreat_locks().
+var cant_use_attack_indices_until_turn: Dictionary = {}
+
 ## Wave 9 flags.
 ## next_attack_coin_fail_until_turn — Smokescreen-style. When set, this Pokémon's
 ##   next attack must pass a coin flip; tails = attack does nothing. Auto-clears
@@ -718,6 +723,7 @@ func release_cards() -> Array[CardData]:
 	cant_attack_until_turn = -1
 	damage_immune_until_turn = -1
 	effect_immune_until_turn = -1
+	cant_use_attack_indices_until_turn.clear()
 	next_attack_coin_fail_until_turn = -1
 	damage_reduction_until_turn = -1
 	damage_reduction_amount = 0
