@@ -35,13 +35,112 @@ func resolve_query(response: Variant) -> void:
 	player_query_resolved.emit(response)
 
 
+## Wave 17 — coroutine-friendly helper. Handlers can `await resolver.ask(query)`
+## inline, mirroring TrainerResolver.ask. Emits player_query_requested and
+## awaits the matching resolved signal. Tests connect to the signal directly
+## via _auto_answer_query / _auto_answer_queries; the live UI routes through
+## DialogManager.on_attack_query_requested.
+func ask(query: AttackQuery) -> Variant:
+	player_query_requested.emit(query)
+	return await player_query_resolved
+
+
+## Wave 19 — invoke a Pokémon attack from a card OTHER than attacker.card
+## (used by Genetic Memory to call attacks of prior-stage cards). Cost is
+## waived; the parent attack already paid. Single-level nesting only —
+## guarded by ctx.sub_attack_depth.
+func invoke_sub_attack(ctx: AttackContext, sub_card: PokemonCardData,
+		sub_attack_index: int) -> void:
+	if ctx.sub_attack_depth > 0:
+		return
+	if sub_card == null or sub_attack_index < 0 \
+			or sub_attack_index >= sub_card.attacks.size():
+		return
+	var sub: AttackData = sub_card.attacks[sub_attack_index]
+	if sub == null:
+		return
+	ctx.sub_attack_depth += 1
+	# Build an action that targets the same defender as the parent attack.
+	var sub_action := ActionAttack.new(ctx.player_id, ctx.attacker_slot,
+		sub_attack_index, ctx.target_slot)
+	# Bypass the re-entrancy assert by running with is_sub_attack=true.
+	await begin_attack_with_attack(sub_action, ctx.manager, sub, {
+		"is_sub_attack": true,
+		"skip_conditionals_gate": true,
+	})
+	ctx.sub_attack_depth -= 1
+
+
+## Wave 19 — invoke a Trainer (Supporter) effect from within an attack.
+## Used by Sableye Supernatural to "use the effect of a Supporter card you
+## find in your opponent's hand". Translates AttackContext → TrainerContext,
+## sets the `invoked_inline` sentinel, then dispatches APPLY + POST_APPLY
+## through the existing TrainerEffectRegistry. Skips VALIDATE entirely —
+## the caller has already decided to play this effect; running VALIDATE
+## could fail on conditions like supporter_played_this_turn that don't
+## apply when invoked inline.
+##
+## Does NOT remove the supporter from opp's hand (caller's responsibility)
+## and does NOT set supporter_played_this_turn (per design: Supernatural
+## should not consume the attacker's once-per-turn supporter slot).
+func invoke_trainer_effect_inline(effect_key: String, ctx: AttackContext,
+		card: TrainerCardData) -> void:
+	if effect_key == "":
+		return
+	if not TrainerEffectRegistry.has_definition(effect_key):
+		return
+	var tctx := TrainerContext.new()
+	tctx.manager = ctx.manager
+	tctx.player_id = ctx.player_id
+	tctx.card = card
+	if card != null and card.effect_params != null:
+		tctx.params = card.effect_params.duplicate(true)
+	tctx.params["invoked_inline"] = true
+	# Run PROMPT if present — supporter may need a query.
+	var query: TrainerQuery = TrainerEffectRegistry.get_query(effect_key, tctx)
+	if query != null:
+		ctx.manager.trainer_resolver.player_query_requested.emit(query)
+		tctx.query_response = await ctx.manager.trainer_resolver.player_query_resolved
+	var def = TrainerEffectRegistry._definitions[effect_key]
+	if def.phase_handlers.has(TrainerResolver.Phase.APPLY):
+		await def.phase_handlers[TrainerResolver.Phase.APPLY].call(tctx)
+	if def.phase_handlers.has(TrainerResolver.Phase.POST_APPLY):
+		await def.phase_handlers[TrainerResolver.Phase.POST_APPLY].call(tctx)
+
+
 func begin_attack(action, manager) -> void:
-	assert(not _is_resolving, "AttackResolver: re-entrant call")
-	_is_resolving = true
+	## Thin wrapper around begin_attack_with_attack. Resolves the AttackData
+	## from the attacker's card by attack_index — the standard path used by
+	## ActionAttack. Wave 19's invoke_sub_attack uses begin_attack_with_attack
+	## directly with an explicit AttackData override and opts.
+	var attacker: PokemonInstance = manager.board_position.get_instance(action.attacker_slot)
+	var attack: AttackData = attacker.card.attacks[action.attack_index]
+	await begin_attack_with_attack(action, manager, attack, {})
+
+
+## Wave 18: extracted resolver body. Accepts an explicit AttackData so callers
+## (e.g. Wave 19's invoke_sub_attack for Genetic Memory) can supply an attack
+## from a card OTHER than attacker.card.
+##
+## opts keys:
+##   "skip_conditionals_gate": bool — when true, bypasses smokescreen +
+##       confusion gates at the top of the pipeline. Used for sub-attacks
+##       so conditions on the parent attacker are checked once, not nested.
+##   "is_sub_attack": bool — when true, signals a nested invocation; the
+##       caller is responsible for managing _is_resolving / sub_attack_depth.
+##       In this mode the assert(not _is_resolving) is suppressed, the
+##       declaration step is suppressed (attack_used_this_turn already set
+##       by the parent), and pipeline_completed is NOT emitted at the end
+##       (the parent pipeline emits its own).
+func begin_attack_with_attack(action, manager, attack: AttackData, opts: Dictionary = {}) -> void:
+	var is_sub: bool = bool(opts.get("is_sub_attack", false))
+	var skip_cond: bool = bool(opts.get("skip_conditionals_gate", false))
+	if not is_sub:
+		assert(not _is_resolving, "AttackResolver: re-entrant call")
+		_is_resolving = true
 
 	var attacker: PokemonInstance = manager.board_position.get_instance(action.attacker_slot)
 	var target: PokemonInstance   = manager.board_position.get_instance(action.target_slot)
-	var attack: AttackData        = attacker.card.attacks[action.attack_index]
 
 	var ctx := AttackContext.new()
 	ctx.manager       = manager
@@ -55,7 +154,8 @@ func begin_attack(action, manager) -> void:
 	ctx.bonus_damage  = 0
 
 	## Step 2: Declare — lock in the attack.
-	manager.attack_used_this_turn[action.player_id] = true
+	if not is_sub:
+		manager.attack_used_this_turn[action.player_id] = true
 
 	## Step 3: Conditionals — confusion first, then effect-based conditionals.
 	ctx.current_phase = Phase.CONDITIONALS
@@ -63,7 +163,8 @@ func begin_attack(action, manager) -> void:
 	## Smokescreen-style coin gate. If the attacker has a pending
 	## next-attack-coin-fail flag, flip a coin; tails blocks the attack.
 	## Flag is one-shot — cleared on first trigger regardless of outcome.
-	if attacker.next_attack_coin_fail_until_turn != -1 \
+	## Wave 19: sub-attacks skip this gate (parent already paid for it).
+	if not skip_cond and attacker.next_attack_coin_fail_until_turn != -1 \
 			and manager.turn_number <= attacker.next_attack_coin_fail_until_turn:
 		var sname: String = attacker.card.display_name if attacker.card != null else "Pokémon"
 		var passed: bool = manager.flip_coin("%s smokescreen" % sname)
@@ -73,12 +174,13 @@ func begin_attack(action, manager) -> void:
 			manager.log_message.emit(
 				"[Smokescreen] %s's attack does nothing (tails)." % sname
 			)
-			_is_resolving = false
-			pipeline_completed.emit()
+			if not is_sub:
+				_is_resolving = false
+				pipeline_completed.emit()
 			return
 		await _wait_for_animations()
 
-	if attacker.special_conditions.has(PokemonInstance.SpecialCondition.CONFUSED):
+	if not skip_cond and attacker.special_conditions.has(PokemonInstance.SpecialCondition.CONFUSED):
 		var pname: String = attacker.card.display_name if attacker.card != null else "Pokémon"
 		if not manager.flip_coin("%s confusion" % pname):
 			await _wait_for_animations()
@@ -89,11 +191,12 @@ func begin_attack(action, manager) -> void:
 			manager.pokemon_state_changed.emit(action.attacker_slot, attacker)
 			if attacker.is_knocked_out():
 				manager.resolve_knockout(action.attacker_slot, 1 - action.player_id)
-			_is_resolving = false
-			pipeline_completed.emit()
+			if not is_sub:
+				_is_resolving = false
+				pipeline_completed.emit()
 			return
 		await _wait_for_animations()
-	EffectRegistry.dispatch_phase_for_attack(attack, Phase.CONDITIONALS, ctx, ctx.effect_queue)
+	await EffectRegistry.dispatch_phase_for_attack(attack, Phase.CONDITIONALS, ctx, ctx.effect_queue)
 	await _wait_for_animations()
 
 	## Tier-3 multi-turn defender immunity: if the primary target has an active
@@ -115,7 +218,7 @@ func begin_attack(action, manager) -> void:
 
 	## Step 4: Pre-damage effects.
 	ctx.current_phase = Phase.PRE_DAMAGE_EFFECTS
-	EffectRegistry.dispatch_phase_for_attack(attack, Phase.PRE_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
+	await EffectRegistry.dispatch_phase_for_attack(attack, Phase.PRE_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
 	await _wait_for_animations()
 
 	## Execute any PRE_DAMAGE-category effects inline so they (and their queries)
@@ -136,7 +239,7 @@ func begin_attack(action, manager) -> void:
 
 	## Step 5: Damage calculation.
 	ctx.current_phase = Phase.DAMAGE_CALC
-	EffectRegistry.dispatch_phase_for_attack(attack, Phase.DAMAGE_CALC, ctx, ctx.effect_queue)
+	await EffectRegistry.dispatch_phase_for_attack(attack, Phase.DAMAGE_CALC, ctx, ctx.effect_queue)
 	await _wait_for_animations()
 
 	## Execute attacker modifiers immediately so bonus_damage is ready for W/R.
@@ -163,9 +266,12 @@ func begin_attack(action, manager) -> void:
 	_execute_category(ctx, QueuedEffect.Category.DEFENDER_MODIFIER)
 
 	## Step 5d: Queue damage entries.
+	## Wave 18: ctx.force_hit_each_defending lets DAMAGE_CALC handlers (e.g.
+	## may_split_damage_each / Split Blast) escalate a single-target attack
+	## into all-defending after a player confirms.
 	var opp_id: int = 1 - action.player_id
 	var hit_slots: Array[String] = []
-	if attack.hits_each_defending:
+	if attack.hits_each_defending or ctx.force_hit_each_defending:
 		for s in BoardPosition.ACTIVE_SLOTS:
 			var sid := "p%d_%s" % [opp_id, s]
 			if not manager.board_position.is_empty(sid):
@@ -202,7 +308,7 @@ func begin_attack(action, manager) -> void:
 
 	## Step 6: Post-damage effects.
 	ctx.current_phase = Phase.POST_DAMAGE_EFFECTS
-	EffectRegistry.dispatch_phase_for_attack(attack, Phase.POST_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
+	await EffectRegistry.dispatch_phase_for_attack(attack, Phase.POST_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
 	await _wait_for_animations()
 
 	## Step 7: Nullification (placeholder — no abilities implemented yet).
@@ -239,8 +345,9 @@ func begin_attack(action, manager) -> void:
 	ctx.run_post_actions()
 	manager.flush_deferred_effects()
 
-	_is_resolving = false
-	pipeline_completed.emit()
+	if not is_sub:
+		_is_resolving = false
+		pipeline_completed.emit()
 
 
 ## Waits for all queued animations to finish.  No-op if AnimationManager

@@ -46,6 +46,26 @@ var _post_actions: Array[Callable] = []
 ## Populated by AttackResolver when a needs_query QueuedEffect is about to execute.
 var _query_response: Variant = null
 
+## Wave 17 — track energy cards discarded during this attack's resolution.
+## Appended by discard_energy / discard_energy_self / Lava Flow / Dragon Burst.
+## Chained bonus-damage steps read .size() to scale damage by discard count.
+var discarded_this_attack: Array[CardData] = []
+
+## Wave 17 — opaque string flags handlers can set/check across chain entries.
+## E.g. Flame Pillar's may_discard_for_bonus sets a flag the chained
+## damage_chosen_target reads to gate the bench damage on whether discard happened.
+var attack_flags: Dictionary = {}
+
+## Wave 18 — when true, the resolver's hit-slot loop iterates all defender
+## ACTIVE_SLOTS even if attack.hits_each_defending is false. Used by
+## may_split_damage_each (Split Blast) to convert a single-target attack into
+## an all-defending split at DAMAGE_CALC time.
+var force_hit_each_defending: bool = false
+
+## Wave 19 — single-level guard for sub-attack invocation (Genetic Memory).
+## invoke_sub_attack increments before nesting and decrements after.
+var sub_attack_depth: int = 0
+
 
 ## Queue [fn] to run after damage is applied and KO is resolved.
 ## Use this for status conditions, bench damage, energy discards, etc.

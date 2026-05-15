@@ -16,7 +16,11 @@
       "name": "Quick Touch",
       "base_damage": 30,
       "text": "You may switch Ninjask with 1 of your Benched Pokémon. If you do, you may move any number of Grass Energy cards attached to Ninjask to the new Active Pokémon.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "may_switch_self_then_move_energy",
+      "effect_params": {
+        "energy_type": "GRASS"
+      }
     }
   ],
   "rarity": "Rare"

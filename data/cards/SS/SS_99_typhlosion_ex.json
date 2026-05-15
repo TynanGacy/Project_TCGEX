@@ -23,10 +23,21 @@
     },
     {
       "name": "Split Blast",
-      "base_damage": 100,
+      "base_damage": 0,
       "text": "Discard 1 Energy card attached to Typhlosion ex. If your opponent has more than 1 Defending Pokémon, you may do 50 damage to each of them instead.",
       "cost_fire": 3,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "may_split_damage_each",
+      "effect_params": {
+        "full": 100,
+        "split": 50
+      },
+      "effect_chain": [
+        {
+          "key": "discard_energy",
+          "params": {"type": "ANY", "count": 1}
+        }
+      ]
     }
   ],
   "rarity": "Rare Holo EX"

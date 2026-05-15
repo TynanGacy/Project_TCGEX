@@ -190,6 +190,8 @@ func _ready() -> void:
 	manager.retreat_energy_choice_required.connect(_on_retreat_energy_choice_required)
 	if manager.trainer_resolver != null:
 		manager.trainer_resolver.player_query_requested.connect(_on_trainer_query_requested)
+	if manager.attack_resolver != null:
+		manager.attack_resolver.player_query_requested.connect(_on_attack_query_requested)
 
 	_dialog_mgr.init(self)
 	_input_mgr.init(self)
@@ -485,6 +487,10 @@ func _on_retreat_energy_choice_required(
 
 func _on_trainer_query_requested(query: TrainerQuery) -> void:
 	_dialog_mgr.on_trainer_query_requested(query)
+
+
+func _on_attack_query_requested(query: AttackQuery) -> void:
+	_dialog_mgr.on_attack_query_requested(query)
 
 
 ## ---------------------------------------------------------------------------

@@ -25,7 +25,11 @@
       "base_damage": 40,
       "text": "You may discard any number of basic Energy cards attached to Magcargo ex when you use this attack. If you do, this attack does 40 damage plus 20 more damage for each basic Energy card you discarded.",
       "cost_fire": 2,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "discard_basic_energy_for_bonus_each",
+      "effect_params": {
+        "bonus_per_discard": 20
+      }
     }
   ],
   "rarity": "Rare Holo EX"

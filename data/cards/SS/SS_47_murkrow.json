@@ -16,7 +16,9 @@
       "name": "Surprise",
       "base_damage": 0,
       "text": "Choose 1 card from your opponent's hand without looking. Look at the card you chose, then have your opponent shuffle that card into his or her deck.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "look_take_shuffle_one_from_opp_hand",
+      "effect_params": {}
     },
     {
       "name": "Dark Mind",

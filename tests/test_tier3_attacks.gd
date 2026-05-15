@@ -3761,3 +3761,415 @@ func test_json_lileep_influence() -> void:
 	var bench1: PokemonInstance = mgr.board_position.get_instance("p0_bench1")
 	assert_not_null(bench1, "bench1 occupied")
 	assert_eq(bench1.card.name_slug, "anorith", "anorith placed on bench")
+
+
+## ──────────────────────────────────────────────────────────────────────────
+## Wave 16: 5 "Easy" attacks finishing the Pokémon attack roster
+##   - RS_19 Pelipper Swallow            (heal_self_by_damage_dealt JSON wire)
+##   - SS_54 Wynaut Alluring Smile       (search_deck_to_hand count_basis)
+##   - SS_42 Lileep Time Spiral          (devolve_one_with_query, new handler)
+##   - DR_28 Forretress Backspin         (may_discard_then_switch, new handler)
+##   - SS_43 Lileep Amnesia              (defender_lock_attack, new handler + flag)
+## ──────────────────────────────────────────────────────────────────────────
+
+
+## ── search_deck_to_hand count_basis="energy_attached_attacker" ────────────
+
+## Energy-scaling pull-count: 1 energy attached → 1 card from deck.
+func test_search_deck_count_basis_energy_attached_one() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon",
+		{"energy": ["RS_106_water_energy"]})
+	b.place_active(1, "DR_5_golem", {"hp": 120})
+	b.set_prizes(0); b.set_prizes(1)
+	mgr.game_position.decks[0].clear()
+	mgr.game_position.decks[0].append(_lib.get_card("DR_49_bagon"))
+	mgr.game_position.decks[0].append(_lib.get_card("RS_108_fire_energy"))  # filtered out
+	_set_attack(att, 0, "search_deck_to_hand",
+		{"count_basis": "energy_attached_attacker", "filter": "pokemon"})
+	var hand_before: int = mgr.game_position.hands[0].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	assert_eq(mgr.game_position.hands[0].size(), hand_before + 1,
+		"1 energy attached → 1 pokemon pulled")
+
+
+## Energy-scaling pull-count: 3 energy attached → 3 cards from deck.
+func test_search_deck_count_basis_energy_attached_three() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon",
+		{"energy": ["RS_106_water_energy", "RS_106_water_energy",
+					"RS_106_water_energy"]})
+	b.place_active(1, "DR_5_golem", {"hp": 120})
+	b.set_prizes(0); b.set_prizes(1)
+	mgr.game_position.decks[0].clear()
+	for _i in range(5):
+		mgr.game_position.decks[0].append(_lib.get_card("DR_49_bagon"))
+	_set_attack(att, 0, "search_deck_to_hand",
+		{"count_basis": "energy_attached_attacker", "filter": "pokemon"})
+	var hand_before: int = mgr.game_position.hands[0].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	assert_eq(mgr.game_position.hands[0].size(), hand_before + 3,
+		"3 energy attached → 3 pokemon pulled")
+
+
+## Energy-scaling pull-count: 0 energy → no-op (still resolves cleanly).
+func test_search_deck_count_basis_energy_attached_zero() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon", {})  # no energy
+	b.place_active(1, "DR_5_golem", {"hp": 120})
+	b.set_prizes(0); b.set_prizes(1)
+	mgr.game_position.decks[0].clear()
+	mgr.game_position.decks[0].append(_lib.get_card("DR_49_bagon"))
+	_set_attack(att, 0, "search_deck_to_hand",
+		{"count_basis": "energy_attached_attacker", "filter": "pokemon"})
+	var hand_before: int = mgr.game_position.hands[0].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	assert_eq(mgr.game_position.hands[0].size(), hand_before,
+		"0 energy → 0 cards pulled")
+
+
+## SS_54 Wynaut Alluring Smile JSON wiring — 1 PSYCHIC attached, pulls 1.
+func test_json_wynaut_alluring_smile() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "SS_54_wynaut",
+		{"energy": ["RS_107_psychic_energy"]})
+	b.place_active(1, "DR_5_golem", {"hp": 120})
+	b.set_prizes(0); b.set_prizes(1)
+	mgr.game_position.decks[0].clear()
+	mgr.game_position.decks[0].append(_lib.get_card("DR_49_bagon"))
+	mgr.game_position.decks[0].append(_lib.get_card("RS_108_fire_energy"))
+	var hand_before: int = mgr.game_position.hands[0].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok, "Alluring Smile should resolve")
+	assert_eq(mgr.game_position.hands[0].size(), hand_before + 1,
+		"1 energy → 1 Pokémon card searched")
+
+
+## ── devolve_one_with_query — Time Spiral ─────────────────────────────────
+
+## Heads coin → opp Stage 1 active devolves; card returns to deck.
+func test_devolve_one_with_query_heads_active() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon", {})
+	var tgt := b.place_active(1, "DR_41_shelgon", {"hp": 70})
+	tgt.prior_stages.append(_lib.get_card("DR_49_bagon"))
+	b.set_prizes(0); b.set_prizes(1)
+	mgr.push_forced_flips([true])
+	_set_attack(att, 0, "devolve_one_with_query", {})
+	var deck_before: int = mgr.game_position.decks[1].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	var t2: PokemonInstance = mgr.board_position.get_instance("p1_active1")
+	assert_eq(t2.card.name_slug, "bagon", "active devolved to bagon")
+	assert_eq(mgr.game_position.decks[1].size(), deck_before + 1,
+		"shelgon card returned to opp deck")
+
+
+## Tails coin → no devolution.
+func test_devolve_one_with_query_tails_noop() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon", {})
+	var tgt := b.place_active(1, "DR_41_shelgon", {"hp": 70})
+	tgt.prior_stages.append(_lib.get_card("DR_49_bagon"))
+	b.set_prizes(0); b.set_prizes(1)
+	mgr.push_forced_flips([false])
+	_set_attack(att, 0, "devolve_one_with_query", {})
+	var deck_before: int = mgr.game_position.decks[1].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	var t2: PokemonInstance = mgr.board_position.get_instance("p1_active1")
+	assert_eq(t2.card.name_slug, "shelgon", "tails → defender unchanged")
+	assert_eq(mgr.game_position.decks[1].size(), deck_before, "no deck additions")
+
+
+## No evolved opp Pokémon → no flip needed, no-op, no error.
+func test_devolve_one_with_query_no_evolved_noop() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon", {})
+	var tgt := b.place_active(1, "DR_49_bagon", {})  # basic, not evolved
+	b.set_prizes(0); b.set_prizes(1)
+	_set_attack(att, 0, "devolve_one_with_query", {})
+	# No forced flip — handler should NOT consume one when no targets exist.
+	var deck_before: int = mgr.game_position.decks[1].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	var t2: PokemonInstance = mgr.board_position.get_instance("p1_active1")
+	assert_eq(t2.card.name_slug, "bagon", "basic stays a basic")
+	assert_eq(mgr.game_position.decks[1].size(), deck_before, "no devolve, no deck add")
+
+
+## SS_42 Lileep Time Spiral JSON wiring — heads devolves opp Stage 1.
+func test_json_lileep_time_spiral() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	# Time Spiral costs 2 colorless (attack index 1).
+	var att := b.place_active(0, "SS_42_lileep",
+		{"energy": ["RS_104_grass_energy", "RS_104_grass_energy"]})
+	var tgt := b.place_active(1, "DR_41_shelgon", {"hp": 70})
+	tgt.prior_stages.append(_lib.get_card("DR_49_bagon"))
+	b.set_prizes(0); b.set_prizes(1)
+	mgr.push_forced_flips([true])
+	var deck_before: int = mgr.game_position.decks[1].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 1, "p1_active1"))  # Time Spiral idx 1
+	assert_true(r.ok, "Time Spiral should resolve")
+	var t2: PokemonInstance = mgr.board_position.get_instance("p1_active1")
+	assert_eq(t2.card.name_slug, "bagon", "shelgon devolved to bagon")
+	assert_eq(mgr.game_position.decks[1].size(), deck_before + 1,
+		"removed card returned to opp deck")
+
+
+## ── may_discard_then_switch — Backspin ───────────────────────────────────
+
+## Normal case: 1 energy on attacker + bench occupant → discards + swaps.
+func test_may_discard_then_switch_normal() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon",
+		{"energy": ["RS_104_grass_energy"]})
+	var bn := b.place_bench(0, "DR_5_golem", {"hp": 120})
+	b.place_active(1, "DR_5_golem", {"hp": 120})
+	b.set_prizes(0); b.set_prizes(1)
+	_set_attack(att, 0, "may_discard_then_switch", {})
+	var discard_before: int = mgr.game_position.discards[0].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	var new_active: PokemonInstance = mgr.board_position.get_instance("p0_active1")
+	var new_bench: PokemonInstance = mgr.board_position.get_instance("p0_bench1")
+	assert_eq(new_active.card.card_id, bn.card.card_id, "bench Pokémon promoted")
+	assert_eq(new_bench.card.card_id, att.card.card_id, "old active sent to bench")
+	assert_eq(new_bench.attached_energy.size(), 0, "energy discarded from attacker")
+	assert_eq(mgr.game_position.discards[0].size(), discard_before + 1,
+		"1 energy entered discard")
+
+
+## No energy on attacker → no-op (no discard, no switch).
+func test_may_discard_then_switch_no_energy() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon", {})  # no energy
+	b.place_bench(0, "DR_5_golem", {"hp": 120})
+	b.place_active(1, "DR_5_golem", {"hp": 120})
+	b.set_prizes(0); b.set_prizes(1)
+	_set_attack(att, 0, "may_discard_then_switch", {})
+	var discard_before: int = mgr.game_position.discards[0].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	var still: PokemonInstance = mgr.board_position.get_instance("p0_active1")
+	assert_eq(still.card.card_id, att.card.card_id, "attacker stays put")
+	assert_eq(mgr.game_position.discards[0].size(), discard_before, "no discard")
+
+
+## Empty bench → no-op (no discard, no switch).
+func test_may_discard_then_switch_no_bench() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon",
+		{"energy": ["RS_104_grass_energy"]})
+	b.place_active(1, "DR_5_golem", {"hp": 120})
+	b.set_prizes(0); b.set_prizes(1)
+	_set_attack(att, 0, "may_discard_then_switch", {})
+	var discard_before: int = mgr.game_position.discards[0].size()
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	var still: PokemonInstance = mgr.board_position.get_instance("p0_active1")
+	assert_eq(still.card.card_id, att.card.card_id, "attacker stays put — no bench")
+	assert_eq(still.attached_energy.size(), 1, "energy NOT discarded when switch fails")
+	assert_eq(mgr.game_position.discards[0].size(), discard_before, "no discard")
+
+
+## DR_28 Forretress Backspin JSON wiring — 40 damage + discard + switch.
+func test_json_forretress_backspin() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	# Backspin costs 3 colorless (attack index 1).
+	var att := b.place_active(0, "DR_28_forretress",
+		{"energy": ["RS_104_grass_energy", "RS_104_grass_energy",
+					"RS_104_grass_energy"]})
+	var bn := b.place_bench(0, "DR_5_golem", {"hp": 120})
+	var tgt := b.place_active(1, "DR_5_golem", {"hp": 120})
+	b.set_prizes(0); b.set_prizes(1)
+	var hp_before := tgt.current_hp
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 1, "p1_active1"))  # Backspin idx 1
+	assert_true(r.ok, "Backspin should resolve")
+	var t2: PokemonInstance = mgr.board_position.get_instance("p1_active1")
+	assert_eq(hp_before - t2.current_hp, 40, "Backspin base 40 damage")
+	var new_active: PokemonInstance = mgr.board_position.get_instance("p0_active1")
+	assert_eq(new_active.card.card_id, bn.card.card_id, "Forretress swapped with bench")
+
+
+## ── defender_lock_attack — Amnesia ───────────────────────────────────────
+
+## Two-attack defender: highest-base-damage attack gets locked.
+func test_defender_lock_picks_highest_damage_attack() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var att := b.place_active(0, "DR_49_bagon", {})
+	# DR_5_golem has multiple attacks; ensure target HAS >1 attacks.
+	var tgt := b.place_active(1, "DR_5_golem", {"hp": 120})
+	assert_true(tgt.card.attacks.size() >= 2,
+		"test target must have >=2 attacks for the lock to be observable")
+	b.set_prizes(0); b.set_prizes(1)
+	_set_attack(att, 0, "defender_lock_attack", {})
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok)
+	# Independently compute the expected pick: highest base_damage, tie → higher idx.
+	var expected_idx: int = 0
+	var best_dmg: int = -1
+	for i in range(tgt.card.attacks.size()):
+		var a: AttackData = tgt.card.attacks[i]
+		if a == null: continue
+		if a.base_damage >= best_dmg:
+			best_dmg = a.base_damage
+			expected_idx = i
+	var t2: PokemonInstance = mgr.board_position.get_instance("p1_active1")
+	assert_true(t2.cant_use_attack_indices_until_turn.has(expected_idx),
+		"highest-damage attack index should be locked")
+	assert_eq(int(t2.cant_use_attack_indices_until_turn[expected_idx]),
+		mgr.turn_number + 1, "lock expiry = turn_number + 1")
+
+
+## ActionAttack rejects use of a locked attack on the defender's next turn.
+func test_locked_attack_blocks_action_attack() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(1)
+	var defender := b.place_active(1, "DR_5_golem", {"hp": 120})
+	# Find a real attack index that has cost golem can pay with 9 colorless-ish energy.
+	# Easier: clear all costs on attack[0] and lock attack[0].
+	var locked_idx: int = 0
+	defender.card.attacks[locked_idx].cost_colorless = 0
+	defender.card.attacks[locked_idx].cost_fire = 0
+	defender.card.attacks[locked_idx].cost_water = 0
+	defender.card.attacks[locked_idx].cost_grass = 0
+	defender.card.attacks[locked_idx].cost_lightning = 0
+	defender.card.attacks[locked_idx].cost_psychic = 0
+	defender.card.attacks[locked_idx].cost_fighting = 0
+	defender.card.attacks[locked_idx].cost_darkness = 0
+	defender.card.attacks[locked_idx].cost_metal = 0
+	b.place_active(0, "DR_49_bagon", {"hp": 60})
+	b.set_prizes(0); b.set_prizes(1)
+	defender.cant_use_attack_indices_until_turn[locked_idx] = mgr.turn_number + 1
+	# Defender (p1) tries to use the locked attack this turn → expect failure.
+	mgr.turn_number = mgr.turn_number + 1  # advance to a turn within the lock window
+	mgr.current_player = 1
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(1, "p1_active1", locked_idx, "p0_active1"))
+	assert_false(r.ok, "locked attack should be rejected")
+
+
+## Lock auto-clears after the lock window passes.
+func test_locked_attack_clears_after_expiry() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0, 3)
+	var defender := b.place_active(1, "DR_5_golem", {"hp": 120})
+	defender.cant_use_attack_indices_until_turn[0] = 4
+	mgr.turn_number = 5
+	mgr._clear_expired_retreat_locks()
+	assert_false(defender.cant_use_attack_indices_until_turn.has(0),
+		"lock cleared once turn_number > expiry")
+
+
+## Lock does NOT clear too early (boundary at exactly expiry turn).
+func test_locked_attack_holds_at_expiry_turn() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0, 3)
+	var defender := b.place_active(1, "DR_5_golem", {"hp": 120})
+	defender.cant_use_attack_indices_until_turn[0] = 4
+	mgr.turn_number = 4  # exactly the expiry
+	mgr._clear_expired_retreat_locks()
+	assert_true(defender.cant_use_attack_indices_until_turn.has(0),
+		"lock still active while turn_number <= expiry")
+
+
+## release_cards (KO cleanup) clears the lock dictionary.
+func test_release_cards_clears_attack_lock() -> void:
+	var b := _make_builder()
+	var _mgr: ManagerSystem = b._manager
+	var inst := b.place_active(1, "DR_5_golem", {"hp": 120})
+	inst.cant_use_attack_indices_until_turn[0] = 99
+	inst.release_cards()
+	assert_true(inst.cant_use_attack_indices_until_turn.is_empty(),
+		"release_cards must clear the lock dictionary")
+
+
+## SS_43 Lileep Amnesia JSON wiring — locks defender's highest-damage attack.
+func test_json_lileep_amnesia() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	# Amnesia costs 2 colorless (attack index 0).
+	var att := b.place_active(0, "SS_43_lileep",
+		{"energy": ["RS_104_grass_energy", "RS_104_grass_energy"]})
+	var tgt := b.place_active(1, "DR_5_golem", {"hp": 120})
+	assert_true(tgt.card.attacks.size() >= 2, "golem must have >=2 attacks")
+	b.set_prizes(0); b.set_prizes(1)
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1"))
+	assert_true(r.ok, "Amnesia should resolve")
+	var t2: PokemonInstance = mgr.board_position.get_instance("p1_active1")
+	assert_eq(t2.cant_use_attack_indices_until_turn.size(), 1,
+		"exactly 1 attack index locked")
+
+
+## ── RS_19 Pelipper Swallow JSON wiring ───────────────────────────────────
+
+## Swallow (idx 2): 20 base damage and attacker heals by that amount.
+func test_json_pelipper_swallow_heals() -> void:
+	var b := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	# Swallow costs 1 water + 2 colorless.
+	var att := b.place_active(0, "RS_19_pelipper",
+		{"hp": 30, "energy": ["RS_106_water_energy",
+					 "RS_104_grass_energy", "RS_104_grass_energy"]})
+	var tgt := b.place_active(1, "DR_5_golem", {"hp": 120})
+	b.set_prizes(0); b.set_prizes(1)
+	var hp_attacker_before := att.current_hp
+	var hp_tgt_before := tgt.current_hp
+	var r: ActionResult = await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 2, "p1_active1"))  # Swallow idx 2
+	assert_true(r.ok, "Swallow should resolve")
+	var att2: PokemonInstance = mgr.board_position.get_instance("p0_active1")
+	var tgt2: PokemonInstance = mgr.board_position.get_instance("p1_active1")
+	var damage_dealt: int = hp_tgt_before - tgt2.current_hp
+	assert_true(damage_dealt > 0, "Swallow should deal some damage")
+	assert_eq(att2.current_hp - hp_attacker_before, damage_dealt,
+		"attacker heals by exact damage dealt")

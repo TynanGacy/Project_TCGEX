@@ -16,7 +16,12 @@
       "name": "Alluring Smile",
       "base_damage": 0,
       "text": "Search your deck for a Basic Pokémon card or Evolution card for each Energy attached to Wynaut, show them to your opponent, and put them into your hand. Shuffle your deck afterward.",
-      "cost_psychic": 1
+      "cost_psychic": 1,
+      "effect_key": "search_deck_to_hand",
+      "effect_params": {
+        "count_basis": "energy_attached_attacker",
+        "filter": "pokemon"
+      }
     }
   ],
   "rarity": "Uncommon"

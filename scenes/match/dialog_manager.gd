@@ -1219,6 +1219,492 @@ func _show_top_of_deck_reorder(query: TrainerQuery) -> void:
 	_attack_dialog = panel
 
 
+## ─────────────────────────────────────────────────────────────────────────
+## Wave 17+: attack-side query routing.
+##
+## Mirrors on_trainer_query_requested but resolves through
+## _main.manager.attack_resolver.resolve_query. Wired from match.gd.
+## ─────────────────────────────────────────────────────────────────────────
+
+func on_attack_query_requested(query: AttackQuery) -> void:
+	match query.kind:
+		AttackQuery.Kind.MAY_ABILITY, \
+		AttackQuery.Kind.MAY_CONFIRM, \
+		AttackQuery.Kind.MAY_DISCARD_FOR_BONUS:
+			_show_attack_yesno(query)
+		AttackQuery.Kind.CHOOSE_DISCARD_COUNT, \
+		AttackQuery.Kind.CHOOSE_ENERGY_DISCARD, \
+		AttackQuery.Kind.CHOOSE_ENERGY_FROM_HAND:
+			_show_attack_energy_multi_picker(query)
+		AttackQuery.Kind.CHOOSE_ENERGY_TYPE:
+			_show_attack_energy_type_picker(query)
+		AttackQuery.Kind.CHOOSE_BENCH_TARGET:
+			_show_attack_slot_picker(query)
+		AttackQuery.Kind.GENERIC_CHOICE:
+			_show_attack_generic_choice(query)
+		AttackQuery.Kind.CHOOSE_OPP_HAND_BLIND:
+			_show_opp_hand_blind_picker(query)
+		AttackQuery.Kind.CHOOSE_OPP_HAND_OPEN:
+			_show_opp_hand_open_picker(query)
+		AttackQuery.Kind.CHOOSE_ATTACK_FROM_CARDS:
+			_show_attack_from_cards_picker(query)
+		_:
+			push_warning("DialogManager: unhandled attack query kind %d" % query.kind)
+			_main.manager.attack_resolver.resolve_query(null)
+
+
+## Yes/No prompt — MAY_CONFIRM / MAY_ABILITY / MAY_DISCARD_FOR_BONUS.
+## Sends `true` for Yes, `false` for No.
+func _show_attack_yesno(query: AttackQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.attack_resolver
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(360, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Confirm?"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	var yes := Button.new()
+	yes.text = "Yes"
+	yes.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+		resolver.resolve_query(true)
+	)
+	vbox.add_child(yes)
+
+	var no := Button.new()
+	no.text = "No"
+	no.pressed.connect(func() -> void:
+		panel.queue_free()
+		_attack_dialog = null
+		resolver.resolve_query(false)
+	)
+	vbox.add_child(no)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Slot picker for attack-side CHOOSE_BENCH_TARGET. Returns the chosen slot id.
+## Mirrors _show_pokemon_slot_picker but resolves through attack_resolver.
+func _show_attack_slot_picker(query: AttackQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.attack_resolver
+
+	if query.options.is_empty():
+		resolver.resolve_query(null)
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(360, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Choose a target"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	for sid_variant in query.options:
+		var sid: String = str(sid_variant)
+		var inst: PokemonInstance = _main.manager.board_position.get_instance(sid)
+		var label_text: String
+		if inst == null or inst.card == null:
+			label_text = sid
+		else:
+			label_text = "%s — %s (%d/%d)" % [
+				_slot_label(sid), inst.card.display_name,
+				inst.current_hp, inst.max_hp,
+			]
+		var btn := Button.new()
+		btn.text = label_text
+		var captured_sid := sid
+		btn.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query(captured_sid)
+		)
+		vbox.add_child(btn)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Energy-multi-picker — CHOOSE_DISCARD_COUNT / CHOOSE_ENERGY_DISCARD /
+## CHOOSE_ENERGY_FROM_HAND. query.options is Array[CardData] (energies on
+## attacker or in hand). Confirm enables when count is in [min, max].
+## Returns Array[CardData] of chosen energies.
+func _show_attack_energy_multi_picker(query: AttackQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.attack_resolver
+
+	var max_sel: int = mini(query.max_selections, query.options.size())
+	var min_sel: int = mini(query.min_selections, max_sel)
+	if query.options.is_empty() or max_sel <= 0:
+		resolver.resolve_query([] as Array[CardData])
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(360, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Choose energy"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	var selected: Array[int] = []
+	var confirm_btn := Button.new()
+
+	var update_confirm := func() -> void:
+		confirm_btn.text = "Confirm (%d / %d–%d)" % [selected.size(), min_sel, max_sel]
+		confirm_btn.disabled = selected.size() < min_sel or selected.size() > max_sel
+
+	for i in query.options.size():
+		var card: CardData = query.options[i] as CardData
+		if card == null:
+			continue
+		var cb := CheckBox.new()
+		cb.text = card.display_name
+		var idx := i
+		cb.toggled.connect(func(on: bool) -> void:
+			if on:
+				if not selected.has(idx):
+					selected.append(idx)
+			else:
+				selected.erase(idx)
+			update_confirm.call()
+		)
+		vbox.add_child(cb)
+
+	confirm_btn.pressed.connect(func() -> void:
+		var to_send: Array[CardData] = []
+		for idx in selected:
+			var c: CardData = query.options[idx] as CardData
+			if c != null:
+				to_send.append(c)
+		panel.queue_free()
+		_attack_dialog = null
+		resolver.resolve_query(to_send)
+	)
+	update_confirm.call()
+	vbox.add_child(confirm_btn)
+
+	if min_sel == 0:
+		var cancel := Button.new()
+		cancel.text = "Cancel"
+		cancel.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query([] as Array[CardData])
+		)
+		vbox.add_child(cancel)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Energy-type picker — CHOOSE_ENERGY_TYPE. query.options is Array[String]
+## of type names ("FIRE", "LIGHTNING", ...). Returns the chosen String.
+func _show_attack_energy_type_picker(query: AttackQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.attack_resolver
+
+	if query.options.is_empty():
+		resolver.resolve_query(null)
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(360, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Choose energy type"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	for opt in query.options:
+		var type_name: String = str(opt)
+		var btn := Button.new()
+		btn.text = type_name
+		var captured := type_name
+		btn.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query(captured)
+		)
+		vbox.add_child(btn)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Generic string-choice picker — CHOOSE_ORDER / GENERIC_CHOICE on attack side.
+## Mirrors _show_generic_choice but for attack queries.
+func _show_attack_generic_choice(query: AttackQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.attack_resolver
+	if query.options.is_empty():
+		resolver.resolve_query(null)
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(360, 80)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Choose"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	for opt in query.options:
+		var label_text: String = str(opt)
+		var btn := Button.new()
+		btn.text = label_text
+		var captured: Variant = opt
+		btn.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query(captured)
+		)
+		vbox.add_child(btn)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## ─────────────────────────────────────────────────────────────────────────
+## Wave 19: opp-hand & attack-from-cards pickers.
+## ─────────────────────────────────────────────────────────────────────────
+
+## Blind opp-hand picker — N face-down card-back buttons. Selecting one
+## reveals it to the attacker. Min/max selections from query bounds.
+## query.options is an int (opp hand size) OR Array (the opp hand snapshot).
+## Returns Array[int] of selected indices.
+func _show_opp_hand_blind_picker(query: AttackQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.attack_resolver
+
+	var size: int = 0
+	if not query.options.is_empty():
+		var first: Variant = query.options[0]
+		if first is int:
+			size = int(first)
+		elif first is Array:
+			size = (first as Array).size()
+		else:
+			size = query.options.size()
+	if size <= 0:
+		resolver.resolve_query([] as Array[int])
+		return
+
+	var max_sel: int = mini(query.max_selections, size)
+	var min_sel: int = mini(query.min_selections, max_sel)
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(420, 120)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Pick %d card(s) blindly" % min_sel
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	var row := HBoxContainer.new()
+	vbox.add_child(row)
+
+	var selected: Array[int] = []
+	var buttons: Array[Button] = []
+	var confirm_btn := Button.new()
+
+	var update_confirm := func() -> void:
+		confirm_btn.text = "Confirm (%d / %d–%d)" % [selected.size(), min_sel, max_sel]
+		confirm_btn.disabled = selected.size() < min_sel or selected.size() > max_sel
+
+	for i in size:
+		var btn := Button.new()
+		btn.text = "?"
+		btn.custom_minimum_size = Vector2(36, 56)
+		var idx := i
+		btn.toggle_mode = true
+		btn.toggled.connect(func(on: bool) -> void:
+			if on:
+				if not selected.has(idx):
+					selected.append(idx)
+			else:
+				selected.erase(idx)
+			update_confirm.call()
+		)
+		row.add_child(btn)
+		buttons.append(btn)
+
+	confirm_btn.pressed.connect(func() -> void:
+		var to_send: Array[int] = selected.duplicate()
+		panel.queue_free()
+		_attack_dialog = null
+		resolver.resolve_query(to_send)
+	)
+	update_confirm.call()
+	vbox.add_child(confirm_btn)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Open opp-hand picker — show opp hand as a card grid with checkboxes.
+## query.options is Array[CardData]; query.filter is Dictionary (e.g.
+## {"supporter_only": true}). Returns Array[CardData] of selected cards.
+func _show_opp_hand_open_picker(query: AttackQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.attack_resolver
+
+	if query.options.is_empty():
+		resolver.resolve_query([] as Array[CardData])
+		return
+
+	var supporter_only: bool = bool(query.filter.get("supporter_only", false))
+
+	var max_sel: int = mini(query.max_selections, query.options.size())
+	var min_sel: int = mini(query.min_selections, max_sel)
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(420, 200)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Look at opponent's hand"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	var selected: Array[int] = []
+	var confirm_btn := Button.new()
+
+	var update_confirm := func() -> void:
+		confirm_btn.text = "Confirm (%d / %d–%d)" % [selected.size(), min_sel, max_sel]
+		confirm_btn.disabled = selected.size() < min_sel or selected.size() > max_sel
+
+	for i in query.options.size():
+		var card: CardData = query.options[i] as CardData
+		if card == null:
+			continue
+		var cb := CheckBox.new()
+		var disabled := false
+		if supporter_only:
+			disabled = not _is_supporter(card)
+		cb.text = card.display_name + ("  (Supporter)" if _is_supporter(card) else "")
+		cb.disabled = disabled
+		var idx := i
+		cb.toggled.connect(func(on: bool) -> void:
+			if on:
+				if not selected.has(idx):
+					selected.append(idx)
+			else:
+				selected.erase(idx)
+			update_confirm.call()
+		)
+		vbox.add_child(cb)
+
+	confirm_btn.pressed.connect(func() -> void:
+		var to_send: Array[CardData] = []
+		for idx in selected:
+			var c: CardData = query.options[idx] as CardData
+			if c != null:
+				to_send.append(c)
+		panel.queue_free()
+		_attack_dialog = null
+		resolver.resolve_query(to_send)
+	)
+	update_confirm.call()
+	vbox.add_child(confirm_btn)
+
+	if min_sel == 0:
+		var cancel := Button.new()
+		cancel.text = "Cancel"
+		cancel.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query([] as Array[CardData])
+		)
+		vbox.add_child(cancel)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+## Attack-from-cards picker — vertical list of buttons "Card Name — Attack
+## Name (N dmg)". query.options is Array[Dictionary] with shape
+## {"card": PokemonCardData, "index": int, "label": String}. Returns the
+## chosen dict.
+func _show_attack_from_cards_picker(query: AttackQuery) -> void:
+	if _attack_dialog != null:
+		_attack_dialog.queue_free()
+		_attack_dialog = null
+	var resolver = _main.manager.attack_resolver
+
+	if query.options.is_empty():
+		resolver.resolve_query(null)
+		return
+
+	var panel := MatchUIUtils.make_panel()
+	panel.custom_minimum_size = Vector2(420, 120)
+	var vbox := panel.get_child(0) as VBoxContainer
+
+	var header := Label.new()
+	header.text = query.prompt if query.prompt != "" else "Choose an attack"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(header)
+
+	for opt in query.options:
+		if not (opt is Dictionary):
+			continue
+		var entry: Dictionary = opt
+		var btn := Button.new()
+		btn.text = str(entry.get("label", "?"))
+		var captured := entry
+		btn.pressed.connect(func() -> void:
+			panel.queue_free()
+			_attack_dialog = null
+			resolver.resolve_query(captured)
+		)
+		vbox.add_child(btn)
+
+	_hud.add_child(panel)
+	_attack_dialog = panel
+
+
+static func _is_supporter(card: CardData) -> bool:
+	if not (card is TrainerCardData):
+		return false
+	var tc := card as TrainerCardData
+	return tc.trainer_kind == TrainerCardData.TrainerKind.SUPPORTER
+
+
 ## Pretty-prints a slot id like "p0_active1" → "Active 1".
 static func _slot_label(slot_id: String) -> String:
 	if slot_id.contains("active1"): return "Active 1"

@@ -25,13 +25,17 @@ static func register_simple(key: String, phase: int, handler: Callable) -> void:
 	_definitions[key] = EffectDefinition.single(phase, handler)
 
 
+## Wave 17+: handlers may be coroutines that do multi-step picks via
+## `ctx.manager.attack_resolver.ask(query)`. We `await` the handler's return
+## so async handlers complete before the next phase fires. Awaiting a
+## synchronous return value is a no-op — safe for legacy handlers.
 static func dispatch_phase(key: String, phase: int, ctx: AttackContext,
 		queue: Array[QueuedEffect]) -> void:
 	if key == "" or not _definitions.has(key):
 		return
 	var def: EffectDefinition = _definitions[key]
 	if def.phase_handlers.has(phase):
-		def.phase_handlers[phase].call(ctx, queue)
+		await def.phase_handlers[phase].call(ctx, queue)
 
 
 ## Dispatches an attack's primary `effect_key` plus any entries in its
@@ -40,7 +44,7 @@ static func dispatch_phase(key: String, phase: int, ctx: AttackContext,
 ## attack reference around each chain entry's dispatch.
 static func dispatch_phase_for_attack(attack: AttackData, phase: int,
 		ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
-	dispatch_phase(attack.effect_key, phase, ctx, queue)
+	await dispatch_phase(attack.effect_key, phase, ctx, queue)
 	if attack.effect_chain.is_empty():
 		return
 	var saved: AttackData = ctx.attack
@@ -64,7 +68,7 @@ static func dispatch_phase_for_attack(attack: AttackData, phase: int,
 		sub.effect_key = str(entry.get("key", ""))
 		sub.effect_params = entry.get("params", {}) if entry.get("params", {}) is Dictionary else {}
 		ctx.attack = sub
-		dispatch_phase(sub.effect_key, phase, ctx, queue)
+		await dispatch_phase(sub.effect_key, phase, ctx, queue)
 	ctx.attack = saved
 
 

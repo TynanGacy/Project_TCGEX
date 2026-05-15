@@ -16,7 +16,9 @@
       "name": "Genetic Memory",
       "base_damage": 0,
       "text": "Use any attack from Kingdra ex's Basic Pokémon card or Stage 1 Evolution card. (Kingdra ex doesn't have to pay for that attack's Energy cost.)",
-      "cost_water": 1
+      "cost_water": 1,
+      "effect_key": "use_attack_from_prior_stage",
+      "effect_params": {}
     },
     {
       "name": "Hydrocannon",

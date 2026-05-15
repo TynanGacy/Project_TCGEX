@@ -684,6 +684,10 @@ func _clear_expired_retreat_locks() -> void:
 			if inst.next_attack_coin_fail_until_turn != -1 \
 					and inst.next_attack_coin_fail_until_turn < turn_number:
 				inst.next_attack_coin_fail_until_turn = -1
+			if not inst.cant_use_attack_indices_until_turn.is_empty():
+				for k in inst.cant_use_attack_indices_until_turn.keys():
+					if int(inst.cant_use_attack_indices_until_turn[k]) < turn_number:
+						inst.cant_use_attack_indices_until_turn.erase(k)
 
 
 ## Between-turn effects (step 12).  Iterates both players' active Pokemon.
