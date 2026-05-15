@@ -24,10 +24,15 @@
     },
     {
       "name": "Beat Up",
-      "base_damage": 20,
+      "base_damage": 0,
       "text": "Flip a coin for each of your Pokémon in play (including Sneasel ex). This attack does 20 damage times the number of heads.",
       "cost_darkness": 2,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "coin_per_pokemon_heads",
+        "per_unit": 20
+      }
     }
   ],
   "rarity": "Rare Holo EX"

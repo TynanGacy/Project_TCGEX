@@ -26,7 +26,12 @@
       "name": "Energy Crush",
       "base_damage": 20,
       "text": "Does 20 more damage plus 10 more damage for each Energy attached to all of your opponent's Pokémon.",
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "energy_attached_opp",
+        "per_unit": 10
+      }
     }
   ],
   "rarity": "Rare"

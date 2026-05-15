@@ -16,7 +16,12 @@
       "name": "Jump Catch",
       "base_damage": 0,
       "text": "Search your deck for a Trainer card, show it to your opponent, and put it into your hand. Shuffle your deck afterward.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_deck_to_hand",
+      "effect_params": {
+        "count": 1,
+        "filter": "trainer"
+      }
     }
   ],
   "rarity": "Uncommon"

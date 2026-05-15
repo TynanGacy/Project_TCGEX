@@ -26,7 +26,12 @@
       "name": "Life Drain",
       "base_damage": 0,
       "text": "Flip a coin. If heads, put damage counters on the Defending Pokémon until it is 10 HP away from being Knocked Out.",
-      "cost_psychic": 1
+      "cost_psychic": 1,
+      "effect_key": "damage_to_almost_ko",
+      "effect_params": {
+        "ko_distance": 10,
+        "coin_gate": true
+      }
     }
   ],
   "rarity": "Uncommon"

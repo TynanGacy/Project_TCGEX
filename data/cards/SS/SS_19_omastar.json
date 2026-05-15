@@ -16,7 +16,9 @@
       "name": "Pull Down",
       "base_damage": 0,
       "text": "If your opponent has any Evolved Pokémon in play, remove the highest Stage Evolution card from each of them and put those cards back into his or her hand.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "devolve_each_evolved",
+      "effect_params": {}
     },
     {
       "name": "Hydrocannon",

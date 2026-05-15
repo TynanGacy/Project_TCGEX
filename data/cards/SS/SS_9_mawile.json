@@ -23,7 +23,11 @@
       "base_damage": 20,
       "text": "Before doing damage, you may switch 1 of your opponent's Benched Pokémon with 1 of the Defending Pokémon. If you do, this attack does 20 damage to the new Defending Pokémon.",
       "cost_metal": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "swap_with_opp_bench_pre_damage",
+      "effect_params": {
+        "attacker_chooses": true
+      }
     }
   ],
   "rarity": "Rare Holo"

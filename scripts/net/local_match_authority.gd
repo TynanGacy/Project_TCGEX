@@ -51,6 +51,9 @@ func _bind_signals() -> void:
 	_manager.stadium_changed.connect(func(stadium: TrainerCardData, owner_id: int) -> void:
 		stadium_changed.emit(stadium, owner_id)
 	)
+	_manager.supporter_changed.connect(func(supporter: TrainerCardData, owner_id: int) -> void:
+		supporter_changed.emit(supporter, owner_id)
+	)
 	_manager.pokemon_knocked_out.connect(func(slot_id: String) -> void:
 		pokemon_knocked_out.emit(slot_id)
 	)

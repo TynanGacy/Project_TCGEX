@@ -16,7 +16,12 @@
       "name": "Cosmic Draw",
       "base_damage": 0,
       "text": "If your opponent has any Evolved Pokémon in play, draw 3 cards.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "draw_cards",
+      "effect_params": {
+        "count": 3,
+        "condition": "opp_has_evolved"
+      }
     },
     {
       "name": "Lunar Blast",

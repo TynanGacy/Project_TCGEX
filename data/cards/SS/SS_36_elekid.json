@@ -16,7 +16,12 @@
       "name": "Gather Energy",
       "base_damage": 0,
       "text": "Search your deck for a basic Energy card and attach it to 1 of your Pokémon. Shuffle your deck afterward.",
-      "cost_lightning": 1
+      "cost_lightning": 1,
+      "effect_key": "attach_from_deck",
+      "effect_params": {
+        "count": 1,
+        "type": "ANY"
+      }
     }
   ],
   "rarity": "Uncommon"

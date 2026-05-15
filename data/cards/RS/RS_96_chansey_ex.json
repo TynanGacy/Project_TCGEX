@@ -16,13 +16,23 @@
       "name": "Healing Egg",
       "base_damage": 0,
       "text": "Remove 2 damage counters (1 if there is only 1) from each of your Pokémon. Remove no damage counters from Chansey ex.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "heal_team",
+      "effect_params": {
+        "counters": 2,
+        "scope": "all",
+        "exclude_attacker": true
+      }
     },
     {
       "name": "Double-edge",
       "base_damage": 80,
       "text": "Chansey ex does 60 damage to itself.",
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "self_damage",
+      "effect_params": {
+        "amount": 60
+      }
     }
   ],
   "rarity": "Rare Holo EX"

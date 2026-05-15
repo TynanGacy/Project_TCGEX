@@ -47,6 +47,7 @@ signal prizes_changed(player_id: int)
 
 ## Stadium is a global board-state card (only one exists across both players).
 signal stadium_changed(stadium: TrainerCardData, owner_id: int)
+signal supporter_changed(supporter: TrainerCardData, owner_id: int)
 
 ## Combat signals.
 signal pokemon_knocked_out(slot_id: String)
@@ -111,6 +112,12 @@ const _LOG_SLOTS: Array[String] = [
 ## The Stadium currently in play (null if none), and which player owns it.
 var active_stadium: TrainerCardData = null
 var active_stadium_owner: int = -1
+
+## The Supporter currently sitting in the shared supporter slot (null if none),
+## and the player who played it. Cleared during end-of-turn cleanup — the card
+## is discarded to its owner's pile at that point.
+var active_supporter: TrainerCardData = null
+var active_supporter_owner: int = -1
 
 ## --- Turn state -------------------------------------------------------------
 
@@ -562,10 +569,28 @@ func end_turn() -> void:
 		return
 	var finishing_player := current_player
 	await _run_cleanup_async(finishing_player)
+	_discard_active_supporter()
 	_log_state("[Cleanup] P%d end of turn %d" % [finishing_player, turn_number])
 	log_message.emit("[End Turn] P%d ends turn %d." % [finishing_player, turn_number])
 	turn_ended.emit(finishing_player)
 	_begin_turn(1 - finishing_player)
+
+
+## Discards the active Supporter (if any) to its owner's pile, then clears the
+## slot. Called as the last cleanup step before the next turn begins. A
+## Supporter is never expected to persist across turns — this is a safety net
+## in case of unusual flows; the standard rule is "discard after resolving".
+func _discard_active_supporter() -> void:
+	if active_supporter == null:
+		return
+	var owner: int = active_supporter_owner
+	var card: TrainerCardData = active_supporter
+	active_supporter = null
+	active_supporter_owner = -1
+	if owner >= 0:
+		game_position.put_in_discard(owner, card)
+	supporter_changed.emit(null, -1)
+	log_message.emit("[Supporter] %s discarded at end of turn." % card.display_name)
 
 
 ## Wipes all turn state / global board state.  Used by the scene layer when
@@ -579,6 +604,8 @@ func reset_game_state() -> void:
 	turn_number          = 0
 	active_stadium            = null
 	active_stadium_owner      = -1
+	active_supporter          = null
+	active_supporter_owner    = -1
 	prize_selection_phase_for = -1
 	promotion_phase_for       = -1
 	_ko_defender              = -1
@@ -648,6 +675,15 @@ func _clear_expired_retreat_locks() -> void:
 			if inst.effect_immune_until_turn != -1 \
 					and inst.effect_immune_until_turn < turn_number:
 				inst.effect_immune_until_turn = -1
+			if inst.damage_reduction_until_turn != -1 \
+					and inst.damage_reduction_until_turn < turn_number:
+				inst.damage_reduction_until_turn = -1
+				inst.damage_reduction_amount = 0
+			# next_attack_coin_fail clears on trigger, not on turn boundary —
+			# but if it somehow lingers past the Pokémon's next turn, sweep it.
+			if inst.next_attack_coin_fail_until_turn != -1 \
+					and inst.next_attack_coin_fail_until_turn < turn_number:
+				inst.next_attack_coin_fail_until_turn = -1
 
 
 ## Between-turn effects (step 12).  Iterates both players' active Pokemon.
@@ -693,8 +729,12 @@ func _cleanup_instance_async(inst: PokemonInstance, slot_id: String,
 		pokemon_state_changed.emit(slot_id, inst)
 
 	if inst.special_conditions.has(PokemonInstance.SpecialCondition.POISONED):
-		inst.apply_damage(10)
-		log_message.emit("[Cleanup] %s takes 10 damage from Poison." % pname)
+		var psn_damage: int = 10 * maxi(1, inst.poison_intensity)
+		inst.apply_damage(psn_damage)
+		log_message.emit("[Cleanup] %s takes %d damage from Poison%s." % [
+			pname, psn_damage,
+			" (Toxic)" if inst.poison_intensity > 1 else ""
+		])
 		pokemon_state_changed.emit(slot_id, inst)
 		ko_candidates.append({"slot": slot_id, "instance": inst})
 

@@ -17,7 +17,11 @@
       "base_damage": 20,
       "text": "Damage done to Shelgon by an opponent's attack is reduced by 10 (after applying Weakness and Resistance) during your opponent's next turn.",
       "cost_water": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "damage_reduction_self_next_turn",
+      "effect_params": {
+        "amount": 10
+      }
     },
     {
       "name": "Flare",

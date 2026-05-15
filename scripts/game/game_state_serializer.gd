@@ -63,10 +63,12 @@ static func _serialize_turn(manager) -> Dictionary:
 			manager.attack_used_this_turn[0],
 			manager.attack_used_this_turn[1],
 		],
-		"active_stadium_card":  manager.active_stadium.card_id if manager.active_stadium != null else null,
-		"active_stadium_owner": manager.active_stadium_owner,
-		"prize_selection_for":  manager.prize_selection_phase_for,
-		"promotion_for":        manager.promotion_phase_for,
+		"active_stadium_card":   manager.active_stadium.card_id if manager.active_stadium != null else null,
+		"active_stadium_owner":  manager.active_stadium_owner,
+		"active_supporter_card":  manager.active_supporter.card_id if manager.active_supporter != null else null,
+		"active_supporter_owner": manager.active_supporter_owner,
+		"prize_selection_for":   manager.prize_selection_phase_for,
+		"promotion_for":         manager.promotion_phase_for,
 	}
 
 
@@ -220,6 +222,8 @@ static func restore_turn_state(state: Dictionary, manager) -> void:
 
 	manager.active_stadium         = null
 	manager.active_stadium_owner   = int(t.get("active_stadium_owner", -1))
+	manager.active_supporter       = null
+	manager.active_supporter_owner = int(t.get("active_supporter_owner", -1))
 	manager.prize_selection_phase_for = int(t.get("prize_selection_for", -1))
 	manager.promotion_phase_for    = int(t.get("promotion_for",        -1))
 

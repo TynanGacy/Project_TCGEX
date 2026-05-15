@@ -16,7 +16,11 @@
       "name": "Sniff Out",
       "base_damage": 0,
       "text": "Put any 1 card from your discard pile into your hand.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "discard_to_hand_any",
+      "effect_params": {
+        "count": 1
+      }
     },
     {
       "name": "Fury Swipes",

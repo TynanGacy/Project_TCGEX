@@ -126,14 +126,19 @@ static func _specific_costs(attack: AttackData) -> Dictionary:
 
 
 ## Applies weakness (×2) and resistance (−30) to base_damage.
-static func _compute_damage(base_damage: int, attacker: PokemonInstance, target: PokemonInstance) -> int:
+static func _compute_damage(
+		base_damage: int,
+		attacker: PokemonInstance,
+		target: PokemonInstance,
+		skip_weakness: bool = false,
+		skip_resistance: bool = false) -> int:
 	if base_damage <= 0:
 		return 0
 	var dmg := base_damage
-	if target.card != null and target.card.weakness != PokemonCardData.EnergyType.NONE:
+	if not skip_weakness and target.card != null and target.card.weakness != PokemonCardData.EnergyType.NONE:
 		if attacker.card != null and attacker.card.pokemon_type == target.card.weakness:
 			dmg *= 2
-	if target.card != null and target.card.resistance != PokemonCardData.EnergyType.NONE:
+	if not skip_resistance and target.card != null and target.card.resistance != PokemonCardData.EnergyType.NONE:
 		if attacker.card != null and attacker.card.pokemon_type == target.card.resistance:
 			dmg = maxi(0, dmg - 30)
 	return dmg

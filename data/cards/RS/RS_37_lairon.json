@@ -16,7 +16,12 @@
       "name": "Magnitude",
       "base_damage": 20,
       "text": "Does 10 damage to each Benched Pokémon (both yours and your opponent's). (Don't apply Weakness and Resistance for Benched Pokémon.)",
-      "cost_metal": 1
+      "cost_metal": 1,
+      "effect_key": "aoe_damage",
+      "effect_params": {
+        "amount": 10,
+        "side": "all_bench"
+      }
     },
     {
       "name": "One-Two Strike",

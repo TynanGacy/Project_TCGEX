@@ -16,14 +16,24 @@
       "name": "Drizzle",
       "base_damage": 0,
       "text": "If you have Water Energy cards in your hand, attach as many Water Energy cards as you like to any of your Active Pokémon.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "attach_from_hand_free",
+      "effect_params": {
+        "count": -1,
+        "type": "WATER"
+      }
     },
     {
       "name": "Max Bubbles",
-      "base_damage": 30,
+      "base_damage": 0,
       "text": "Flip a coin for each Energy attached to all of your Active Pokémon. This attack does 30 damage times the number of heads.",
       "cost_water": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "coin_per_active_energy_heads",
+        "per_unit": 30
+      }
     }
   ],
   "rarity": "Uncommon"

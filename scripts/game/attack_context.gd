@@ -36,6 +36,11 @@ var damaged_slots: Array[String] = []
 var attack_blocked: bool = false
 var current_phase: int = -1
 
+## Damage-modifier flags set by CONDITIONALS-phase handlers. Honored by
+## AttackResolver's damage-queue construction.
+var skip_weakness: bool = false
+var skip_resistance: bool = false
+
 var _post_actions: Array[Callable] = []
 
 ## Populated by AttackResolver when a needs_query QueuedEffect is about to execute.

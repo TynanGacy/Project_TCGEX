@@ -17,7 +17,13 @@
       "base_damage": 0,
       "text": "Count the number of cards in your opponent's hand. Put that many damage counters on the Defending Pokémon.",
       "cost_psychic": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "place_damage_counters",
+      "effect_params": {
+        "count": 0,
+        "target": "defender",
+        "count_basis": "cards_in_opp_hand"
+      }
     },
     {
       "name": "Psystorm",

@@ -16,7 +16,15 @@
       "name": "Rapid Spin",
       "base_damage": 10,
       "text": "Your opponent switches the Defending Pokémon with 1 of his or her Benched Pokémon, if any. You switch Baltoy with 1 of your Benched Pokémon, if any.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "force_switch_opp",
+      "effect_params": {},
+      "effect_chain": [
+        {
+          "key": "switch_self",
+          "params": {}
+        }
+      ]
     }
   ],
   "rarity": "Uncommon"

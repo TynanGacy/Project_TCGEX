@@ -16,7 +16,11 @@
       "name": "Agility",
       "base_damage": 10,
       "text": "Flip a coin. If heads, prevent all effects of an attack, including damage, done to Scyther ex during your opponent's next turn.",
-      "cost_grass": 1
+      "cost_grass": 1,
+      "effect_key": "effect_immune_next_turn",
+      "effect_params": {
+        "coin_gate": true
+      }
     },
     {
       "name": "Slash",

@@ -23,7 +23,12 @@
       "base_damage": 40,
       "text": "If Ralts and the Defending Pokémon have a different amount of Energy attached to them, this attack's base damage is 10 instead of 40.",
       "cost_psychic": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "conditional_bonus_damage",
+      "effect_params": {
+        "condition": "different_energy_counts",
+        "bonus": -30
+      }
     }
   ],
   "rarity": "Common"

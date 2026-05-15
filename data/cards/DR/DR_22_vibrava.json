@@ -16,14 +16,25 @@
       "name": "Quick Charge",
       "base_damage": 0,
       "text": "Search your deck for up to 3 different types of basic Energy cards, show them to your opponent, and put them into your hand. Shuffle your deck afterward.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_deck_energy_to_hand",
+      "effect_params": {
+        "count": 3,
+        "distinct_types": true
+      }
     },
     {
       "name": "Dragon Spark",
       "base_damage": 0,
       "text": "Flip a coin. If heads, this attack does 20 damage to each of your opponent's Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_grass": 1,
-      "cost_lightning": 1
+      "cost_lightning": 1,
+      "effect_key": "aoe_damage",
+      "effect_params": {
+        "amount": 20,
+        "side": "opp_all",
+        "coin_gate": true
+      }
     }
   ],
   "rarity": "Rare"

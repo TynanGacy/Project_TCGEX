@@ -17,7 +17,12 @@
       "base_damage": 30,
       "text": "If the Defending Pokémon has any Special Energy cards attached to it, this attack does 30 damage plus 40 more damage.",
       "cost_water": 1,
-      "cost_psychic": 1
+      "cost_psychic": 1,
+      "effect_key": "conditional_bonus_damage",
+      "effect_params": {
+        "condition": "defender_has_special_energy",
+        "bonus": 40
+      }
     }
   ],
   "rarity": "Rare"

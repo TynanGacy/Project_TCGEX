@@ -17,7 +17,12 @@
       "base_damage": 0,
       "text": "Put 1 damage counter on each of your opponent's Pokémon.",
       "cost_psychic": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "place_damage_counters",
+      "effect_params": {
+        "count": 1,
+        "target": "each_opp"
+      }
     }
   ],
   "rarity": "Uncommon"

@@ -25,10 +25,15 @@
     },
     {
       "name": "Big Explosion",
-      "base_damage": 0,
+      "base_damage": 80,
       "text": "Does 80 damage to each Active Pokémon (both yours and your opponent's).",
       "cost_fighting": 2,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "aoe_damage",
+      "effect_params": {
+        "amount": 80,
+        "side": "each_active"
+      }
     }
   ],
   "rarity": "Uncommon"

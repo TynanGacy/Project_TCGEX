@@ -17,7 +17,12 @@
       "base_damage": 40,
       "text": "Flip a coin. If heads, choose 1 card from your opponent's hand without looking and discard it.",
       "cost_darkness": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "discard_from_hand_random",
+      "effect_params": {
+        "count": 1,
+        "coin_gate": true
+      }
     }
   ],
   "rarity": "Rare Holo"

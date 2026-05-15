@@ -16,7 +16,17 @@
       "name": "Super Deep Dive",
       "base_damage": 0,
       "text": "If you don't have any Benched Pokémon, this attack does nothing. Remove 3 damage counters from Wailord ex. Switch Wailord ex with 1 of your Benched Pokémon.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "heal_self",
+      "effect_params": {
+        "amount": 30
+      },
+      "effect_chain": [
+        {
+          "key": "switch_self",
+          "params": {}
+        }
+      ]
     },
     {
       "name": "Dwindling Wave",

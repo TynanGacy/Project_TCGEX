@@ -16,7 +16,12 @@
       "name": "Plus Energy",
       "base_damage": 0,
       "text": "Attach a basic Energy card from your hand to 1 of your Pokémon.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "attach_from_hand_free",
+      "effect_params": {
+        "count": 1,
+        "type": "ANY"
+      }
     },
     {
       "name": "Scratch",

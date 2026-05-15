@@ -16,7 +16,9 @@
       "name": "Aqua Sonic",
       "base_damage": 20,
       "text": "This attack's damage is not affected by Resistance.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "ignore_resistance",
+      "effect_params": {}
     }
   ],
   "rarity": "Uncommon"

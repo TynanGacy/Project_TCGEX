@@ -16,7 +16,12 @@
       "name": "Spiral Growth",
       "base_damage": 0,
       "text": "Flip a coin until you get tails. For each heads, search your discard pile for a basic Energy card and attach it to Rayquaza ex.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "attach_from_discard",
+      "effect_params": {
+        "type": "ANY",
+        "count_basis": "coin_flips_until_tails"
+      }
     },
     {
       "name": "Dragon Burst",

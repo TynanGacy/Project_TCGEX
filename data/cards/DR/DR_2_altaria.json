@@ -16,7 +16,12 @@
       "name": "Dragon Dance",
       "base_damage": 0,
       "text": "During your next turn, if any of your current Active Pokémon does damage to any Defending Pokémon, this attack does 40 more damage (before applying Weakness and Resistance).",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "bonus_damage_next_turn",
+      "effect_params": {
+        "amount": 40,
+        "attack_name": "Dragon Dance"
+      }
     },
     {
       "name": "Dragon Song",

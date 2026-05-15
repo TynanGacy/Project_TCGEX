@@ -27,7 +27,12 @@
       "base_damage": 50,
       "text": "Remove 1 damage counter from each of your Pokémon, including Beautifly.",
       "cost_grass": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "heal_team",
+      "effect_params": {
+        "counters": 1,
+        "scope": "all"
+      }
     }
   ],
   "rarity": "Rare Holo"

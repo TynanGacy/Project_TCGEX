@@ -16,7 +16,20 @@
       "name": "Influence",
       "base_damage": 0,
       "text": "Search your deck for Omanyte, Kabuto, Aerodactyl, Lileep, or Anorith and put up to 2 of them onto your Bench. Shuffle your deck afterward. Treat the new Benched Pokémon as Basic Pokémon.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_deck_basic_to_bench",
+      "effect_params": {
+        "count": 2,
+        "name_slug_any_of": [
+          "omanyte",
+          "kabuto",
+          "aerodactyl",
+          "lileep",
+          "anorith"
+        ],
+        "or_any_basic": false,
+        "ignore_stage": true
+      }
     },
     {
       "name": "Time Spiral",

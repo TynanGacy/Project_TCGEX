@@ -28,7 +28,12 @@
       "base_damage": 50,
       "text": "Does 20 damage to each of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_metal": 2,
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "aoe_damage",
+      "effect_params": {
+        "amount": 20,
+        "side": "opp_bench"
+      }
     }
   ],
   "rarity": "Rare Holo EX"

@@ -16,7 +16,9 @@
       "name": "Whirlwind",
       "base_damage": 0,
       "text": "Your opponent switches the Defending Pokémon with 1 of his or her Benched Pokémon.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "force_switch_opp",
+      "effect_params": {}
     }
   ],
   "rarity": "Common"
