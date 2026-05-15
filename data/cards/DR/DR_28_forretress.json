@@ -17,7 +17,12 @@
       "base_damage": 0,
       "text": "Put 2 damage counters on each Defending Pokémon.",
       "cost_metal": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "place_damage_counters",
+      "effect_params": {
+        "count": 2,
+        "target": "each_defending"
+      }
     },
     {
       "name": "Backspin",

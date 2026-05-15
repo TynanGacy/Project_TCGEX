@@ -16,7 +16,21 @@
       "name": "Stockpile",
       "base_damage": 0,
       "text": "During your next turn, Spit Up's base damage is 70 instead of 30, and Swallow's base damage is 60 instead of 20.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "bonus_damage_next_turn",
+      "effect_params": {
+        "amount": 40,
+        "attack_name": "Spit Up"
+      },
+      "effect_chain": [
+        {
+          "key": "bonus_damage_next_turn",
+          "params": {
+            "amount": 40,
+            "attack_name": "Swallow"
+          }
+        }
+      ]
     },
     {
       "name": "Spit Up",

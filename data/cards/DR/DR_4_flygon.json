@@ -17,7 +17,12 @@
       "base_damage": 0,
       "text": "Attach any number of basic Energy cards from your hand to your Pokémon in any way you like.",
       "cost_grass": 1,
-      "cost_lightning": 1
+      "cost_lightning": 1,
+      "effect_key": "attach_from_hand_free",
+      "effect_params": {
+        "count": -1,
+        "type": "ANY"
+      }
     },
     {
       "name": "Rainbow Burn",

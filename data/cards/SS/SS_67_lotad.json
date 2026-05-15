@@ -22,7 +22,11 @@
       "name": "Blot",
       "base_damage": 20,
       "text": "Remove 1 damage counter from Lotad.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "heal_self",
+      "effect_params": {
+        "amount": 10
+      }
     }
   ],
   "rarity": "Common"

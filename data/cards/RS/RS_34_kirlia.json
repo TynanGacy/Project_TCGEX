@@ -16,7 +16,12 @@
       "name": "Removal Beam",
       "base_damage": 10,
       "text": "Flip a coin. If heads, discard 1 Energy card attached to the Defending Pokémon.",
-      "cost_psychic": 1
+      "cost_psychic": 1,
+      "effect_key": "discard_attached_energy_target",
+      "effect_params": {
+        "count": 1,
+        "coin_gate": true
+      }
     },
     {
       "name": "Super Psy",

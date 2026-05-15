@@ -29,7 +29,12 @@
       "base_damage": 100,
       "text": "Discard 2 basic Energy cards attached to Camerupt or this attack does nothing.",
       "cost_fire": 2,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "discard_or_fail",
+      "effect_params": {
+        "count": 2,
+        "type": "ANY"
+      }
     }
   ],
   "rarity": "Rare Holo"

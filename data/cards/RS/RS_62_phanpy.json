@@ -20,10 +20,22 @@
     },
     {
       "name": "Trembler",
-      "base_damage": 0,
+      "base_damage": 10,
       "text": "Flip a coin. If heads, this attack does 10 damage to each Defending Pokémon, and each Defending Pokémon is now Paralyzed.",
       "cost_fighting": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "coin_fail",
+      "effect_params": {},
+      "effect_chain": [
+        {
+          "key": "inflict_status",
+          "params": {
+            "condition": "PARALYZED",
+            "target": "each_defending"
+          }
+        }
+      ],
+      "hits_each_defending": true
     }
   ],
   "rarity": "Common"

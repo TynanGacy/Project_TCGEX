@@ -27,6 +27,23 @@ const BENCH_CARD_H   := 0.88
 const ACTIVE_CARD_W  := 1.98
 const ACTIVE_CARD_H  := 1.32
 
+## Stadium and Supporter are shared (not per-player), so they live outside the
+## per-player slot map.  Game logic treats each as a single global slot.
+## Their visual positions swap on perspective flip so Stadium always reads on
+## the controlling player's screen-left and Supporter on the screen-right.
+const STADIUM_SLOT_ID := "stadium"
+const STADIUM_ZONE_NAME := "Stadium"
+const SUPPORTER_SLOT_ID := "supporter"
+const SUPPORTER_ZONE_NAME := "Supporter"
+
+## Absolute X offset from board centre that Stadium and Supporter share.
+## From P0 perspective Stadium sits at -SHARED_SLOT_X (screen-left),
+## Supporter at +SHARED_SLOT_X; P1 perspective mirrors both.
+## Doubles mode pushes the prize / deck / discard columns outward (the active
+## row is wider), so the shared slots track them outward as well.
+const SHARED_SLOT_X_SINGLES := 2.75
+const SHARED_SLOT_X_DOUBLES := 3.85
+
 ## Maps Board_Position slot_id -> DropZone name in the scene tree.
 const SLOT_TO_ZONE_NAME := {
 	"p0_active1": "Active",
@@ -78,6 +95,44 @@ func _initialise_zones() -> void:
 			zone.set_zone_size(ACTIVE_CARD_W, ACTIVE_CARD_H)
 		else:
 			zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
+	var stadium_zone := get_stadium_zone()
+	if stadium_zone != null:
+		stadium_zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
+	var supporter_zone := get_supporter_zone()
+	if supporter_zone != null:
+		supporter_zone.set_zone_size(BENCH_CARD_W, BENCH_CARD_H)
+
+
+## Returns the shared Stadium DropZone, or null if the scene is mid-load.
+func get_stadium_zone() -> DropZone:
+	return _find_zone_in_tree(STADIUM_ZONE_NAME)
+
+
+## Returns the shared Supporter DropZone, or null if the scene is mid-load.
+func get_supporter_zone() -> DropZone:
+	return _find_zone_in_tree(SUPPORTER_ZONE_NAME)
+
+
+## Mirrors Stadium and Supporter X positions so that, from [pid]'s screen,
+## Stadium reads on the left and Supporter on the right.  The camera flip in
+## match.gd rotates 180° around Y, which turns world-+x into screen-left for
+## P1 — so for P1 we put Stadium at +SHARED_SLOT_X and Supporter at -.
+func apply_perspective(pid: int) -> void:
+	_current_perspective = pid
+	_refresh_shared_slot_positions()
+
+
+## Active-count is the second axis (singles vs doubles) that affects shared
+## slot X.  Called by configure_slots once it knows the mode.
+func _refresh_shared_slot_positions() -> void:
+	var shared_x: float = SHARED_SLOT_X_DOUBLES if _current_active_count == 2 else SHARED_SLOT_X_SINGLES
+	var sign_for_stadium: float = -1.0 if _current_perspective == 0 else 1.0
+	var stadium_zone := get_stadium_zone()
+	if stadium_zone != null:
+		stadium_zone.position.x = sign_for_stadium * shared_x
+	var supporter_zone := get_supporter_zone()
+	if supporter_zone != null:
+		supporter_zone.position.x = -sign_for_stadium * shared_x
 
 
 ## Active/bench spacing constants (world units between slot centres).
@@ -86,18 +141,34 @@ const ACTIVE_SPACING := 2.2
 const BENCH_SPACING  := 1.35
 
 ## Z positions of each row per player (index 0 = p0, index 1 = p1).
-const ACTIVE_Z: Array[float] = [1.1, -1.1]
-const BENCH_Z:  Array[float] = [2.4, -2.4]
+## Active row pushed outward from centre to make room for the shared Stadium /
+## Supporter slots at z = 0.  Bench row shifted in the same direction to keep
+## clear of the active row's footprint.
+const ACTIVE_Z: Array[float] = [1.4, -1.4]
+const BENCH_Z:  Array[float] = [2.65, -2.65]
 
 ## Outer X positions for peripheral zones (prize columns, deck, discard).
 ## Player 0 keeps prizes on the left (negative x) and deck/discard on the
-## right; player 1 mirrors that arrangement.  The prize columns mirror the
-## deck / discard columns across the active row, so a player's prizes sit
-## at the same distance from their active zones as their deck and discard.
-const DECK_X:        Array[float] = [ 3.5, -3.5]
-const DISCARD_X:     Array[float] = [ 4.2, -4.2]
-const PRIZE_INNER_X: Array[float] = [-3.5,  3.5]
-const PRIZE_OUTER_X: Array[float] = [-4.2,  4.2]
+## right; player 1 mirrors that arrangement.  Prize and deck/discard columns
+## share the same |x| pair so the gap from the active row to prizes equals
+## the gap from the active row to deck/discard.  Singles mode uses a tighter
+## column pair so that gap matches the doubles-mode gap (the active row in
+## doubles is wider, pushing its outer edge close to the columns naturally).
+const DECK_X_SINGLES        : Array[float] = [ 2.4, -2.4]
+const DISCARD_X_SINGLES     : Array[float] = [ 3.1, -3.1]
+const PRIZE_INNER_X_SINGLES : Array[float] = [-2.4,  2.4]
+const PRIZE_OUTER_X_SINGLES : Array[float] = [-3.1,  3.1]
+
+const DECK_X_DOUBLES        : Array[float] = [ 3.5, -3.5]
+const DISCARD_X_DOUBLES     : Array[float] = [ 4.2, -4.2]
+const PRIZE_INNER_X_DOUBLES : Array[float] = [-3.5,  3.5]
+const PRIZE_OUTER_X_DOUBLES : Array[float] = [-4.2,  4.2]
+
+## Tracks the current active-row mode and perspective so reconfiguration calls
+## (configure_slots / apply_perspective) can independently update Stadium /
+## Supporter without losing the other axis of state.
+var _current_active_count: int = 1
+var _current_perspective:  int = 0
 
 ## Updates bench zone visibility and positions only.  Called mid-game when the
 ## bench slot count changes (see manager.set_bench_count).
@@ -120,6 +191,15 @@ func configure_slots(active_count: int, bench_count: int, prize_count: int = 6) 
 	active_count = clampi(active_count, 1, 2)
 	bench_count  = clampi(bench_count,  3, 5)
 	prize_count  = clampi(prize_count,  2, 6)
+	_current_active_count = active_count
+
+	## Column X depends on active-row width: doubles needs wider columns to
+	## clear the wider active row; singles squeezes them in so the prize /
+	## deck gap matches the doubles gap from the active edge.
+	var deck_x_arr        : Array[float] = DECK_X_DOUBLES        if active_count == 2 else DECK_X_SINGLES
+	var discard_x_arr     : Array[float] = DISCARD_X_DOUBLES     if active_count == 2 else DISCARD_X_SINGLES
+	var prize_inner_x_arr : Array[float] = PRIZE_INNER_X_DOUBLES if active_count == 2 else PRIZE_INNER_X_SINGLES
+	var prize_outer_x_arr : Array[float] = PRIZE_OUTER_X_DOUBLES if active_count == 2 else PRIZE_OUTER_X_SINGLES
 
 	for pid in range(2):
 		## Active slots — centre the visible pair around x = 0.
@@ -149,8 +229,8 @@ func configure_slots(active_count: int, bench_count: int, prize_count: int = 6) 
 		## is centred between the two columns.
 		var prize_prefix := "" if pid == 0 else "Opp "
 		var prize_z_sign := 1.0 if pid == 0 else -1.0
-		var prize_rows: Array[float] = [0.80, 1.0, 1.2]
-		var prize_center_x: float = (PRIZE_INNER_X[pid] + PRIZE_OUTER_X[pid]) / 2.0
+		var prize_rows: Array[float] = [1.1, 1.3, 1.5]
+		var prize_center_x: float = (prize_inner_x_arr[pid] + prize_outer_x_arr[pid]) / 2.0
 		for i in range(1, 7):
 			var zone := _find_zone_in_tree("%sPrize %d" % [prize_prefix, i])
 			if zone == null:
@@ -160,17 +240,21 @@ func configure_slots(active_count: int, bench_count: int, prize_count: int = 6) 
 			if i == prize_count and prize_count % 2 == 1:
 				col_x = prize_center_x
 			else:
-				col_x = PRIZE_OUTER_X[pid] if (i % 2 == 1) else PRIZE_INNER_X[pid]
+				col_x = prize_outer_x_arr[pid] if (i % 2 == 1) else prize_inner_x_arr[pid]
 			var row_z: float = prize_rows[(i - 1) / 2] * prize_z_sign
 			zone.position = Vector3(col_x, zone.position.y, row_z)
 
-		## Deck / discard — shift outward to clear the widened prize column.
+		## Deck / discard — share the column |x| with the prize pair so the
+		## active-row-to-column gap is identical on both sides.
 		var deck_zone := _find_zone_in_tree("%sDeck" % prize_prefix)
 		if deck_zone != null:
-			deck_zone.position = Vector3(DECK_X[pid], deck_zone.position.y, ACTIVE_Z[pid])
+			deck_zone.position = Vector3(deck_x_arr[pid], deck_zone.position.y, ACTIVE_Z[pid])
 		var discard_zone := _find_zone_in_tree("%sDiscard" % prize_prefix)
 		if discard_zone != null:
-			discard_zone.position = Vector3(DISCARD_X[pid], discard_zone.position.y, ACTIVE_Z[pid])
+			discard_zone.position = Vector3(discard_x_arr[pid], discard_zone.position.y, ACTIVE_Z[pid])
+
+	## Once both players' columns are repositioned, the shared slots track them.
+	_refresh_shared_slot_positions()
 
 
 ## Returns any DropZone in the scene by its zone_name property.
@@ -198,12 +282,18 @@ func collect_slot_anchors() -> Dictionary:
 
 
 ## Returns the DropZone at the given world position (used for drag-to-drop).
-## Iterates only over the Pokemon-slot zones we care about.
+## Iterates Pokemon-slot zones, plus the shared Stadium slot.
 func get_slot_zone_at(world_pos: Vector3) -> DropZone:
 	for sid in SLOT_TO_ZONE_NAME.keys():
 		var zone := get_zone_for_slot(sid)
 		if zone != null and zone.visible and zone.contains_point(world_pos):
 			return zone
+	var stadium_zone := get_stadium_zone()
+	if stadium_zone != null and stadium_zone.visible and stadium_zone.contains_point(world_pos):
+		return stadium_zone
+	var supporter_zone := get_supporter_zone()
+	if supporter_zone != null and supporter_zone.visible and supporter_zone.contains_point(world_pos):
+		return supporter_zone
 	return null
 
 
@@ -214,6 +304,10 @@ func slot_id_for_zone(zone: DropZone) -> String:
 	for sid in SLOT_TO_ZONE_NAME.keys():
 		if get_zone_for_slot(sid) == zone:
 			return sid
+	if zone == get_stadium_zone():
+		return STADIUM_SLOT_ID
+	if zone == get_supporter_zone():
+		return SUPPORTER_SLOT_ID
 	return ""
 
 
@@ -232,3 +326,9 @@ func clear_highlights() -> void:
 		var zone := get_zone_for_slot(sid)
 		if zone != null:
 			zone.set_highlighted(false)
+	var stadium_zone := get_stadium_zone()
+	if stadium_zone != null:
+		stadium_zone.set_highlighted(false)
+	var supporter_zone := get_supporter_zone()
+	if supporter_zone != null:
+		supporter_zone.set_highlighted(false)

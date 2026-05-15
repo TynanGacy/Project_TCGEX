@@ -16,7 +16,12 @@
       "name": "Seek Out",
       "base_damage": 0,
       "text": "Search your deck for up to 2 cards and put them into your hand. Shuffle your deck afterward.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_deck_to_hand",
+      "effect_params": {
+        "count": 2,
+        "filter": "any"
+      }
     },
     {
       "name": "Continuous Headbutt",

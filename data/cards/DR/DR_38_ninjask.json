@@ -27,7 +27,9 @@
       "base_damage": 30,
       "text": "This attack's damage is not affected by Resistance.",
       "cost_grass": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "ignore_resistance",
+      "effect_params": {}
     }
   ],
   "rarity": "Uncommon"

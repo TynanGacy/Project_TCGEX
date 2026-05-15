@@ -16,13 +16,21 @@
       "name": "Energy Catch",
       "base_damage": 0,
       "text": "Search your discard pile for a basic Energy card, show it to your opponent, and put it into your hand.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_discard_energy_to_hand",
+      "effect_params": {
+        "count": 1
+      }
     },
     {
       "name": "Double-edge",
       "base_damage": 30,
       "text": "Skitty does 10 damage to itself.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "self_damage",
+      "effect_params": {
+        "amount": 10
+      }
     }
   ],
   "rarity": "Common"

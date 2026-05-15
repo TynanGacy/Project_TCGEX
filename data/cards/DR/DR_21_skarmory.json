@@ -23,7 +23,12 @@
       "base_damage": 20,
       "text": "Count the amount of Energy attached to all of your Pokémon and all of your opponent's Pokémon. If your Pokémon have less Energy than your opponent's, this attack does 20 damage plus 30 more damage.",
       "cost_metal": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "conditional_bonus_damage",
+      "effect_params": {
+        "condition": "you_have_less_energy_total",
+        "bonus": 30
+      }
     }
   ],
   "rarity": "Rare"

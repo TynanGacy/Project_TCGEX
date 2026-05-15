@@ -16,7 +16,12 @@
       "name": "Knock Off",
       "base_damage": 0,
       "text": "Flip a coin. If heads, choose 1 card from your opponent's hand without looking and discard it.",
-      "cost_darkness": 1
+      "cost_darkness": 1,
+      "effect_key": "discard_from_hand_random",
+      "effect_params": {
+        "count": 1,
+        "coin_gate": true
+      }
     },
     {
       "name": "Rear Kick",

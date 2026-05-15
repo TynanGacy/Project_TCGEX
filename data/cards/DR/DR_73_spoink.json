@@ -16,7 +16,9 @@
       "name": "Bounce",
       "base_damage": 10,
       "text": "After your attack, you may switch Spoink with 1 of your Benched Pokémon.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "switch_self",
+      "effect_params": {}
     }
   ],
   "rarity": "Common"

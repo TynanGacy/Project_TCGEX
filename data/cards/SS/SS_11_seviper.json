@@ -28,7 +28,15 @@
       "name": "Extra Poison",
       "base_damage": 20,
       "text": "If the Defending Pokémon is Pokémon-ex, the Defending Pokémon is now Asleep and Poisoned.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "conditional_inflict_status",
+      "effect_params": {
+        "condition": "defender_is_pokemon_ex",
+        "statuses": [
+          "ASLEEP",
+          "POISONED"
+        ]
+      }
     }
   ],
   "rarity": "Rare Holo"

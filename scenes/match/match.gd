@@ -42,6 +42,9 @@ var _opponent_hand: Hand = null
 var _pile_mgr: PileVisualManager = null
 var _setup_mgr: SetupManager = null
 
+## Visual card node currently displayed in the shared supporter slot, or null.
+var _supporter_visual: Card = null
+
 var _input_mgr: InputManager = null
 
 ## Perspective (developer mode).  When the active turn changes we flip the
@@ -167,6 +170,7 @@ func _ready() -> void:
 	_authority.discard_changed.connect(_on_discard_changed)
 	_authority.prizes_changed.connect(_on_prizes_changed)
 	_authority.stadium_changed.connect(_on_stadium_changed)
+	_authority.supporter_changed.connect(_on_supporter_changed)
 	_authority.turn_started.connect(_on_turn_started)
 	_authority.turn_ended.connect(_on_turn_ended)
 	_authority.phase_changed.connect(_on_phase_changed)
@@ -328,6 +332,30 @@ func _on_stadium_changed(stadium: TrainerCardData, owner_id: int) -> void:
 		_log("[Stadium] P%d: %s is now in play." % [owner_id, stadium.display_name])
 
 
+## Adds / removes the visual card in the shared Supporter zone. Driven by the
+## manager's supporter_changed signal — fires on play (card != null) and on
+## end-of-turn discard (card == null).
+func _on_supporter_changed(supporter: TrainerCardData, owner_id: int) -> void:
+	if _supporter_visual != null:
+		_supporter_visual.queue_free()
+		_supporter_visual = null
+	if supporter == null:
+		_log("[Supporter] cleared.")
+		return
+	_log("[Supporter] P%d plays %s." % [owner_id, supporter.display_name])
+	var zone: DropZone = (board as Board).get_supporter_zone()
+	if zone == null:
+		return
+	_supporter_visual = card_scene.instantiate() as Card
+	zone.add_child(_supporter_visual)
+	_supporter_visual.position = Vector3.ZERO
+	# Rotate so the card reads right-side-up from the owner's perspective.
+	if owner_id == 1:
+		_supporter_visual.rotation.y = PI
+	_supporter_visual.face_down = false
+	_supporter_visual.set_data(supporter)
+
+
 ## ---------------------------------------------------------------------------
 ## Turn / phase
 ## ---------------------------------------------------------------------------
@@ -372,6 +400,9 @@ func _apply_perspective(pid: int) -> void:
 		var inst: PokemonInstance = manager.board_position.get_instance(sid)
 		if inst != null:
 			inst.rotation.y = y_rot
+	## Mirror Stadium / Supporter so each stays on the controlling player's
+	## screen-left and screen-right respectively.
+	board.apply_perspective(pid)
 
 
 func _on_turn_ended(_pid: int) -> void:

@@ -35,7 +35,17 @@ func validate(manager) -> ActionResult:
 
 func apply(manager) -> void:
 	manager.game_position.take_from_hand(player_id, card)
-	manager.game_position.put_in_discard(player_id, card)
+	# The Supporter card stays in the shared supporter slot until end-of-turn
+	# cleanup discards it to its owner's pile. Mirrors the Stadium pattern.
+	# If a Supporter were somehow still in the slot (shouldn't be — only one
+	# per turn), discard it first to its owner's pile.
+	if manager.active_supporter != null:
+		manager.game_position.put_in_discard(
+			manager.active_supporter_owner, manager.active_supporter
+		)
+	manager.active_supporter       = card
+	manager.active_supporter_owner = player_id
+	manager.supporter_changed.emit(card, player_id)
 	manager.supporter_played_this_turn[player_id] = true
 	if manager.trainer_resolver != null:
 		manager.trainer_resolver.dispatch(card, manager, player_id)

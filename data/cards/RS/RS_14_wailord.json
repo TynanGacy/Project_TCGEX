@@ -16,7 +16,11 @@
       "name": "Take Down",
       "base_damage": 50,
       "text": "Wailord does 20 damage to itself.",
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "self_damage",
+      "effect_params": {
+        "amount": 20
+      }
     },
     {
       "name": "Surf",

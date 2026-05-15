@@ -16,7 +16,12 @@
       "name": "Focus Energy",
       "base_damage": 0,
       "text": "During your next turn, base damage of Vigoroth's Slash is attack is 90 instead of 40.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "bonus_damage_next_turn",
+      "effect_params": {
+        "amount": 50,
+        "attack_name": "Slash"
+      }
     },
     {
       "name": "Slash",

@@ -29,7 +29,12 @@
       "base_damage": 0,
       "text": "Does 20 damage to each of your opponent's Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_metal": 2,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "aoe_damage",
+      "effect_params": {
+        "amount": 20,
+        "side": "opp_all"
+      }
     }
   ],
   "rarity": "Rare"

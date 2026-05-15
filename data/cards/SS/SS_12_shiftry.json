@@ -17,7 +17,14 @@
       "base_damage": 80,
       "text": "Does 80 damage minus 10 damage for each Energy attached to the Defending Pokémon.",
       "cost_grass": 2,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "damage_scaling",
+      "effect_params": {
+        "basis": "energy_attached_target",
+        "per_unit": 10,
+        "direction": "subtract",
+        "min_damage": 0
+      }
     }
   ],
   "rarity": "Rare Holo"

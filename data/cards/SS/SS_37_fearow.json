@@ -14,9 +14,10 @@
   "attacks": [
     {
       "name": "Double Wing Attack",
-      "base_damage": 0,
+      "base_damage": 20,
       "text": "Does 20 damage to each Defending Pokémon.",
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "hits_each_defending": true
     },
     {
       "name": "Rend",

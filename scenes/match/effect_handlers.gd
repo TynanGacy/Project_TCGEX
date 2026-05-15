@@ -37,11 +37,40 @@ func _register_handlers() -> void:
 	EffectRegistry.register_def("inflict_status", EffectDefinition.single(
 		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
 		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
-			var cond: int = _condition_from_string(
-				ctx.attack.effect_params.get("condition", "ASLEEP")
-			)
+			var p: Dictionary = ctx.attack.effect_params
+			var cond: int = _condition_from_string(p.get("condition", "ASLEEP"))
+			var target: String = str(p.get("target", "defender"))
+			# Toxic-style "extra strong" poison — applies a doubled-counter
+			# flag alongside the POISONED condition.
+			var poison_intensity: int = int(p.get("poison_intensity", 1))
+			# Optional list of additional conditions to apply alongside the primary.
+			var extra: Array = p.get("extra_conditions", []) as Array
 			ctx.add_post_action(func() -> void:
-				ctx.target.add_condition(cond)
+				if target == "defender" or target == "both":
+					# Refetch by slot so the status follows mid-attack swaps
+					# (Luring Flame / Metal Hook / Lure Poison).
+					var defender: PokemonInstance = \
+						ctx.manager.board_position.get_instance(ctx.target_slot)
+					if defender == null: defender = ctx.target
+					defender.add_condition(cond)
+					if cond == PokemonInstance.SpecialCondition.POISONED \
+							and poison_intensity > 1:
+						defender.poison_intensity = poison_intensity
+					for ec in extra:
+						defender.add_condition(_condition_from_string(str(ec)))
+				if target == "self" or target == "both":
+					ctx.attacker.add_condition(cond)
+					for ec in extra:
+						ctx.attacker.add_condition(_condition_from_string(str(ec)))
+				if target == "each_defending":
+					var opp_id: int = 1 - ctx.player_id
+					for s: String in BoardPosition.ACTIVE_SLOTS:
+						var sid := "p%d_%s" % [opp_id, s]
+						var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
+						if inst == null: continue
+						inst.add_condition(cond)
+						for ec in extra:
+							inst.add_condition(_condition_from_string(str(ec)))
 			)
 	))
 
@@ -351,6 +380,10 @@ func _register_handlers() -> void:
 			var count: int       = p.get("count", 1)
 			var coin_gate: bool  = bool(p.get("coin_gate", false))
 			var self_dmg: int    = int(p.get("self_damage_per_attached", 0))
+			# Optional basis-driven count override (Spiral Growth uses
+			# coin_flips_until_tails). When provided, replaces the static count.
+			if p.has("count_basis"):
+				count = _count_for_basis(ctx, str(p["count_basis"]), p)
 			# Resolve the coin flip eagerly so it lands in the attack log even
 			# when no energy is attached afterward.
 			var pass_gate: bool = true
@@ -630,6 +663,10 @@ func _register_handlers() -> void:
 			var p: Dictionary = ctx.attack.effect_params
 			var basis: String = p.get("basis", "")
 			var per_unit: int = int(p.get("per_unit", 10))
+			# Optional coin_gate at damage-calc time. Tails = the scaling effect
+			# does nothing (base_damage still resolves normally).
+			if bool(p.get("coin_gate", false)) and not ctx.flip_coin():
+				return
 			var units: int = _count_for_basis(ctx, basis, p)
 			if p.has("max_units"):
 				units = mini(units, int(p["max_units"]))
@@ -656,7 +693,990 @@ func _register_handlers() -> void:
 	))
 
 
+	## ── Wave 7: simple damage modifiers and AoE variants ─────────────────────
+
+	## self_damage — attacker deals damage to itself.
+	## effect_params:
+	##   {"amount": 20}                            # unconditional
+	##   {"amount": 10, "coin_gate": true}         # heads → self-damage
+	##   {"amount": 10, "coin_gate": true, "tails": true}  # tails → self-damage
+	EffectRegistry.register_def("self_damage", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var amount: int   = int(p.get("amount", 10))
+			var coin_gate: bool = bool(p.get("coin_gate", false))
+			var tails_triggers: bool = bool(p.get("tails", false))
+			if coin_gate:
+				var heads: bool = ctx.flip_coin()
+				# trigger when heads==!tails_triggers
+				if heads == tails_triggers:
+					return
+			ctx.add_post_action(func() -> void:
+				ctx.attacker.apply_damage(amount)
+				ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
+				if ctx.attacker.is_knocked_out():
+					ctx.manager.resolve_knockout(ctx.attacker_slot, 1 - ctx.player_id)
+			)
+	))
+
+	## place_damage_counters — direct damage-counter placement (bypasses W/R, ignores immunities).
+	## effect_params:
+	##   {"count": 1, "target": "defender"}         # primary target
+	##   {"count": 2, "target": "each_defending"}   # both opp active slots
+	##   {"count": 1, "target": "each_opp"}         # every opp Pokémon in play
+	##   {"count": 1, "target": "any_opp_query"}    # player picks one opp Pokémon
+	##   {"count": 1, "count_basis": "damage_counters_attacker"} # Damage Curse:
+	##     final count = base count + units from basis. Reuses damage_scaling bases.
+	EffectRegistry.register_def("place_damage_counters", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var count: int    = int(p.get("count", 1))
+			var target: String = str(p.get("target", "defender"))
+			# Optional basis-driven count addition (Damage Curse).
+			if p.has("count_basis"):
+				count += _count_for_basis(ctx, str(p["count_basis"]), p)
+			var dmg: int      = count * 10
+			if target == "any_opp_query":
+				var opp_id: int = 1 - ctx.player_id
+				var options: Array[String] = []
+				for sid: String in BoardPosition.all_slot_ids(opp_id):
+					if not ctx.manager.board_position.is_empty(sid):
+						options.append(sid)
+				if options.is_empty():
+					return
+				var q := AttackQuery.new()
+				q.kind      = AttackQuery.Kind.CHOOSE_BENCH_TARGET
+				q.player_id = ctx.player_id
+				q.prompt    = "Choose 1 of your opponent's Pokémon to place %d damage counter(s)." % count
+				q.options   = options
+				var eff := QueuedEffect.new()
+				eff.category     = QueuedEffect.Category.POST_DAMAGE
+				eff.source_key   = "place_damage_counters"
+				eff.needs_query  = true
+				eff.query_template = q
+				eff.execute = func(c: AttackContext) -> void:
+					var slot: String = str(c._query_response)
+					var inst: PokemonInstance = c.manager.board_position.get_instance(slot)
+					if inst == null: return
+					inst.apply_damage(dmg)
+					c.manager.pokemon_state_changed.emit(slot, inst)
+					if inst.is_knocked_out():
+						c.manager.resolve_knockout(slot, c.player_id)
+				queue.append(eff)
+				return
+			ctx.add_post_action(func() -> void:
+				var slots: Array[String] = _place_counters_targets(ctx, target)
+				for sid: String in slots:
+					var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
+					if inst == null: continue
+					inst.apply_damage(dmg)
+					ctx.manager.pokemon_state_changed.emit(sid, inst)
+					if inst.is_knocked_out():
+						ctx.manager.resolve_knockout(sid, ctx.player_id)
+			)
+	))
+
+	## aoe_damage — flat damage to a group of targets (bypasses W/R for benched
+	## per Pokémon TCG rules).
+	## effect_params:
+	##   {"amount": 10, "side": "opp_bench"}                # each opp benched
+	##   {"amount": 10, "side": "own_bench"}                # each own benched
+	##   {"amount": 10, "side": "all_bench"}                # each benched (both)
+	##   {"amount": 80, "side": "each_active"}              # both players' actives
+	##   {"amount": 20, "side": "opp_all"}                  # each opp Pokémon
+	##   {"amount": 20, "side": "opp_all", "coin_gate": true} # heads-gated
+	##   {"amount": 20, "side": "opp_bench", "count": 2}    # cap to N targets
+	EffectRegistry.register_def("aoe_damage", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var amount: int   = int(p.get("amount", 10))
+			var side: String  = str(p.get("side", "opp_bench"))
+			var coin_gate: bool = bool(p.get("coin_gate", false))
+			var max_count: int = int(p.get("count", -1))  # -1 = uncapped
+			if coin_gate and not ctx.flip_coin():
+				return
+			ctx.add_post_action(func() -> void:
+				var slots: Array[String] = _aoe_targets(ctx, side)
+				# Cap to `count` targets if specified — keeps the first N
+				# encountered (BENCH_SLOTS order).
+				if max_count >= 0 and slots.size() > max_count:
+					slots.resize(max_count)
+				for sid: String in slots:
+					var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
+					if inst == null: continue
+					inst.apply_damage(amount)
+					ctx.manager.pokemon_state_changed.emit(sid, inst)
+					if inst.is_knocked_out():
+						# Owner of KO'd pokemon decides prize side: the opponent of
+						# the slot's player gets the prize.
+						var slot_owner: int = int(sid.substr(1, 1))
+						ctx.manager.resolve_knockout(sid, 1 - slot_owner)
+			)
+	))
+
+	## heal_team — remove damage counters from each of your Pokémon.
+	## effect_params:
+	##   {"counters": 1, "scope": "all"}                          # each of your Pokémon
+	##   {"counters": 1, "scope": "actives"}                      # each of your Actives
+	##   {"counters": 2, "scope": "all", "exclude_attacker": true}# Healing Egg pattern
+	##   {"counters": 2, "min_counters": 1}                       # remove min if only some
+	EffectRegistry.register_def("heal_team", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var counters: int = int(p.get("counters", 1))
+			var scope: String = str(p.get("scope", "all"))
+			var exclude_attacker: bool = bool(p.get("exclude_attacker", false))
+			ctx.add_post_action(func() -> void:
+				var slot_set: Array[String]
+				if scope == "actives":
+					slot_set = []
+					for s: String in BoardPosition.ACTIVE_SLOTS:
+						slot_set.append("p%d_%s" % [ctx.player_id, s])
+				else:
+					slot_set = BoardPosition.all_slot_ids(ctx.player_id)
+				for sid: String in slot_set:
+					if exclude_attacker and sid == ctx.attacker_slot:
+						continue
+					var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
+					if inst == null: continue
+					inst.heal(counters * 10)
+					ctx.manager.pokemon_state_changed.emit(sid, inst)
+			)
+	))
+
+	## ignore_resistance — set the skip_resistance flag for this attack's damage calc.
+	## Fires at CONDITIONALS so the flag is set before DAMAGE_CALC builds entries.
+	EffectRegistry.register_def("ignore_resistance", EffectDefinition.single(
+		AttackResolver.Phase.CONDITIONALS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.skip_resistance = true
+	))
+
+	## ignore_weakness_resistance — both flags. Swift, Feint Attack family (when
+	## not also requiring target redirection).
+	EffectRegistry.register_def("ignore_weakness_resistance", EffectDefinition.single(
+		AttackResolver.Phase.CONDITIONALS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.skip_weakness = true
+			ctx.skip_resistance = true
+	))
+
+	## swap_with_opp_bench_pre_damage — runs at PRE_DAMAGE_EFFECTS. Swaps the
+	## defender (primary) with an opponent's bench Pokémon BEFORE damage calc.
+	## Used by Luring Flame, Metal Hook, Lure Poison. After the swap, ctx.target
+	## is refreshed so DAMAGE_CALC and post-damage chains hit the new defender.
+	## effect_params:
+	##   {}                                # opp chooses (Luring Flame)
+	##   {"attacker_chooses": true}        # attacker picks (Metal Hook, Lure Poison)
+	EffectRegistry.register_def("swap_with_opp_bench_pre_damage", EffectDefinition.single(
+		AttackResolver.Phase.PRE_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var attacker_chooses: bool = bool(p.get("attacker_chooses", false))
+			var opp_id: int = 1 - ctx.player_id
+			var bench_slots: Array[String] = []
+			for s: String in BoardPosition.BENCH_SLOTS:
+				var sid := "p%d_%s" % [opp_id, s]
+				if not ctx.manager.board_position.is_empty(sid):
+					bench_slots.append(sid)
+			if bench_slots.is_empty():
+				return  # No-op if no bench (rule per card text)
+			var q := AttackQuery.new()
+			q.kind      = AttackQuery.Kind.CHOOSE_BENCH_TARGET
+			q.player_id = ctx.player_id if attacker_chooses else opp_id
+			q.prompt    = "Choose a Benched Pokémon to switch into the Active spot."
+			q.options   = bench_slots
+			var eff := QueuedEffect.new()
+			eff.category      = QueuedEffect.Category.PRE_DAMAGE
+			eff.source_key    = "swap_with_opp_bench_pre_damage"
+			eff.needs_query   = true
+			eff.query_template = q
+			eff.execute = func(c: AttackContext) -> void:
+				var bench_sid: String = str(c._query_response)
+				c.manager.board_position.swap(c.target_slot, bench_sid)
+				# Refresh ctx.target so downstream phases hit the new occupant.
+				c.target = c.manager.board_position.get_instance(c.target_slot)
+				c.manager.pokemon_state_changed.emit(c.target_slot, c.target)
+				var moved_to_bench: PokemonInstance = \
+					c.manager.board_position.get_instance(bench_sid)
+				c.manager.pokemon_state_changed.emit(bench_sid, moved_to_bench)
+			queue.append(eff)
+	))
+
+
+	## search_deck_to_hand — pull cards matching a filter from your deck into
+	## your hand, then shuffle. Auto-picks the first N matching cards from the
+	## top of the deck (no player choice).
+	## effect_params:
+	##   {"count": 2}                                                # any 2
+	##   {"count": 1, "filter": "trainer"}                           # Jump Catch
+	##   {"count": 1, "filter": "evolution"}                         # Fast Evolution
+	##   {"count": 3, "filter": "evolves_from", "evolves_from": "eevee"}  # Signs of Evolution (Eevee)
+	##   {"count": 2, "filter": "name_slug_any_of",
+	##    "name_slug_any_of": ["silcoon","beautifly","cascoon","dustox"]}  # Wurmple Signs
+	##   {"count": 1, "filter": "any", "condition": "same_energy_counts"} # Synchronized Search
+	EffectRegistry.register_def("search_deck_to_hand", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			# Optional gating: condition uses the same predicates as
+			# conditional_bonus_damage / conditional_inflict_status.
+			var cond: String = str(p.get("condition", ""))
+			if cond != "" and not _check_defender_condition(ctx, cond):
+				return
+			var count: int = int(p.get("count", 1))
+			var filt: String = str(p.get("filter", "any"))
+			var slug: String = str(p.get("evolves_from", ""))
+			var slug_any: Array = p.get("name_slug_any_of", []) as Array
+			ctx.add_post_action(func() -> void:
+				var deck: Array = ctx.manager.game_position.decks[ctx.player_id]
+				var taken: int = 0
+				for i in range(deck.size() - 1, -1, -1):
+					if taken >= count:
+						break
+					var c = deck[i]
+					if not _search_match(c, filt, slug, slug_any):
+						continue
+					deck.remove_at(i)
+					ctx.manager.game_position.put_in_hand(ctx.player_id, c)
+					taken += 1
+				ctx.manager.game_position.shuffle_deck(ctx.player_id)
+			)
+	))
+
+	## heal_self_by_damage_dealt — remove damage counters from the attacker equal
+	## to the damage dealt this attack. Leech Life / Swallow.
+	## effect_params: {}
+	EffectRegistry.register_def("heal_self_by_damage_dealt", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.add_post_action(func() -> void:
+				if ctx.final_damage > 0:
+					ctx.attacker.heal(ctx.final_damage)
+					ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
+			)
+	))
+
+	## damage_to_almost_ko — fill the defender with damage counters until they
+	## are `ko_distance` HP away from being knocked out. Coin-gated for Life Drain.
+	## effect_params:
+	##   {"ko_distance": 10}                    # auto-applies
+	##   {"ko_distance": 10, "coin_gate": true} # heads triggers
+	EffectRegistry.register_def("damage_to_almost_ko", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var ko_dist: int = int(p.get("ko_distance", 10))
+			if bool(p.get("coin_gate", false)) and not ctx.flip_coin():
+				return
+			ctx.add_post_action(func() -> void:
+				var tgt: PokemonInstance = ctx.target
+				if tgt == null: return
+				var dmg: int = tgt.current_hp - ko_dist
+				if dmg <= 0: return
+				tgt.apply_damage(dmg)
+				ctx.manager.pokemon_state_changed.emit(ctx.target_slot, tgt)
+				# Should never KO by design, but be safe.
+				if tgt.is_knocked_out():
+					ctx.manager.resolve_knockout(ctx.target_slot, ctx.player_id)
+			)
+	))
+
+	## coin_count_to_ko — flip N coins; if all are heads, KO the defender directly.
+	## effect_params:
+	##   {"flips": 2}                              # Judgement
+	##   {"flips": 2, "min_heads": 2}              # explicit threshold
+	EffectRegistry.register_def("coin_count_to_ko", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var flips: int = int(p.get("flips", 2))
+			var min_heads: int = int(p.get("min_heads", flips))  # default = all heads
+			var heads: int = ctx.flip_coins(flips).count(true)
+			if heads < min_heads:
+				return
+			ctx.add_post_action(func() -> void:
+				var tgt: PokemonInstance = ctx.target
+				if tgt == null: return
+				# Directly KO: set HP to 0 then resolve.
+				tgt.apply_damage(tgt.current_hp)
+				ctx.manager.pokemon_state_changed.emit(ctx.target_slot, tgt)
+				if tgt.is_knocked_out():
+					ctx.manager.resolve_knockout(ctx.target_slot, ctx.player_id)
+			)
+	))
+
+
+	## ── Wave 8: target redirection, forced switch, and energy search ─────────
+
+	## damage_chosen_target — "Choose 1 of your opponent's Pokémon. This attack
+	## does N damage to that Pokémon." JSON base_damage MUST be 0 — the handler
+	## applies damage directly to the chosen slot. By default, W/R is bypassed
+	## for benched targets (standard 2007-era rule) and applied for active ones;
+	## `ignore_wr` overrides that to always bypass.
+	## effect_params:
+	##   {"amount": 20}                         # base case
+	##   {"amount": 20, "ignore_wr": true}      # Feint Attack family
+	##   {"amount": 50, "coin_gate": true, "ignore_wr": true}  # Quick Dive
+	EffectRegistry.register_def("damage_chosen_target", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var amount: int   = int(p.get("amount", 10))
+			var ignore_wr: bool = bool(p.get("ignore_wr", false))
+			var coin_gate: bool = bool(p.get("coin_gate", false))
+			if coin_gate and not ctx.flip_coin():
+				return
+			var opp_id: int = 1 - ctx.player_id
+			var options: Array[String] = []
+			for sid: String in BoardPosition.all_slot_ids(opp_id):
+				if not ctx.manager.board_position.is_empty(sid):
+					options.append(sid)
+			if options.is_empty():
+				return
+			var q := AttackQuery.new()
+			q.kind      = AttackQuery.Kind.CHOOSE_BENCH_TARGET
+			q.player_id = ctx.player_id
+			q.prompt    = "Choose 1 of your opponent's Pokémon for %d damage." % amount
+			q.options   = options
+			var eff := QueuedEffect.new()
+			eff.category      = QueuedEffect.Category.POST_DAMAGE
+			eff.source_key    = "damage_chosen_target"
+			eff.description   = "%d to chosen target" % amount
+			eff.needs_query   = true
+			eff.query_template = q
+			eff.execute = func(c: AttackContext) -> void:
+				var slot: String = str(c._query_response)
+				var inst: PokemonInstance = c.manager.board_position.get_instance(slot)
+				if inst == null:
+					return
+				# Compute scaled amount if per_unit_basis is set (Breaking Impact).
+				var final_amount: int = amount
+				if p.has("per_unit_basis"):
+					var basis: String = str(p["per_unit_basis"])
+					var per_unit: int = int(p.get("per_unit", 10))
+					var units: int = 0
+					match basis:
+						"retreat_cost_chosen_target":
+							if inst.card != null:
+								units = int(inst.card.retreat_cost)
+						"energy_attached_chosen_target":
+							units = inst.attached_energy.size()
+						"damage_counters_chosen_target":
+							units = (inst.max_hp - inst.current_hp) / 10
+					final_amount = units * per_unit
+				# Bench targets always bypass W/R; active targets apply W/R unless ignore_wr.
+				var is_active: bool = slot.ends_with("_active1") or slot.ends_with("_active2")
+				var dmg: int
+				if ignore_wr or not is_active:
+					dmg = final_amount
+				else:
+					dmg = ActionAttack._compute_damage(final_amount, c.attacker, inst,
+						c.skip_weakness, c.skip_resistance)
+				if dmg <= 0:
+					return
+				inst.apply_damage(dmg)
+				c.manager.pokemon_state_changed.emit(slot, inst)
+				if inst.is_knocked_out():
+					c.manager.resolve_knockout(slot, c.player_id)
+			queue.append(eff)
+	))
+
+	## force_switch_opp — "Your opponent switches the Defending Pokémon with 1 of
+	## his or her Benched Pokémon." Queries the OPPONENT (or the ATTACKER if
+	## `attacker_chooses: true`) for a bench slot, then swaps. No-op if opp has
+	## no bench.
+	## effect_params:
+	##   {}                          # opp picks (Whirlwind / Roar / Fling)
+	##   {"attacker_chooses": true}  # attacker picks (Luring Flame / Metal Hook)
+	EffectRegistry.register_def("force_switch_opp", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var attacker_chooses: bool = bool(p.get("attacker_chooses", false))
+			var opp_id: int = 1 - ctx.player_id
+			# Find a non-empty bench slot on the opponent's side.
+			var bench_slots: Array[String] = []
+			for s: String in BoardPosition.BENCH_SLOTS:
+				var sid := "p%d_%s" % [opp_id, s]
+				if not ctx.manager.board_position.is_empty(sid):
+					bench_slots.append(sid)
+			if bench_slots.is_empty():
+				return
+			var q := AttackQuery.new()
+			q.kind      = AttackQuery.Kind.CHOOSE_BENCH_TARGET
+			q.player_id = ctx.player_id if attacker_chooses else opp_id
+			q.prompt    = "Choose a Benched Pokémon to switch into the Active spot."
+			q.options   = bench_slots
+			var eff := QueuedEffect.new()
+			eff.category      = QueuedEffect.Category.POST_DAMAGE
+			eff.source_key    = "force_switch_opp"
+			eff.description   = "Force opponent to switch"
+			eff.needs_query   = true
+			eff.query_template = q
+			eff.execute = func(c: AttackContext) -> void:
+				var bench_sid: String = str(c._query_response)
+				# Defender slot = the attack's primary target (the opp's active).
+				c.manager.board_position.swap(c.target_slot, bench_sid)
+				c.manager.pokemon_state_changed.emit(c.target_slot,
+					c.manager.board_position.get_instance(c.target_slot))
+				c.manager.pokemon_state_changed.emit(bench_sid,
+					c.manager.board_position.get_instance(bench_sid))
+			queue.append(eff)
+	))
+
+	## search_deck_energy_to_hand — pull basic Energy cards from your deck into
+	## your hand, then shuffle. Auto-picks (no player choice) — first matching
+	## cards from the top of the deck.
+	## effect_params:
+	##   {"count": 2}                            # any 2 basic energy
+	##   {"count": 3, "distinct_types": true}    # up to 3 different types
+	EffectRegistry.register_def("search_deck_energy_to_hand", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var count: int    = int(p.get("count", 1))
+			var distinct: bool = bool(p.get("distinct_types", false))
+			ctx.add_post_action(func() -> void:
+				var deck: Array = ctx.manager.game_position.decks[ctx.player_id]
+				var taken: int = 0
+				var seen_types: Dictionary = {}
+				for i in range(deck.size() - 1, -1, -1):
+					if taken >= count:
+						break
+					var c = deck[i]
+					if not (c is EnergyCardData):
+						continue
+					var et: int = int((c as EnergyCardData).energy_type)
+					if distinct and seen_types.has(et):
+						continue
+					seen_types[et] = true
+					deck.remove_at(i)
+					ctx.manager.game_position.put_in_hand(ctx.player_id, c)
+					taken += 1
+				ctx.manager.game_position.shuffle_deck(ctx.player_id)
+			)
+	))
+
+	## search_discard_energy_to_hand — pull basic Energy cards from your discard
+	## into your hand. Auto-picks from the bottom up.
+	## effect_params: {"count": 2}
+	EffectRegistry.register_def("search_discard_energy_to_hand", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var count: int    = int(p.get("count", 1))
+			ctx.add_post_action(func() -> void:
+				var discard: Array = ctx.manager.game_position.discards[ctx.player_id]
+				var taken: int = 0
+				for i in range(discard.size() - 1, -1, -1):
+					if taken >= count:
+						break
+					var c = discard[i]
+					if not (c is EnergyCardData):
+						continue
+					discard.remove_at(i)
+					ctx.manager.game_position.put_in_hand(ctx.player_id, c)
+					taken += 1
+				ctx.manager.game_position.discard_changed.emit(ctx.player_id)
+			)
+	))
+
+
+	## ── Wave 9: multi-turn flags, hand disruption, energy discard from target ─
+
+	## smokescreen — set the next-attack-coin-fail flag on the defender. When the
+	## defender next attacks, AttackResolver's CONDITIONALS phase flips a coin;
+	## tails blocks the attack outright. Flag is one-shot.
+	## effect_params: {}
+	EffectRegistry.register_def("smokescreen", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.add_post_action(func() -> void:
+				ctx.target.next_attack_coin_fail_until_turn = ctx.manager.turn_number + 1
+			)
+	))
+
+	## damage_reduction_self_next_turn — Granite Head. Flag attacker so incoming
+	## damage during opponent's next turn is reduced by `amount` after W/R.
+	## effect_params: {"amount": 10}
+	EffectRegistry.register_def("damage_reduction_self_next_turn", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var amount: int = int(ctx.attack.effect_params.get("amount", 10))
+			ctx.add_post_action(func() -> void:
+				ctx.attacker.damage_reduction_until_turn = ctx.manager.turn_number + 1
+				ctx.attacker.damage_reduction_amount    = amount
+			)
+	))
+
+	## discard_from_hand_random — choose N cards from opponent's hand without
+	## looking and discard them. Optional coin gate.
+	## effect_params: {"count": 1, "coin_gate": true}
+	EffectRegistry.register_def("discard_from_hand_random", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var count: int    = int(p.get("count", 1))
+			var coin_gate: bool = bool(p.get("coin_gate", false))
+			if coin_gate and not ctx.flip_coin():
+				return
+			ctx.add_post_action(func() -> void:
+				var opp_id: int = 1 - ctx.player_id
+				var hand: Array = ctx.manager.game_position.hands[opp_id]
+				var to_discard: int = mini(count, hand.size())
+				for i in range(to_discard):
+					var idx: int = randi() % hand.size()
+					var c: CardData = hand[idx]
+					hand.remove_at(idx)
+					ctx.manager.game_position.put_in_discard(opp_id, c)
+				ctx.manager.game_position.hand_changed.emit(opp_id)
+			)
+	))
+
+	## discard_attached_energy_target — flip-gated discard of an energy attached
+	## to the defender. (Removal Beam.)
+	## effect_params: {"count": 1, "coin_gate": true, "type": "ANY"}
+	EffectRegistry.register_def("discard_attached_energy_target", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var count: int    = int(p.get("count", 1))
+			var coin_gate: bool = bool(p.get("coin_gate", false))
+			var type_str: String = str(p.get("type", "ANY"))
+			if coin_gate and not ctx.flip_coin():
+				return
+			ctx.add_post_action(func() -> void:
+				var t_energy: Array = ctx.target.attached_energy
+				if t_energy.is_empty():
+					return
+				var taken: int = 0
+				var want: int = -1
+				if type_str != "ANY":
+					want = _energy_type_from_string(type_str)
+				for i in range(t_energy.size() - 1, -1, -1):
+					if taken >= count: break
+					var e = t_energy[i]
+					if not (e is EnergyCardData): continue
+					if want >= 0 and int((e as EnergyCardData).energy_type) != want: continue
+					t_energy.remove_at(i)
+					ctx.manager.game_position.put_in_discard(1 - ctx.player_id, e)
+					taken += 1
+				ctx.target.refresh_visual()
+				ctx.manager.pokemon_state_changed.emit(ctx.target_slot, ctx.target)
+			)
+	))
+
+	## draw_cards — draw N cards from your deck. Optional gating on opponent's
+	## board state (e.g. Cosmic Draw fires only if opp has an Evolved Pokémon).
+	## effect_params:
+	##   {"count": 1}                                 # unconditional
+	##   {"count": 3, "condition": "opp_has_evolved"} # gated
+	EffectRegistry.register_def("draw_cards", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var count: int    = int(p.get("count", 1))
+			var cond: String  = str(p.get("condition", ""))
+			ctx.add_post_action(func() -> void:
+				if cond == "opp_has_evolved":
+					var opp_id: int = 1 - ctx.player_id
+					var found: bool = false
+					for sid: String in BoardPosition.all_slot_ids(opp_id):
+						var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
+						if inst == null or inst.card == null:
+							continue
+						if inst.prior_stages.size() > 0 or int(inst.card.stage) != 0:
+							found = true
+							break
+					if not found:
+						return
+				var deck: Array = ctx.manager.game_position.decks[ctx.player_id]
+				for _i in range(count):
+					if deck.is_empty():
+						break
+					var c: CardData = deck.pop_back()
+					ctx.manager.game_position.put_in_hand(ctx.player_id, c)
+			)
+	))
+
+
+	## bonus_damage_next_turn — set up a one-shot damage bonus for the attacker's
+	## next turn (consumed by AttackResolver at the start of the next attack).
+	## effect_params:
+	##   {"amount": 40}                        # Dragon Dance — any attack
+	##   {"amount": 50, "attack_name": "Slash"} # Focus Energy — specific attack
+	EffectRegistry.register_def("bonus_damage_next_turn", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var amount: int = int(p.get("amount", 10))
+			var attack_name: String = str(p.get("attack_name", ""))
+			ctx.add_post_action(func() -> void:
+				ctx.attacker.next_turn_attack_bonuses.append({
+					"amount": amount,
+					"attack_name": attack_name,
+					"until_turn": ctx.manager.turn_number + 2,
+				})
+			)
+	))
+
+	## discard_or_fail — discard N basic Energy cards of [type] attached to the
+	## attacker, or the attack does nothing. Fires at CONDITIONALS so attack_blocked
+	## can prevent damage from being calculated. Use effect_chain for downstream
+	## effects (e.g. Critical Move chains cant_attack_next_turn after discarding).
+	## effect_params:
+	##   {"count": 2, "type": "ANY"}     # Fire Spin
+	##   {"count": 1, "type": "ANY"}     # Critical Move
+	EffectRegistry.register_def("discard_or_fail", EffectDefinition.single(
+		AttackResolver.Phase.CONDITIONALS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var count: int = int(p.get("count", 1))
+			var type_str: String = str(p.get("type", "ANY"))
+			var want: int = -1
+			if type_str != "ANY":
+				want = _energy_type_from_string(type_str)
+			# Count eligible basic-energy cards we could discard.
+			var eligible: Array[CardData] = []
+			for e: CardData in ctx.attacker.attached_energy:
+				if not (e is EnergyCardData): continue
+				if not DeckValidator.is_basic_energy(e): continue
+				if want >= 0 and int((e as EnergyCardData).energy_type) != want: continue
+				eligible.append(e)
+				if eligible.size() >= count: break
+			if eligible.size() < count:
+				ctx.attack_blocked = true
+				return
+			# Discard eagerly so chained effects see the post-discard state.
+			for c: CardData in eligible:
+				ctx.attacker.attached_energy.erase(c)
+			ctx.manager.game_position.discard_all(ctx.player_id, eligible)
+			ctx.attacker.refresh_visual()
+			ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
+	))
+
+	## devolve_each_evolved — for every evolved Pokémon on the opponent's side,
+	## remove the highest Stage Evolution card and put it on top of the opponent's
+	## deck. Pull Down.
+	## effect_params:
+	##   {}                                  # all opp evolved
+	##   {"coin_gate_per_target": true}      # Time Spiral pattern (per target)
+	EffectRegistry.register_def("devolve_each_evolved", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var coin_per: bool = bool(p.get("coin_gate_per_target", false))
+			var opp_id: int = 1 - ctx.player_id
+			# Collect evolved slots first so we don't iterate while mutating state.
+			var targets: Array[String] = []
+			for sid: String in BoardPosition.all_slot_ids(opp_id):
+				var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
+				if inst == null or inst.card == null: continue
+				if inst.prior_stages.size() > 0 or int(inst.card.stage) != 0:
+					targets.append(sid)
+			# Coin flips happen synchronously here (during POST_DAMAGE_EFFECTS resolve).
+			var passes: Array[bool] = []
+			for _t in targets:
+				passes.append(true if not coin_per else ctx.flip_coin())
+			ctx.add_post_action(func() -> void:
+				for i in range(targets.size()):
+					if not passes[i]: continue
+					var sid: String = targets[i]
+					var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
+					if inst == null: continue
+					var removed: PokemonCardData = inst.devolve()
+					if removed == null: continue
+					# Place removed card on top of opp's deck.
+					ctx.manager.game_position.decks[opp_id].append(removed)
+					ctx.manager.pokemon_state_changed.emit(sid, inst)
+			)
+	))
+
+
+	## attach_from_hand_free — attach basic Energy cards from hand. Auto-attaches
+	## to the attacker (simpler than a player picker; the rules-correct UI can
+	## come later). Type filter and count are honored.
+	## effect_params:
+	##   {"count": 1, "type": "ANY"}                 # Plus Energy
+	##   {"count": 2, "type": "GRASS"}               # Speed Growth
+	##   {"count": -1, "type": "WATER"}              # Drizzle: any number
+	##   {"count": -1, "type": "ANY"}                # Energy Shower
+	EffectRegistry.register_def("attach_from_hand_free", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var count: int = int(p.get("count", 1))
+			var type_str: String = str(p.get("type", "ANY"))
+			ctx.add_post_action(func() -> void:
+				var hand: Array = ctx.manager.game_position.hands[ctx.player_id]
+				var attached: int = 0
+				var want: int = -1
+				if type_str != "ANY":
+					want = _energy_type_from_string(type_str)
+				for i in range(hand.size() - 1, -1, -1):
+					if count >= 0 and attached >= count:
+						break
+					var c = hand[i]
+					if not (c is EnergyCardData):
+						continue
+					if want >= 0 and int((c as EnergyCardData).energy_type) != want:
+						continue
+					# Only basic Energy attachable via these "from hand" effects.
+					if not DeckValidator.is_basic_energy(c):
+						continue
+					hand.remove_at(i)
+					ctx.attacker.attach_energy(c)
+					attached += 1
+				if attached > 0:
+					ctx.manager.game_position.hand_changed.emit(ctx.player_id)
+					ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
+			)
+	))
+
+	## heal_one — remove N damage counters from one of your Pokémon. Auto-picks
+	## the most-damaged own Pokémon (no query). Falls back to attacker if no
+	## damage anywhere. Dragon Dew uses count_fallback for "remove 1 if only 1".
+	## effect_params:
+	##   {"counters": 2}                              # remove 2 from most-damaged
+	##   {"counters": 2, "count_fallback": 1}         # remove only 1 if only 1 own Pokémon
+	EffectRegistry.register_def("heal_one", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var counters: int = int(p.get("counters", 1))
+			var fallback: int = int(p.get("count_fallback", counters))
+			ctx.add_post_action(func() -> void:
+				var own_slots: Array[String] = BoardPosition.all_slot_ids(ctx.player_id)
+				var own_count: int = 0
+				var best_slot: String = ""
+				var best_dmg: int = -1
+				for sid: String in own_slots:
+					var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
+					if inst == null: continue
+					own_count += 1
+					var dmg: int = inst.max_hp - inst.current_hp
+					if dmg > best_dmg:
+						best_dmg = dmg
+						best_slot = sid
+				if best_slot == "":
+					return
+				var amt: int = (fallback if own_count <= 1 else counters) * 10
+				var pick: PokemonInstance = ctx.manager.board_position.get_instance(best_slot)
+				pick.heal(amt)
+				ctx.manager.pokemon_state_changed.emit(best_slot, pick)
+			)
+	))
+
+	## mill_one_attach_if_energy — discard the top card of your deck; if it's a
+	## basic Energy card, attach it to the attacker. Melting Mountain.
+	## effect_params: {}
+	EffectRegistry.register_def("mill_one_attach_if_energy", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.add_post_action(func() -> void:
+				var deck: Array = ctx.manager.game_position.decks[ctx.player_id]
+				if deck.is_empty():
+					return
+				var c: CardData = deck.pop_back()
+				if c is EnergyCardData and DeckValidator.is_basic_energy(c):
+					ctx.attacker.attach_energy(c)
+					ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot, ctx.attacker)
+				else:
+					ctx.manager.game_position.put_in_discard(ctx.player_id, c)
+			)
+	))
+
+	## discard_to_hand_any — put 1 card from your discard pile into your hand.
+	## Auto-picks the most-recently discarded card (top of pile). Sniff Out.
+	## effect_params: {"count": 1}
+	EffectRegistry.register_def("discard_to_hand_any", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var count: int = int(ctx.attack.effect_params.get("count", 1))
+			ctx.add_post_action(func() -> void:
+				var disc: Array = ctx.manager.game_position.discards[ctx.player_id]
+				var taken: int = 0
+				while taken < count and not disc.is_empty():
+					var c: CardData = disc.pop_back()
+					ctx.manager.game_position.put_in_hand(ctx.player_id, c)
+					taken += 1
+				if taken > 0:
+					ctx.manager.game_position.discard_changed.emit(ctx.player_id)
+			)
+	))
+
+	## conditional_inflict_status — apply a status (or list) when a defender-side
+	## predicate holds. Reuses the same condition strings as conditional_bonus_damage.
+	## effect_params:
+	##   {"condition": "defender_is_pokemon_ex", "statuses": ["ASLEEP","POISONED"]}
+	EffectRegistry.register_def("conditional_inflict_status", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			if not _check_defender_condition(ctx, str(p.get("condition", ""))):
+				return
+			var statuses: Array = p.get("statuses", []) as Array
+			ctx.add_post_action(func() -> void:
+				for s in statuses:
+					ctx.target.add_condition(_condition_from_string(str(s)))
+			)
+	))
+
+	## inflict_status_by_attached_count — apply different status depending on
+	## attacker's attached energy count. Lizard Poison.
+	## effect_params:
+	##   {"tiers": [{"min": 1, "condition": "ASLEEP"},
+	##              {"min": 2, "condition": "CONFUSED"},
+	##              {"min": 3, "condition": "PARALYZED"}]}
+	## Highest-min matching tier wins.
+	EffectRegistry.register_def("inflict_status_by_attached_count", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			var p: Dictionary = ctx.attack.effect_params
+			var tiers: Array = p.get("tiers", []) as Array
+			var att_count: int = ctx.attacker.attached_energy.size()
+			var chosen_cond: String = ""
+			var best_min: int = -1
+			for t in tiers:
+				if not (t is Dictionary): continue
+				var tmin: int = int(t.get("min", 0))
+				if att_count >= tmin and tmin > best_min:
+					best_min = tmin
+					chosen_cond = str(t.get("condition", ""))
+			if chosen_cond == "":
+				return
+			ctx.add_post_action(func() -> void:
+				ctx.target.add_condition(_condition_from_string(chosen_cond))
+			)
+	))
+
+
+	## switch_self — auto-switch attacker with the first non-empty bench slot
+	## after the attack resolves. Simplified: no may-prompt; always switches if
+	## a bench slot is occupied. (Bounce.)
+	## effect_params: {}
+	EffectRegistry.register_def("switch_self", EffectDefinition.single(
+		AttackResolver.Phase.POST_DAMAGE_EFFECTS,
+		func(ctx: AttackContext, _queue: Array[QueuedEffect]) -> void:
+			ctx.add_post_action(func() -> void:
+				var bench_slot: String = ""
+				for s: String in BoardPosition.BENCH_SLOTS:
+					var sid := "p%d_%s" % [ctx.player_id, s]
+					if not ctx.manager.board_position.is_empty(sid):
+						bench_slot = sid
+						break
+				if bench_slot == "":
+					return
+				ctx.manager.board_position.swap(ctx.attacker_slot, bench_slot)
+				ctx.manager.pokemon_state_changed.emit(ctx.attacker_slot,
+					ctx.manager.board_position.get_instance(ctx.attacker_slot))
+				ctx.manager.pokemon_state_changed.emit(bench_slot,
+					ctx.manager.board_position.get_instance(bench_slot))
+			)
+	))
+
+
 ## ── Helpers ───────────────────────────────────────────────────────────────────
+
+## Slot list for place_damage_counters' non-query targets.
+func _place_counters_targets(ctx: AttackContext, target: String) -> Array[String]:
+	var opp_id: int = 1 - ctx.player_id
+	var out: Array[String] = []
+	match target:
+		"defender":
+			out.append(ctx.target_slot)
+		"each_defending":
+			for s: String in BoardPosition.ACTIVE_SLOTS:
+				var sid := "p%d_%s" % [opp_id, s]
+				if not ctx.manager.board_position.is_empty(sid):
+					out.append(sid)
+		"each_opp":
+			for sid: String in BoardPosition.all_slot_ids(opp_id):
+				if not ctx.manager.board_position.is_empty(sid):
+					out.append(sid)
+		_:
+			push_warning("[place_damage_counters] unknown target: %s" % target)
+	return out
+
+
+## Slot list for aoe_damage. Excludes already-damaged primary targets so this
+## attack's base damage isn't double-counted.
+func _aoe_targets(ctx: AttackContext, side: String) -> Array[String]:
+	var opp_id: int = 1 - ctx.player_id
+	var out: Array[String] = []
+	match side:
+		"opp_bench":
+			for s: String in BoardPosition.BENCH_SLOTS:
+				var sid := "p%d_%s" % [opp_id, s]
+				if not ctx.manager.board_position.is_empty(sid):
+					out.append(sid)
+		"own_bench":
+			for s: String in BoardPosition.BENCH_SLOTS:
+				var sid := "p%d_%s" % [ctx.player_id, s]
+				if not ctx.manager.board_position.is_empty(sid):
+					out.append(sid)
+		"all_bench":
+			for pid: int in [0, 1]:
+				for s: String in BoardPosition.BENCH_SLOTS:
+					var sid := "p%d_%s" % [pid, s]
+					if not ctx.manager.board_position.is_empty(sid):
+						out.append(sid)
+		"each_active":
+			# Both players' active slots, excluding the attack's primary target
+			# (already hit by base damage).
+			for pid: int in [0, 1]:
+				for s: String in BoardPosition.ACTIVE_SLOTS:
+					var sid := "p%d_%s" % [pid, s]
+					if ctx.manager.board_position.is_empty(sid):
+						continue
+					if sid == ctx.target_slot:
+						continue
+					out.append(sid)
+		"opp_all":
+			for sid: String in BoardPosition.all_slot_ids(opp_id):
+				if ctx.manager.board_position.is_empty(sid):
+					continue
+				# Skip the primary target — already hit by base damage.
+				if sid == ctx.target_slot:
+					continue
+				out.append(sid)
+		_:
+			push_warning("[aoe_damage] unknown side: %s" % side)
+	return out
+
+
+## Predicate helper for search_deck_to_hand. Returns true if [c] matches.
+static func _search_match(c: CardData, filt: String, evolves_from: String,
+		slug_any: Array) -> bool:
+	if c == null:
+		return false
+	match filt:
+		"any":
+			return true
+		"trainer":
+			return c.card_type == CardData.CardType.TRAINER
+		"energy":
+			return c.card_type == CardData.CardType.ENERGY
+		"basic_energy":
+			return c is EnergyCardData and DeckValidator.is_basic_energy(c)
+		"pokemon":
+			return c is PokemonCardData
+		"evolution":
+			return c is PokemonCardData and int((c as PokemonCardData).stage) != 0
+		"evolves_from":
+			return c is PokemonCardData \
+				and (c as PokemonCardData).evolves_from == evolves_from
+		"name_slug_any_of":
+			return c is PokemonCardData \
+				and slug_any.has((c as PokemonCardData).name_slug)
+		_:
+			return false
+
 
 static func _condition_from_string(s: String) -> int:
 	return PokemonInstance.SpecialCondition[s.to_upper()]
@@ -686,6 +1706,23 @@ func _check_defender_condition(ctx: AttackContext, cond: String) -> bool:
 			var own: int = _prizes_remaining(ctx.manager, ctx.player_id)
 			var opp: int = _prizes_remaining(ctx.manager, 1 - ctx.player_id)
 			return own > opp
+		"defender_has_special_energy":
+			# Special Energy = EnergyCardData but not a basic-by-name energy.
+			for e: CardData in t.attached_energy:
+				if e is EnergyCardData and not DeckValidator.is_basic_energy(e):
+					return true
+			return false
+		"different_energy_counts":
+			return ctx.attacker.attached_energy.size() != t.attached_energy.size()
+		"same_energy_counts":
+			return ctx.attacker.attached_energy.size() == t.attached_energy.size()
+		"you_have_less_energy_total":
+			# Sum of all energy on every Pokémon in play, per side.
+			return (_count_energy_side(ctx.manager, ctx.player_id)
+				< _count_energy_side(ctx.manager, 1 - ctx.player_id))
+		"you_have_more_energy_total":
+			return (_count_energy_side(ctx.manager, ctx.player_id)
+				> _count_energy_side(ctx.manager, 1 - ctx.player_id))
 		_:
 			push_warning("[conditional_bonus_damage] unknown condition: %s" % cond)
 			return false
@@ -733,6 +1770,26 @@ func _count_for_basis(ctx: AttackContext, basis: String, p: Dictionary) -> int:
 				else:
 					break
 			return heads
+		"coin_per_pokemon_heads":
+			# 1 coin per own Pokémon in play (active + bench). Beat Up.
+			var pcount: int = 0
+			for sid: String in BoardPosition.all_slot_ids(ctx.player_id):
+				if not ctx.manager.board_position.is_empty(sid):
+					pcount += 1
+			return ctx.flip_coins(pcount).count(true)
+		"cards_in_opp_hand":
+			return ctx.manager.game_position.hands[1 - ctx.player_id].size()
+		"cards_in_own_hand":
+			return ctx.manager.game_position.hands[ctx.player_id].size()
+		"retreat_cost_target_colorless":
+			# Number of Colorless energy in target's retreat cost.
+			if ctx.target == null or ctx.target.card == null:
+				return 0
+			return int(ctx.target.card.retreat_cost)
+		"coin_per_active_energy_heads":
+			# 1 coin per energy attached to all of own Active slots. Max Bubbles.
+			var ne: int = _count_energy_actives(ctx.manager, ctx.player_id)
+			return ctx.flip_coins(ne).count(true)
 		"energy_attached_actives_own":
 			return _count_energy_actives(ctx.manager, ctx.player_id)
 		"energy_attached_actives_both":
@@ -819,6 +1876,9 @@ func _search_deck_basic_to_bench(ctx: AttackContext, p: Dictionary) -> void:
 	var slug_any: Array = p.get("name_slug_any_of", []) as Array
 	var or_any_basic: bool = bool(p.get("or_any_basic", false))
 	var type_filter: String = str(p.get("pokemon_type", "ANY"))
+	# When true, allow non-basic Pokémon (Influence places fossil Stage-1s as
+	# "Basic" via the card text — bypassing the normal stage check).
+	var ignore_stage: bool = bool(p.get("ignore_stage", false))
 	var placed: int = 0
 	for i in range(deck.size() - 1, -1, -1):
 		if placed >= count:
@@ -827,7 +1887,7 @@ func _search_deck_basic_to_bench(ctx: AttackContext, p: Dictionary) -> void:
 		if not (c is PokemonCardData):
 			continue
 		var pc := c as PokemonCardData
-		if int(pc.stage) != 0:  # Stage.BASIC = 0
+		if not ignore_stage and int(pc.stage) != 0:  # Stage.BASIC = 0
 			continue
 		var matched: bool = false
 		if slug != "" and pc.name_slug == slug:

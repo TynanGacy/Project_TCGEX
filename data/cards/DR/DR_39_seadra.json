@@ -29,7 +29,11 @@
       "base_damage": 0,
       "text": "Choose 1 of your opponent's Pokémon. This attack does 30 damage to that Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_water": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "damage_chosen_target",
+      "effect_params": {
+        "amount": 30
+      }
     }
   ],
   "rarity": "Uncommon"

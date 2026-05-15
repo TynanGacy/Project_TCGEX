@@ -23,7 +23,11 @@
       "base_damage": 30,
       "text": "Koffing does 10 damage to itself.",
       "cost_grass": 1,
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "self_damage",
+      "effect_params": {
+        "amount": 10
+      }
     }
   ],
   "rarity": "Common"

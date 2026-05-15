@@ -17,7 +17,21 @@
       "base_damage": 50,
       "text": "Discard a Fire Energy card attached to Blaziken. If you do, this attack does 10 damage to each of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_fire": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "aoe_damage",
+      "effect_params": {
+        "amount": 10,
+        "side": "opp_bench"
+      },
+      "effect_chain": [
+        {
+          "key": "discard_energy",
+          "params": {
+            "type": "FIRE",
+            "count": 1
+          }
+        }
+      ]
     }
   ],
   "rarity": "Rare Holo"

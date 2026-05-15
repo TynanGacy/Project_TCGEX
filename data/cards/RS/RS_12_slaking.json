@@ -16,7 +16,18 @@
       "name": "Critical Move",
       "base_damage": 100,
       "text": "Discard a basic Energy card attached to Slaking or this attack does nothing. Slaking can't attack during your next turn.",
-      "cost_colorless": 4
+      "cost_colorless": 4,
+      "effect_key": "discard_or_fail",
+      "effect_params": {
+        "count": 1,
+        "type": "ANY"
+      },
+      "effect_chain": [
+        {
+          "key": "cant_attack_next_turn",
+          "params": {}
+        }
+      ]
     }
   ],
   "rarity": "Rare Holo"

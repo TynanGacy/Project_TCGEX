@@ -16,7 +16,12 @@
       "name": "Dragon Dew",
       "base_damage": 0,
       "text": "Remove 2 damage counters from 1 of your Pokémon (remove 1 if there is only 1).",
-      "cost_water": 1
+      "cost_water": 1,
+      "effect_key": "heal_one",
+      "effect_params": {
+        "counters": 2,
+        "count_fallback": 1
+      }
     },
     {
       "name": "Tail Slap",

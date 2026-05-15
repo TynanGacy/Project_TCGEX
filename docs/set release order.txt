@@ -45,7 +45,8 @@ DF
 PK
  - P5 - Pop series 5
 
-Artificial Groupings?
+Non-set Groupings
+ - NP cards
  - PLAY cards
  - POP cards
  - Other English cards (WB, Lati@s, Minun/Plusle)

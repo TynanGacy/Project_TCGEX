@@ -23,7 +23,9 @@
       "base_damage": 80,
       "text": "This attack's damage is not affected by Resistance.",
       "cost_water": 1,
-      "cost_colorless": 4
+      "cost_colorless": 4,
+      "effect_key": "ignore_resistance",
+      "effect_params": {}
     }
   ],
   "rarity": "Uncommon"

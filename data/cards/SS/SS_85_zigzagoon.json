@@ -16,7 +16,11 @@
       "name": "Collect",
       "base_damage": 0,
       "text": "Draw a card.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "draw_cards",
+      "effect_params": {
+        "count": 1
+      }
     },
     {
       "name": "Headbutt",

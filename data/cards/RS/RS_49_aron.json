@@ -16,7 +16,11 @@
       "name": "Teary Eyes",
       "base_damage": 0,
       "text": "During your opponent's next turn, any damage done to Aron by attacks is reduced by 10.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "damage_reduction_self_next_turn",
+      "effect_params": {
+        "amount": 10
+      }
     },
     {
       "name": "Ram",

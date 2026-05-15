@@ -16,7 +16,9 @@
       "name": "Smokescreen",
       "base_damage": 10,
       "text": "If the Defending Pokémon tries to attack during your opponent's next turn, your opponent flips a coin. If tails, that attack does nothing.",
-      "cost_fire": 1
+      "cost_fire": 1,
+      "effect_key": "smokescreen",
+      "effect_params": {}
     },
     {
       "name": "Fireworks",

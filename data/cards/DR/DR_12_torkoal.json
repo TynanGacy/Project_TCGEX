@@ -16,13 +16,30 @@
       "name": "Power Generation",
       "base_damage": 0,
       "text": "Search your discard pile for up to 2 basic Energy cards, show them to your opponent, and put them into your hand.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_discard_energy_to_hand",
+      "effect_params": {
+        "count": 2
+      }
     },
     {
       "name": "Scorching Smoke",
       "base_damage": 0,
       "text": "The Defending Pokémon is now Burned. Flip a coin. If tails, discard a Fire Energy card attached to Torkoal.",
-      "cost_fire": 1
+      "cost_fire": 1,
+      "effect_key": "inflict_status",
+      "effect_params": {
+        "condition": "BURNED"
+      },
+      "effect_chain": [
+        {
+          "key": "coin_discard_energy",
+          "params": {
+            "type": "FIRE",
+            "count": 1
+          }
+        }
+      ]
     }
   ],
   "rarity": "Rare Holo"

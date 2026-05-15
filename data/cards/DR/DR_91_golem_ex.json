@@ -17,14 +17,23 @@
       "base_damage": 60,
       "text": "Does 10 damage to each Benched Pokémon (both yours and your opponent's). (Don't apply Weakness and Resistance for Benched Pokémon.)",
       "cost_fighting": 1,
-      "cost_colorless": 2
+      "cost_colorless": 2,
+      "effect_key": "aoe_damage",
+      "effect_params": {
+        "amount": 10,
+        "side": "all_bench"
+      }
     },
     {
       "name": "Double-edge",
       "base_damage": 120,
       "text": "Golem ex does 50 damage to itself.",
       "cost_fighting": 2,
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "self_damage",
+      "effect_params": {
+        "amount": 50
+      }
     }
   ],
   "rarity": "Rare Holo EX"

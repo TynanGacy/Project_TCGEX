@@ -16,7 +16,13 @@
       "name": "Invisible Hand",
       "base_damage": 0,
       "text": "If any of your opponent's Active Pokémon are Evolved Pokémon, search your deck for any 1 card and put it into your hand. Shuffle your deck afterward.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_deck_to_hand",
+      "effect_params": {
+        "count": 1,
+        "filter": "any",
+        "condition": "defender_is_evolved"
+      }
     },
     {
       "name": "Repulsion",

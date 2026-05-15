@@ -16,7 +16,12 @@
       "name": "Feint Attack",
       "base_damage": 0,
       "text": "Choose 1 of your opponent's Pokémon. This attack does 40 damage to that Pokémon. This attack's damage isn't affected by Weakness, Resistance, Poké-Powers, Poké-Bodies, or any other effects on that Pokémon.",
-      "cost_colorless": 3
+      "cost_colorless": 3,
+      "effect_key": "damage_chosen_target",
+      "effect_params": {
+        "amount": 40,
+        "ignore_wr": true
+      }
     },
     {
       "name": "Slash",

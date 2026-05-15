@@ -53,6 +53,27 @@ var cant_attack_until_turn: int = -1
 var damage_immune_until_turn: int = -1
 var effect_immune_until_turn: int = -1
 
+## Wave 9 flags.
+## next_attack_coin_fail_until_turn — Smokescreen-style. When set, this Pokémon's
+##   next attack must pass a coin flip; tails = attack does nothing. Auto-clears
+##   on first trigger (regardless of outcome).
+## damage_reduction_until_turn / damage_reduction_amount — Granite Head-style.
+##   Incoming attack damage is reduced by `amount` (after W/R) while
+##   manager.turn_number <= damage_reduction_until_turn.
+var next_attack_coin_fail_until_turn: int = -1
+var damage_reduction_until_turn: int = -1
+var damage_reduction_amount: int = 0
+
+## Toxic-style poison: multiplier on between-turn poison damage. Default 1
+## (standard poison = 10/turn). 2 = Toxic (20/turn). Cleared when POISONED is
+## removed or when this Pokémon is released.
+var poison_intensity: int = 1
+
+## Wave 12: queued bonus-damage entries consumed on the controller's next attack.
+## Each entry: {"amount": int, "until_turn": int, "attack_name": String (optional, "" = any)}
+## Entries are one-shot — consumed when matched, removed when expired.
+var next_turn_attack_bonuses: Array = []
+
 ## --- Visual -----------------------------------------------------------------
 const _CARD_SCENE := preload("res://scenes/card/card.tscn")
 
@@ -606,6 +627,8 @@ func add_condition(c: SpecialCondition) -> void:
 
 func remove_condition(c: SpecialCondition) -> void:
 	special_conditions.erase(c)
+	if c == SpecialCondition.POISONED:
+		poison_intensity = 1
 	refresh_visual()
 
 
@@ -649,6 +672,22 @@ func is_knocked_out() -> bool:
 	return current_hp <= 0
 
 
+## Pops the top card off the evolution stack and returns it. The previous stage
+## (last entry in prior_stages) becomes the new top. Damage carries over, but
+## final HP is floored at 1 to prevent immediate KO on devolution.
+## Returns null if there's no prior stage (Basic → can't devolve).
+func devolve() -> PokemonCardData:
+	if prior_stages.is_empty():
+		return null
+	var removed: PokemonCardData = card
+	card = prior_stages.pop_back()
+	var carried_damage := max_hp - current_hp
+	max_hp = card.hp_max if card != null else max_hp
+	current_hp = maxi(1, max_hp - carried_damage)
+	refresh_visual()
+	return removed
+
+
 ## Returns every card currently contained in this instance, in the order:
 ##   [top card, ...prior stages, ...attached energy, ...attached tools]
 func all_cards() -> Array[CardData]:
@@ -679,6 +718,11 @@ func release_cards() -> Array[CardData]:
 	cant_attack_until_turn = -1
 	damage_immune_until_turn = -1
 	effect_immune_until_turn = -1
+	next_attack_coin_fail_until_turn = -1
+	damage_reduction_until_turn = -1
+	damage_reduction_amount = 0
+	next_turn_attack_bonuses.clear()
+	poison_intensity = 1
 	current_hp = 0
 	max_hp = 0
 	return out

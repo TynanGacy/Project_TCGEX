@@ -16,7 +16,18 @@
       "name": "Signs of Evolution",
       "base_damage": 0,
       "text": "Search your deck for Silcoon and Beautifly, or Cascoon and Dustox cards. Show 1 card or both cards of a pair to your opponent and put them into your hand. Shuffle your deck afterward.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "search_deck_to_hand",
+      "effect_params": {
+        "count": 2,
+        "filter": "name_slug_any_of",
+        "name_slug_any_of": [
+          "silcoon",
+          "beautifly",
+          "cascoon",
+          "dustox"
+        ]
+      }
     },
     {
       "name": "Poison Barb",

@@ -59,6 +59,25 @@ func begin_attack(action, manager) -> void:
 
 	## Step 3: Conditionals — confusion first, then effect-based conditionals.
 	ctx.current_phase = Phase.CONDITIONALS
+
+	## Smokescreen-style coin gate. If the attacker has a pending
+	## next-attack-coin-fail flag, flip a coin; tails blocks the attack.
+	## Flag is one-shot — cleared on first trigger regardless of outcome.
+	if attacker.next_attack_coin_fail_until_turn != -1 \
+			and manager.turn_number <= attacker.next_attack_coin_fail_until_turn:
+		var sname: String = attacker.card.display_name if attacker.card != null else "Pokémon"
+		var passed: bool = manager.flip_coin("%s smokescreen" % sname)
+		attacker.next_attack_coin_fail_until_turn = -1
+		if not passed:
+			await _wait_for_animations()
+			manager.log_message.emit(
+				"[Smokescreen] %s's attack does nothing (tails)." % sname
+			)
+			_is_resolving = false
+			pipeline_completed.emit()
+			return
+		await _wait_for_animations()
+
 	if attacker.special_conditions.has(PokemonInstance.SpecialCondition.CONFUSED):
 		var pname: String = attacker.card.display_name if attacker.card != null else "Pokémon"
 		if not manager.flip_coin("%s confusion" % pname):
@@ -99,6 +118,22 @@ func begin_attack(action, manager) -> void:
 	EffectRegistry.dispatch_phase_for_attack(attack, Phase.PRE_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
 	await _wait_for_animations()
 
+	## Execute any PRE_DAMAGE-category effects inline so they (and their queries)
+	## resolve BEFORE damage calc. Used by attacks that switch the defender,
+	## ignore tools, etc. Effects of other categories stay in the queue for
+	## later phases.
+	var remaining: Array[QueuedEffect] = []
+	for pre_eff: QueuedEffect in ctx.effect_queue:
+		if pre_eff.category != QueuedEffect.Category.PRE_DAMAGE:
+			remaining.append(pre_eff)
+			continue
+		ctx._query_response = null
+		if pre_eff.needs_query and pre_eff.query_template != null:
+			player_query_requested.emit(pre_eff.query_template)
+			ctx._query_response = await player_query_resolved
+		pre_eff.execute.call(ctx)
+	ctx.effect_queue = remaining
+
 	## Step 5: Damage calculation.
 	ctx.current_phase = Phase.DAMAGE_CALC
 	EffectRegistry.dispatch_phase_for_attack(attack, Phase.DAMAGE_CALC, ctx, ctx.effect_queue)
@@ -106,6 +141,23 @@ func begin_attack(action, manager) -> void:
 
 	## Execute attacker modifiers immediately so bonus_damage is ready for W/R.
 	_execute_category(ctx, QueuedEffect.Category.ATTACKER_MODIFIER)
+
+	## Wave 12: consume any queued next-turn bonus-damage entries on the attacker.
+	## Each entry is one-shot. Expired entries are pruned.
+	for i in range(attacker.next_turn_attack_bonuses.size() - 1, -1, -1):
+		var entry = attacker.next_turn_attack_bonuses[i]
+		if not (entry is Dictionary):
+			attacker.next_turn_attack_bonuses.remove_at(i)
+			continue
+		var until_turn: int = int(entry.get("until_turn", -1))
+		if manager.turn_number > until_turn:
+			attacker.next_turn_attack_bonuses.remove_at(i)
+			continue
+		var want_name: String = str(entry.get("attack_name", ""))
+		if want_name != "" and want_name != attack.name:
+			continue
+		ctx.bonus_damage += int(entry.get("amount", 0))
+		attacker.next_turn_attack_bonuses.remove_at(i)
 
 	## Step 5c: Defender modifiers (weakness/resistance built-in, plus handler effects).
 	_execute_category(ctx, QueuedEffect.Category.DEFENDER_MODIFIER)
@@ -130,13 +182,20 @@ func begin_attack(action, manager) -> void:
 		entry.target_instance = hit_target
 		entry.base_amount     = ctx.base_damage + ctx.bonus_damage
 		entry.final_amount    = ActionAttack._compute_damage(
-			entry.base_amount, attacker, hit_target
+			entry.base_amount, attacker, hit_target,
+			ctx.skip_weakness, ctx.skip_resistance
 		)
 		# Tier-3 damage immunity (Scrunch, Dragon Dance): zero damage but allow
 		# non-damage effects to still resolve.
 		if hit_target.damage_immune_until_turn != -1 \
 				and manager.turn_number <= hit_target.damage_immune_until_turn:
 			entry.final_amount = 0
+		# Wave-9 damage reduction (Granite Head): subtract a flat amount after W/R.
+		if entry.final_amount > 0 \
+				and hit_target.damage_reduction_until_turn != -1 \
+				and manager.turn_number <= hit_target.damage_reduction_until_turn:
+			entry.final_amount = maxi(0,
+				entry.final_amount - hit_target.damage_reduction_amount)
 		if sid == action.target_slot:
 			ctx.final_damage = entry.final_amount
 		ctx.damage_queue.append(entry)

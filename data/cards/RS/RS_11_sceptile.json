@@ -16,7 +16,24 @@
       "name": "Lizard Poison",
       "base_damage": 20,
       "text": "If 1 Energy is attached to Sceptile, the Defending Pokémon is now Asleep. If 2 Energy is attached to Sceptile, the Defending Pokémon is now Poisoned. If 3 Energy is attached to Sceptile, the Defending Pokémon is now Asleep and Poisoned. If 4 or more Energy is attached to Sceptile, the Defending Pokémon is now Asleep, Burned, and Poisoned.",
-      "cost_colorless": 1
+      "cost_colorless": 1,
+      "effect_key": "inflict_status_by_attached_count",
+      "effect_params": {
+        "tiers": [
+          {
+            "min": 1,
+            "condition": "ASLEEP"
+          },
+          {
+            "min": 2,
+            "condition": "CONFUSED"
+          },
+          {
+            "min": 3,
+            "condition": "PARALYZED"
+          }
+        ]
+      }
     },
     {
       "name": "Solarbeam",
