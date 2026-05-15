@@ -372,6 +372,9 @@ func _apply_perspective(pid: int) -> void:
 		var inst: PokemonInstance = manager.board_position.get_instance(sid)
 		if inst != null:
 			inst.rotation.y = y_rot
+	## Mirror Stadium / Supporter so each stays on the controlling player's
+	## screen-left and screen-right respectively.
+	board.apply_perspective(pid)
 
 
 func _on_turn_ended(_pid: int) -> void:
