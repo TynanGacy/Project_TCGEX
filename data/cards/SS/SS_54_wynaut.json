@@ -24,5 +24,16 @@
       }
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Baby Evolution",
+      "text": "Once during your turn (before your attack), you may put Wobbuffet from your hand onto Wynaut (this counts as evolving Wynaut), and remove all damage counters from Wynaut.",
+      "kind": "POKE_POWER",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

@@ -21,6 +21,8 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("No item card specified.")
 	if card.trainer_kind != TrainerCardData.TrainerKind.ITEM:
 		return ActionResult.fail("Card is not an Item.")
+	if card.plays_as_pokemon:
+		return ActionResult.fail("This card must be played as a Pokémon (use ActionPlayFossil).")
 	if manager.game_position == null:
 		return ActionResult.fail("Manager is not initialised.")
 	if not manager.is_main_phase_for(player_id):

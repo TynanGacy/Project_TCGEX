@@ -20,5 +20,18 @@
       "effect_key": "coin_fail"
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Natural Cure",
+      "text": "When you attach a Fire Energy card from your hand to Combusken, remove all Special Conditions from Combusken.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_natural_cure",
+      "effect_params": {
+        "required_type": "FIRE"
+      }
+    }
+  ]
 }

@@ -31,5 +31,16 @@
       "cost_colorless": 2
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Solar Eclipse",
+      "text": "Once during your turn (before your attack), if Lunatone is in play, you may use this power. Until the end of your turn, Solrock's type is Fire. This power can't be used if Solrock is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

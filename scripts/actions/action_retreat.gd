@@ -35,11 +35,17 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("No Pokémon in active slot.")
 	if active_inst.card == null:
 		return ActionResult.fail("Active Pokémon has no card data.")
-	if active_inst.attached_energy.size() < maxi(0, active_inst.card.retreat_cost - StadiumEffects.retreat_discount_for(active_inst.card, manager)):
+	if active_inst.is_fossil():
+		return ActionResult.fail("Fossils cannot retreat.")
+	## Balloon Berry: free retreat (discard the tool instead of energy).  When
+	## present, energy cost is bypassed entirely.
+	var free_retreat: TrainerCardData = ToolEffects.free_retreat_tool(active_inst)
+	var effective_cost: int = _effective_retreat_cost(active_inst, manager)
+	if free_retreat == null \
+			and active_inst.attached_energy.size() < effective_cost:
 		return ActionResult.fail(
 			"Not enough energy to retreat (need %d, have %d)." % [
-				maxi(0, active_inst.card.retreat_cost - StadiumEffects.retreat_discount_for(active_inst.card, manager)),
-				active_inst.attached_energy.size(),
+				effective_cost, active_inst.attached_energy.size(),
 			]
 		)
 	if active_inst.special_conditions.has(PokemonInstance.SpecialCondition.ASLEEP):
@@ -62,8 +68,24 @@ func validate(manager) -> ActionResult:
 
 func apply(manager) -> void:
 	var active_inst: PokemonInstance = manager.board_position.get_instance(active_slot)
-	var cost: int = maxi(0, active_inst.card.retreat_cost \
-			- StadiumEffects.retreat_discount_for(active_inst.card, manager))
+
+	## Balloon Berry: discard the tool instead of energy and skip the rest of
+	## the energy-cost path entirely.
+	var free_retreat: TrainerCardData = ToolEffects.free_retreat_tool(active_inst)
+	if free_retreat != null:
+		active_inst.attached_tools.erase(free_retreat)
+		active_inst.tool_attached_turn.erase(free_retreat)
+		manager.game_position.put_in_discard(player_id, free_retreat)
+		active_inst.special_conditions.clear()
+		active_inst.refresh_visual()
+		manager.board_position.swap(active_slot, bench_slot)
+		manager.retreat_used_this_turn[player_id] = true
+		manager.log_message.emit(
+			"[Tool] %s — free retreat (tool discarded)." % free_retreat.display_name
+		)
+		return
+
+	var cost: int = _effective_retreat_cost(active_inst, manager)
 
 	## When there are more energies than the cost, the player must choose which to discard.
 	if cost > 0 and active_inst.attached_energy.size() > cost:
@@ -93,6 +115,20 @@ func apply(manager) -> void:
 
 	manager.board_position.swap(active_slot, bench_slot)
 	manager.retreat_used_this_turn[player_id] = true
+
+
+## Returns the energy cost to retreat [inst] after applying stadium discount
+## and any Poké-Body override (Vibrava "Levitate", Volbeat "Uplifting Glow").
+## Body overrides replace the cost outright; stadium discount applies only
+## when no body override fires.
+static func _effective_retreat_cost(inst: PokemonInstance, manager) -> int:
+	if inst == null or inst.card == null:
+		return 0
+	var override: int = AbilityEffects.retreat_cost_override(inst, manager)
+	if override >= 0:
+		return override
+	return maxi(0, inst.card.retreat_cost \
+			- StadiumEffects.retreat_discount_for(inst.card, manager))
 
 
 func description() -> String:

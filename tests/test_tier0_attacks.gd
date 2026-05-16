@@ -88,8 +88,13 @@ func test_all_tier0_base_damage() -> void:
 		var target_id := "SS_66_lotad" if attacker_id == "DR_41_shelgon" else "DR_41_shelgon"
 
 		b.set_turn(0)
-		b.place_active(0, attacker_id, {"energy": energy_ids})
-		b.place_active(1, target_id,   {"hp": 200})
+		var att_inst := b.place_active(0, attacker_id, {"energy": energy_ids})
+		var tgt_inst := b.place_active(1, target_id,   {"hp": 200})
+		## Tier-0 tests assert raw base damage; strip any Poké-Bodies so they
+		## don't interfere (e.g. Crawdaunt's Power Pinchers, Shelgon's Energy
+		## Guard when used as the target with energy attached).
+		att_inst.card.abilities = []
+		tgt_inst.card.abilities = []
 		b.set_prizes(0)
 		b.set_prizes(1)
 

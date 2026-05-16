@@ -14,12 +14,13 @@
   "attacks": [
     {
       "name": "Sand Swirl",
-      "base_damage": 0,
+      "base_damage": 20,
       "text": "Does 20 damage to each Defending Pokémon. The Defending Pokémon can't retreat until the end of your opponent's next turn.",
       "cost_fighting": 1,
       "cost_colorless": 1,
       "effect_key": "retreat_lock",
-      "effect_params": {}
+      "effect_params": {},
+      "hits_each_defending": true
     },
     {
       "name": "Earthquake",
@@ -34,5 +35,7 @@
       }
     }
   ],
-  "rarity": "Rare"
+  "rarities": [
+    "Rare"
+  ]
 }

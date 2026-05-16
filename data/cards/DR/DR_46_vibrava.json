@@ -19,5 +19,19 @@
       "cost_colorless": 2
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Levitate",
+      "text": "If Vibrava has any basic Energy cards attached to it, Vibrava's Retreat Cost is 0.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_retreat_cost_override",
+      "effect_params": {
+        "amount": 0,
+        "requires": "has_basic_energy"
+      }
+    }
+  ]
 }

@@ -24,5 +24,19 @@
       }
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Energy Draw",
+      "text": "Once during your turn (before your attack), you may discard 1 Energy card from your hand. Then draw up to 3 cards from your deck. This power can't be used if Delcatty is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_discard_energy_draw_n",
+      "effect_params": {
+        "draw": 3
+      },
+      "repeatable": false
+    }
+  ]
 }

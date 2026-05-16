@@ -27,5 +27,17 @@
       }
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Fan Away",
+      "text": "Once during your turn (before your attack), you may flip a coin. If heads, return 1 Energy card attached to the Defending Pokémon to your opponent's hand. This power can't be used if Shiftry is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_coin_return_defender_energy_to_hand",
+      "effect_params": {},
+      "repeatable": false
+    }
+  ]
 }

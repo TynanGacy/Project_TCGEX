@@ -279,6 +279,13 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 	else:
 		hit_slots.append(action.target_slot)
 
+	## Pre-W/R Poké-Body modifiers on the attacker's side (Crawdaunt's Power
+	## Pinchers etc.).  Single value applied across all hit slots for this
+	## attack — the carrier is the attacker's controller's active.
+	var attacker_aura_bonus: int = AbilityEffects.damage_dealt_modifier_before_wr(
+		attacker, manager
+	)
+
 	for sid in hit_slots:
 		var hit_target: PokemonInstance = manager.board_position.get_instance(sid)
 		if hit_target == null:
@@ -286,7 +293,13 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 		var entry := DamageEntry.new()
 		entry.target_slot     = sid
 		entry.target_instance = hit_target
-		entry.base_amount     = ctx.base_damage + ctx.bonus_damage
+		entry.base_amount     = ctx.base_damage + ctx.bonus_damage + attacker_aura_bonus
+		## Pre-W/R defender-side Poké-Body modifier (Intimidating Fang).
+		var defender_pre_wr: int = AbilityEffects.damage_taken_modifier_before_wr(
+			hit_target, manager
+		)
+		entry.base_amount = maxi(0, entry.base_amount + defender_pre_wr)
+
 		entry.final_amount    = ActionAttack._compute_damage(
 			entry.base_amount, attacker, hit_target,
 			ctx.skip_weakness, ctx.skip_resistance
@@ -302,6 +315,25 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 				and manager.turn_number <= hit_target.damage_reduction_until_turn:
 			entry.final_amount = maxi(0,
 				entry.final_amount - hit_target.damage_reduction_amount)
+		# Tool-based damage reduction (Buffer Piece): subtract a flat amount after W/R.
+		if entry.final_amount > 0:
+			var tool_reduction: int = ToolEffects.damage_reduction_for(hit_target)
+			if tool_reduction > 0:
+				entry.final_amount = maxi(0, entry.final_amount - tool_reduction)
+		# Poké-Body post-W/R modifiers (Exoskeleton, Energy Guard, Glowing Screen).
+		if entry.final_amount > 0:
+			var ability_delta: int = AbilityEffects.damage_taken_modifier_after_wr(
+				hit_target, attacker, manager
+			)
+			if ability_delta != 0:
+				entry.final_amount = maxi(0, entry.final_amount + ability_delta)
+		# Coin-gated Poké-Body reduction (Sand Guard, Hard Cocoon).
+		if entry.final_amount > 0:
+			var coin_reduction: int = AbilityEffects.coin_gated_reduction_for_target(
+				hit_target, manager
+			)
+			if coin_reduction > 0:
+				entry.final_amount = maxi(0, entry.final_amount - coin_reduction)
 		if sid == action.target_slot:
 			ctx.final_damage = entry.final_amount
 		ctx.damage_queue.append(entry)
@@ -320,6 +352,13 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 		if entry.final_amount > 0:
 			entry.target_instance.apply_damage(entry.final_amount)
 			ctx.damaged_slots.append(entry.target_slot)
+			## Pattern E — Poké-Body retaliation (Rough Skin, Fire Veil,
+			## Poison Payback). Fires "even if [target] is Knocked Out", so
+			## we run it after the damage application regardless of KO state.
+			AbilityEffects.run_on_damaged_by_attack(
+				entry.target_instance, entry.target_slot,
+				attacker, action.attacker_slot, manager
+			)
 
 	for effect: QueuedEffect in ctx.effect_queue:
 		if effect.category == QueuedEffect.Category.ATTACKER_MODIFIER \

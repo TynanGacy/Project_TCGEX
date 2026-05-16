@@ -19,5 +19,17 @@
       "cost_colorless": 2
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Drive Off",
+      "text": "Once during your turn (before your attack), if Swellow is your Active Pokémon, you may switch 1 of the Defending Pokémon with 1 of your opponent's Benched Pokémon. Your opponent picks the Benched Pokémon to switch. This power can't be used if Swellow is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_switch_opponent_active_with_bench",
+      "effect_params": {},
+      "repeatable": false
+    }
+  ]
 }

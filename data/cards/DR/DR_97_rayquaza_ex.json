@@ -31,10 +31,15 @@
       "cost_lightning": 1,
       "effect_key": "discard_all_of_chosen_type",
       "effect_params": {
-        "types": ["FIRE", "LIGHTNING"],
+        "types": [
+          "FIRE",
+          "LIGHTNING"
+        ],
         "damage_per_discard": 40
       }
     }
   ],
-  "rarity": "Rare Holo EX"
+  "rarities": [
+    "Rare Holo EX"
+  ]
 }

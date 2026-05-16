@@ -67,9 +67,14 @@ func validate(manager) -> ActionResult:
 func apply(manager) -> void:
 	manager.game_position.take_from_hand(player_id, card)
 	var inst: PokemonInstance = manager.board_position.get_instance(target_slot)
+	## evolve_to() recomputes max_hp from the new card; this drops the prior
+	## stage's aura bonus.  Zero it out so reconcile_aura_for re-derives the
+	## bonus from the (possibly different) post-evolution type.
+	inst.aura_hp_bonus = 0
 	inst.evolve_to(card)
 	## Evolving clears Special Conditions; damage is carried over by evolve_to().
 	inst.special_conditions.clear()
+	StadiumEffects.reconcile_aura_for(target_slot, inst, manager)
 	inst.refresh_visual()
 	## The newly-evolved Pokemon also can't evolve again this turn.
 	manager.pokemon_entered_play_this_turn[player_id].append(inst)

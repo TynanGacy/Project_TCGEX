@@ -30,5 +30,7 @@
       "cost_colorless": 3
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ]
 }

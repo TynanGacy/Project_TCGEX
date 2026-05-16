@@ -202,6 +202,7 @@ func _parse_trainer(d: Dictionary) -> TrainerCardData:
 
 	card.effect_key    = d.get("effect_key", "")
 	card.effect_params = d.get("effect_params", {})
+	card.plays_as_pokemon = bool(d.get("plays_as_pokemon", false))
 
 	return card
 
@@ -232,6 +233,8 @@ func _parse_ability(d: Dictionary) -> AbilityData:
 	abil.ability_name = d.get("name", "")
 	abil.text         = d.get("text", "")
 	abil.effect_key   = d.get("effect_key", "")
+	abil.effect_params = d.get("effect_params", {})
+	abil.repeatable   = bool(d.get("repeatable", false))
 	var kind_str: String = d.get("kind", "POKE_BODY")
 	match kind_str:
 		"POKE_POWER": abil.kind = AbilityData.AbilityKind.POKE_POWER

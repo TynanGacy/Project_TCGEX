@@ -35,10 +35,15 @@
       "effect_chain": [
         {
           "key": "discard_energy",
-          "params": {"type": "ANY", "count": 1}
+          "params": {
+            "type": "ANY",
+            "count": 1
+          }
         }
       ]
     }
   ],
-  "rarity": "Rare Holo EX"
+  "rarities": [
+    "Rare Holo EX"
+  ]
 }

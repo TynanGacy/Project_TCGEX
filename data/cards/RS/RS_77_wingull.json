@@ -20,5 +20,7 @@
       "effect_key": "coin_fail"
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ]
 }

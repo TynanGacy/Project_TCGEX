@@ -4,7 +4,9 @@
   "card_type": "TRAINER",
   "trainer_kind": "TOOL",
   "rules_text": "Attach Oran Berry to 1 of your Pokémon that doesn't already have a Pokémon Tool attached to it. If that Pokémon is Knocked Out, discard this card.\nAt any time between turns, if the Pokémon this card is attached to has at least 2 damage counters on it, remove 2 damage counters from it. Then discard Oran Berry.",
-  "rarity": "Uncommon",
-  "effect_key": "stub_not_implemented",
+  "rarities": [
+    "Uncommon"
+  ],
+  "effect_key": "tool_heal_on_damage",
   "effect_params": {}
 }

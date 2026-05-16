@@ -36,5 +36,20 @@
       }
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Uplifting Glow",
+      "text": "As long as Illumise is in play, Volbeat's Retreat Cost is 0.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_retreat_cost_override",
+      "effect_params": {
+        "amount": 0,
+        "requires": "partner_in_play",
+        "partner_slug": "illumise"
+      }
+    }
+  ]
 }

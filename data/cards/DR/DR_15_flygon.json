@@ -26,5 +26,18 @@
       }
     }
   ],
-  "rarity": "Rare"
+  "rarities": [
+    "Rare"
+  ],
+  "abilities": [
+    {
+      "name": "Sand Guard",
+      "text": "Whenever Flygon would be damaged by your opponent's attack (after applying Weakness and Resistance), flip a coin. If heads, reduce that damage by 20.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_coin_gated_reduction",
+      "effect_params": {
+        "amount": 20
+      }
+    }
+  ]
 }

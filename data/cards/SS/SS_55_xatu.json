@@ -25,5 +25,19 @@
       }
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Healing Wind",
+      "text": "Once during your turn (before your attack), you may remove 1 damage counter from each of your Active Pokémon. This power can't be used if Xatu is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_heal_each_own_active",
+      "effect_params": {
+        "counters": 1
+      },
+      "repeatable": false
+    }
+  ]
 }

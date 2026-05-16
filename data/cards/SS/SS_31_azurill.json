@@ -24,5 +24,16 @@
       }
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Baby Evolution",
+      "text": "Once during your turn (before your attack), you may put Marill from your hand onto Azurill (this counts as evolving Azurill), and remove all damage counters from Azurill.",
+      "kind": "POKE_POWER",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

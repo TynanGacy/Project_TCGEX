@@ -21,5 +21,18 @@
       "effect_params": {}
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ],
+  "abilities": [
+    {
+      "name": "Rough Skin",
+      "text": "If Carvanha is your Active Pokémon and is damaged by an opponent's attack (even if Carvanha is Knocked Out), put 1 damage counter on the Attacking Pokémon.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_retaliate_damage",
+      "effect_params": {
+        "counters": 1
+      }
+    }
+  ]
 }

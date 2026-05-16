@@ -27,5 +27,7 @@
       "effect_params": {}
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ]
 }

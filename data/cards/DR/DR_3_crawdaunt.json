@@ -20,5 +20,18 @@
       "cost_colorless": 2
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Power Pinchers",
+      "text": "As long as Crawdaunt is your Active Pokémon, when any of your Active Pokémon does damage to the Defending Pokémon, the attack does 10 more damage (before applying Weakness and Resistance).",
+      "kind": "POKE_BODY",
+      "effect_key": "body_damage_increase_outgoing",
+      "effect_params": {
+        "amount": 10
+      }
+    }
+  ]
 }

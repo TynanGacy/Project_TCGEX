@@ -38,5 +38,7 @@
       "hits_each_defending": true
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ]
 }

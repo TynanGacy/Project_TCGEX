@@ -41,5 +41,17 @@
       "effect_key": "coin_fail"
     }
   ],
-  "rarity": "Rare Holo EX"
+  "rarities": [
+    "Rare Holo EX"
+  ],
+  "abilities": [
+    {
+      "name": "Call for Power",
+      "text": "As often as you like during your turn, you may move an Energy card attached to 1 of your Pokémon to Dragonite ex. This power can't be used if Dragonite ex is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_move_any_energy_to_self",
+      "effect_params": {},
+      "repeatable": true
+    }
+  ]
 }

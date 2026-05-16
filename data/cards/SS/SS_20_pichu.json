@@ -25,5 +25,16 @@
       }
     }
   ],
-  "rarity": "Rare"
+  "rarities": [
+    "Rare"
+  ],
+  "abilities": [
+    {
+      "name": "Baby Evolution",
+      "text": "Once during your turn (before your attack), you may put Pikachu from your hand onto Pichu (this counts as evolving Pichu) and remove all damage counters from Pichu.",
+      "kind": "POKE_POWER",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

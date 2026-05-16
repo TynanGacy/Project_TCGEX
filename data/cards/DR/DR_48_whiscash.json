@@ -32,5 +32,16 @@
       }
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Submerge",
+      "text": "As long as Whiscash is on your Bench, prevent all damage done to Whiscash by your opponent's attacks.",
+      "kind": "POKE_BODY",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

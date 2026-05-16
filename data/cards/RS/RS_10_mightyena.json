@@ -25,5 +25,18 @@
       }
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Intimidating Fang",
+      "text": "As long as Mightyena is your Active Pokémon, any damage done to your Pokémon by an opponent's attack is reduced by 10 (before applying Weakness and Resistance).",
+      "kind": "POKE_BODY",
+      "effect_key": "body_damage_taken_aura_active",
+      "effect_params": {
+        "amount": 10
+      }
+    }
+  ]
 }

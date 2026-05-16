@@ -25,5 +25,18 @@
       }
     }
   ],
-  "rarity": "Rare"
+  "rarities": [
+    "Rare"
+  ],
+  "abilities": [
+    {
+      "name": "Fire Veil",
+      "text": "If Arcanine is your Active Pokémon and is damaged by an opponent's attack (even if Arcanine is Knocked Out), the Attacking Pokémon is now Burned.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_retaliate_status",
+      "effect_params": {
+        "condition": "BURNED"
+      }
+    }
+  ]
 }

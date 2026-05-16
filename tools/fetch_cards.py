@@ -179,6 +179,41 @@ def parse_damage(raw: str) -> int:
 # Transformers
 # ---------------------------------------------------------------------------
 
+## Map from the API's ability `type` field to our AbilityData.kind enum string.
+## "Pokémon Power" is the pre-EX-era name that covered both modern kinds; we
+## default it to POKE_POWER (the more common reading) and let humans correct
+## edge cases via the preserved-fields merge.
+_ABILITY_KIND_MAP = {
+    "poké-power":     "POKE_POWER",
+    "poke-power":     "POKE_POWER",
+    "pokémon power":  "POKE_POWER",
+    "pokemon power":  "POKE_POWER",
+    "poké-body":      "POKE_BODY",
+    "poke-body":      "POKE_BODY",
+    "pokémon body":   "POKE_BODY",
+    "pokemon body":   "POKE_BODY",
+    "ability":        "POKE_POWER",  ## modern reprints sometimes use the generic label
+}
+
+
+def _transform_ability(raw: dict) -> dict:
+    """Convert one API ability entry into our on-disk schema.
+
+    API shape:  {"name": "...", "text": "...", "type": "Poké-Power"}
+    Output:     {"name": "...", "text": "...", "kind": "POKE_POWER",
+                 "effect_key": "", "effect_params": {}}
+    """
+    type_raw = (raw.get("type") or "").strip().lower()
+    kind = _ABILITY_KIND_MAP.get(type_raw, "POKE_BODY")
+    return {
+        "name":          raw.get("name", ""),
+        "text":          raw.get("text", ""),
+        "kind":          kind,
+        "effect_key":    "",
+        "effect_params": {},
+    }
+
+
 def transform_pokemon(card: dict) -> dict:
     subtypes = [s.lower() for s in card.get("subtypes", [])]
 
@@ -214,12 +249,16 @@ def transform_pokemon(card: dict) -> dict:
         entry.update(cost_array_to_fields(atk.get("cost") or []))
         attacks_out.append(entry)
 
+    abilities_out = []
+    for abil in card.get("abilities") or []:
+        abilities_out.append(_transform_ability(abil))
+
     name_slug  = slugify(card["name"])
     abbrev      = set_abbrev(card)
     card_number = card.get("number", "0")
     rarities = [card["rarity"]] if card.get("rarity") else []
 
-    return {
+    out = {
         "card_id": f"{abbrev}_{card_number}_{name_slug}",
         "name_slug":    name_slug,
         "display_name": card["name"],
@@ -235,6 +274,9 @@ def transform_pokemon(card: dict) -> dict:
         "attacks":      attacks_out,
         "rarities":     rarities,
     }
+    if abilities_out:
+        out["abilities"] = abilities_out
+    return out
 
 
 def transform_trainer(card: dict) -> dict:
@@ -252,6 +294,7 @@ def transform_trainer(card: dict) -> dict:
     rules_parts = card.get("rules") or []
     rules_text  = "\n".join(rules_parts)
 
+    name_slug   = slugify(card["name"])
     abbrev      = set_abbrev(card)
     card_number = card.get("number", "0")
     rarities    = [card["rarity"]] if card.get("rarity") else []
@@ -382,14 +425,18 @@ def fetch_search(query: str, session: requests.Session) -> list:
 # Fields the pokemontcg.io API never produces but our game logic depends on.
 # Top-level entries cover trainer dispatch; nested entries apply per attack on
 # Pokemon. Keep this list in sync with scripts/cards/card_library.gd readers.
-_PRESERVE_TOP_LEVEL = ("effect_key", "effect_params")
+_PRESERVE_TOP_LEVEL = ("effect_key", "effect_params", "plays_as_pokemon")
 # effect_key / effect_params / effect_chain are never produced by the API; if
 # the on-disk file has them, the author put them there. base_damage is
 # normally API-derived, but when paired with an effect_key the author may
 # have set it to 0 (e.g. damage_scaling attacks where damage comes purely
 # from the handler). Treat that as a deliberate override.
-_PRESERVE_PER_ATTACK_FILL     = ("effect_key", "effect_params", "effect_chain")
+_PRESERVE_PER_ATTACK_FILL     = ("effect_key", "effect_params", "effect_chain",
+                                  "hits_each_defending")
 _PRESERVE_PER_ATTACK_OVERRIDE = ("base_damage",)
+# Per-ability hand-authored fields. The API supplies name/text/type for each
+# ability; effect_key/effect_params are added by us once a handler is wired up.
+_PRESERVE_PER_ABILITY_FILL = ("effect_key", "effect_params")
 
 
 def _merge_preserved_fields(new: dict, existing: dict) -> None:
@@ -399,22 +446,37 @@ def _merge_preserved_fields(new: dict, existing: dict) -> None:
             new[key] = existing[key]
     new_attacks = new.get("attacks")
     old_attacks = existing.get("attacks")
-    if not isinstance(new_attacks, list) or not isinstance(old_attacks, list):
-        return
-    by_name = {a.get("name"): a for a in old_attacks if isinstance(a, dict)}
-    for attack in new_attacks:
-        if not isinstance(attack, dict):
-            continue
-        old = by_name.get(attack.get("name"))
-        if old is None:
-            continue
-        for key in _PRESERVE_PER_ATTACK_FILL:
-            if key not in attack and key in old:
-                attack[key] = old[key]
-        if "effect_key" in old:
-            for key in _PRESERVE_PER_ATTACK_OVERRIDE:
-                if key in old and attack.get(key) != old[key]:
+    if isinstance(new_attacks, list) and isinstance(old_attacks, list):
+        by_name = {a.get("name"): a for a in old_attacks if isinstance(a, dict)}
+        for attack in new_attacks:
+            if not isinstance(attack, dict):
+                continue
+            old = by_name.get(attack.get("name"))
+            if old is None:
+                continue
+            for key in _PRESERVE_PER_ATTACK_FILL:
+                if key not in attack and key in old:
                     attack[key] = old[key]
+            if "effect_key" in old:
+                for key in _PRESERVE_PER_ATTACK_OVERRIDE:
+                    if key in old and attack.get(key) != old[key]:
+                        attack[key] = old[key]
+
+    new_abilities = new.get("abilities")
+    old_abilities = existing.get("abilities")
+    if isinstance(new_abilities, list) and isinstance(old_abilities, list):
+        by_name = {a.get("name"): a for a in old_abilities if isinstance(a, dict)}
+        for abil in new_abilities:
+            if not isinstance(abil, dict):
+                continue
+            old = by_name.get(abil.get("name"))
+            if old is None:
+                continue
+            for key in _PRESERVE_PER_ABILITY_FILL:
+                ## Always restore non-empty hand-authored values; the API
+                ## doesn't carry these so the merge is purely additive.
+                if key in old and old[key] not in (None, "", {}):
+                    abil[key] = old[key]
 
 
 def process_cards(cards: list, set_id: str, out_dir: str, img_dir: str, session: requests.Session) -> tuple[int, int]:

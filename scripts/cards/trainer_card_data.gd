@@ -11,3 +11,9 @@ enum TrainerKind { ITEM, SUPPORTER, STADIUM, TOOL }
 
 ## Runtime configuration for parameterized trainer-effect handlers.
 @export var effect_params: Dictionary = {}
+
+## True for Trainer cards that are placed onto the board as a synthetic Basic
+## Pokémon (Fossils — Claw, Mysterious, Root).  These cards are routed through
+## ActionPlayFossil rather than ActionPlayItem.  Pokémon parameters live in
+## effect_params.as_pokemon (display_name, hp).
+@export var plays_as_pokemon: bool = false

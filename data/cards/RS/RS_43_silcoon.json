@@ -21,5 +21,19 @@
       "effect_params": {}
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Hard Cocoon",
+      "text": "During your opponent's turn, if Silcoon would be damaged by an opponent's attack (after applying Weakness and Resistance), flip a coin. If heads, reduce that damage by 30.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_coin_gated_reduction",
+      "effect_params": {
+        "amount": 30,
+        "opponent_turn_only": true
+      }
+    }
+  ]
 }

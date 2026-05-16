@@ -127,6 +127,7 @@ func test_energy_attached_target() -> void:
 	var att := b.place_active(0, "DR_49_bagon", {})
 	var tgt := b.place_active(1, "DR_41_shelgon",
 		{"hp": 200, "energy": ["RS_104_grass_energy", "RS_104_grass_energy", "RS_104_grass_energy"]})
+	tgt.card.abilities = []  ## isolate from Shelgon's Energy Guard
 	b.set_prizes(0); b.set_prizes(1)
 	var hp_before := tgt.current_hp
 	var r: Array = await _run_scaling(att, "p1_active1", 0,
@@ -164,6 +165,7 @@ func test_energy_attached_all() -> void:
 		{"energy": ["RS_104_grass_energy", "RS_104_grass_energy"]})
 	var tgt := b.place_active(1, "DR_41_shelgon",
 		{"hp": 200, "energy": ["RS_104_grass_energy"]})
+	tgt.card.abilities = []  ## isolate from Energy Guard
 	b.place_bench(0, "DR_49_bagon", {"energy": ["RS_104_grass_energy"]})
 	b.set_prizes(0); b.set_prizes(1)
 	var hp_before := tgt.current_hp
@@ -182,6 +184,7 @@ func test_energy_attached_own() -> void:
 		{"energy": ["RS_104_grass_energy", "RS_104_grass_energy"]})
 	var tgt := b.place_active(1, "DR_41_shelgon",
 		{"hp": 200, "energy": ["RS_104_grass_energy", "RS_104_grass_energy", "RS_104_grass_energy"]})
+	tgt.card.abilities = []  ## isolate from Energy Guard
 	b.set_prizes(0); b.set_prizes(1)
 	var hp_before := tgt.current_hp
 	var r: Array = await _run_scaling(att, "p1_active1", 0,
@@ -198,6 +201,7 @@ func test_energy_attached_opp() -> void:
 	var att := b.place_active(0, "DR_49_bagon", {"energy": ["RS_104_grass_energy"]})
 	var tgt := b.place_active(1, "DR_41_shelgon",
 		{"hp": 200, "energy": ["RS_104_grass_energy", "RS_104_grass_energy"]})
+	tgt.card.abilities = []  ## isolate from Energy Guard
 	b.set_prizes(0); b.set_prizes(1)
 	var hp_before := tgt.current_hp
 	var r: Array = await _run_scaling(att, "p1_active1", 0,

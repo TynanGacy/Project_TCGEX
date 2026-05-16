@@ -21,5 +21,18 @@
       "effect_params": {}
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Natural Cure",
+      "text": "When you attach a Water Energy card from your hand to Marshtomp, remove all Special Conditions from Marshtomp.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_natural_cure",
+      "effect_params": {
+        "required_type": "WATER"
+      }
+    }
+  ]
 }

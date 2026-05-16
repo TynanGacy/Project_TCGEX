@@ -25,5 +25,17 @@
       }
     }
   ],
-  "rarity": "Rare"
+  "rarities": [
+    "Rare"
+  ],
+  "abilities": [
+    {
+      "name": "Magnetic Field",
+      "text": "Once during your turn (before your attack), if you have basic Energy cards in your discard pile, you may discard any 1 card from your hand. Then search for up to 2 basic Energy cards from your discard pile, show them to your opponent, and put them into your hand. You can't return the card you first discarded to your hand in this way. This power can't be used if Magneton is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_discard_hand_recover_basic_energy",
+      "effect_params": {},
+      "repeatable": false
+    }
+  ]
 }

@@ -24,5 +24,20 @@
       }
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Psy Shadow",
+      "text": "Once during your turn (before your attack), you may search your deck for a Psychic Energy card and attach it to 1 of your Pokémon. Put 2 damage counters on that Pokémon. Shuffle your deck afterward. This power can't be used if Gardevoir is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_search_energy_to_pokemon_with_damage",
+      "effect_params": {
+        "energy_type": "PSYCHIC",
+        "damage_counters": 2
+      },
+      "repeatable": false
+    }
+  ]
 }

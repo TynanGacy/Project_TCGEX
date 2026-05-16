@@ -42,6 +42,7 @@ func apply(manager) -> void:
 	manager.game_position.take_from_hand(player_id, card)
 	var inst: PokemonInstance = manager.board_position.get_instance(target_slot)
 	inst.attach_tool(card)
+	inst.tool_attached_turn[card] = manager.turn_number
 
 
 func description() -> String:

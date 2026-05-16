@@ -43,6 +43,10 @@ func apply(manager) -> void:
 	var inst: PokemonInstance = manager.board_position.get_instance(target_slot)
 	inst.attach_energy(card)
 	manager.energy_attached_this_turn[player_id] = true
+	## Poké-Body energy-attach triggers (Combusken/Grovyle/Marshtomp "Natural
+	## Cure"). Fires only when the just-attached energy matches the body's
+	## required_type.
+	AbilityEffects.run_on_attached_energy(inst, target_slot, card, manager)
 
 
 func description() -> String:

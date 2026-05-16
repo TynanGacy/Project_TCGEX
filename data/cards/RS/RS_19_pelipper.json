@@ -49,5 +49,7 @@
       "effect_params": {}
     }
   ],
-  "rarity": "Rare"
+  "rarities": [
+    "Rare"
+  ]
 }
