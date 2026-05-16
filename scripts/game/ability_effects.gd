@@ -51,6 +51,9 @@ const BODY_HEAL_ON_MATCHING_ENERGY_ATTACH  = "body_heal_on_matching_energy_attac
 const BODY_OPPONENT_RETREAT_LOCK           = "body_opponent_retreat_lock"
 const POWER_TYPE_OVERRIDE_UNTIL_TURN_END   = "power_type_override_until_turn_end"
 
+## Wave 7 (Chain of Events). Note: POWER_REUSE_LAST_ATTACK was first
+## reserved as a placeholder in Wave 4 and is now functional.
+
 
 ## --- Damage modifiers (called from AttackResolver) -------------------------
 ##
@@ -288,6 +291,35 @@ static func run_on_attached_energy(inst: PokemonInstance, slot_id: String,
 						mini(heal_hp, missing),
 					]
 				)
+
+
+## --- Wave 7: Chain of Events (Plusle / Minun) ------------------------------
+
+## Returns the slot of a Chain-of-Events carrier in the OTHER active slot on
+## the same side as [attacker_slot], or "" if none qualifies.
+## Used by AttackResolver after a regular attack resolves; if non-empty, the
+## resolver invokes the carrier's attack[0] (Cheer On) as a sub-attack.
+static func find_chain_of_events_carrier_slot(attacker_slot: String, manager) -> String:
+	if manager == null or attacker_slot == "":
+		return ""
+	var pid: int = -1
+	if attacker_slot.begins_with("p0_"):
+		pid = 0
+	elif attacker_slot.begins_with("p1_"):
+		pid = 1
+	if pid < 0:
+		return ""
+	for s in BoardPosition.ACTIVE_SLOTS:
+		var sid := "p%d_%s" % [pid, s]
+		if sid == attacker_slot:
+			continue
+		var inst: PokemonInstance = manager.board_position.get_instance(sid)
+		if inst == null:
+			continue
+		for abil in _abilities_on(inst, manager):
+			if abil.effect_key == POWER_REUSE_LAST_ATTACK:
+				return sid
+	return ""
 
 
 ## --- Wave 4: Loose Shell (Ninjask) -----------------------------------------

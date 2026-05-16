@@ -428,9 +428,73 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 		ctx.run_post_actions()
 	manager.flush_deferred_effects()
 
+	## Wave 7 — Chain of Events (Plusle / Minun): when a regular attack
+	## finishes, a Pokémon in the OTHER active slot carrying Chain of Events
+	## may use its own attack[0] (Cheer On) once per turn. Fires before
+	## pipeline_completed so request_action_async callers await it too.
+	if not is_sub:
+		await _maybe_chain_of_events(action, manager)
+
 	if not is_sub:
 		_is_resolving = false
 		pipeline_completed.emit()
+
+
+## Wave 7 — Chain of Events trigger. Called once at the tail of a regular
+## (non-sub) attack pipeline. Bails on any of: chain already used this turn,
+## no carrier in the other active slot, carrier KO'd, carrier condition-
+## locked, carrier can't pay Cheer On's energy cost, no opp Active to target.
+## Sets manager.chain_of_events_used_this_turn BEFORE invoking the sub-attack
+## so the chain itself can't recursively chain.
+func _maybe_chain_of_events(parent_action, manager) -> void:
+	if manager.chain_of_events_used_this_turn[parent_action.player_id]:
+		return
+	var carrier_slot: String = AbilityEffects.find_chain_of_events_carrier_slot(
+		parent_action.attacker_slot, manager)
+	if carrier_slot == "":
+		return
+	var carrier: PokemonInstance = manager.board_position.get_instance(carrier_slot)
+	if carrier == null or carrier.card == null or carrier.is_knocked_out():
+		return
+	if carrier.card.attacks.is_empty():
+		return
+	if carrier.special_conditions.has(PokemonInstance.SpecialCondition.ASLEEP) \
+			or carrier.special_conditions.has(PokemonInstance.SpecialCondition.PARALYZED):
+		manager.log_message.emit(
+			"[Body] Chain of Events — %s is condition-locked; no chain." %
+				carrier.card.display_name
+		)
+		return
+	var cheer_on: AttackData = carrier.card.attacks[0]
+	var pay_check: ActionResult = ActionAttack._check_energy(carrier, cheer_on)
+	if not pay_check.ok:
+		manager.log_message.emit(
+			"[Body] Chain of Events — %s can't pay %s's cost." % [
+				carrier.card.display_name, cheer_on.name,
+			]
+		)
+		return
+	var opp_id: int = 1 - parent_action.player_id
+	var target_slot: String = ""
+	for s in BoardPosition.ACTIVE_SLOTS:
+		var sid := "p%d_%s" % [opp_id, s]
+		if manager.board_position.get_instance(sid) != null:
+			target_slot = sid
+			break
+	if target_slot == "":
+		return
+	manager.chain_of_events_used_this_turn[parent_action.player_id] = true
+	manager.log_message.emit(
+		"[Body] Chain of Events — %s uses %s." % [
+			carrier.card.display_name, cheer_on.name,
+		]
+	)
+	var chain_action := ActionAttack.new(parent_action.player_id,
+		carrier_slot, 0, target_slot)
+	await begin_attack_with_attack(chain_action, manager, cheer_on, {
+		"is_sub_attack": true,
+		"skip_conditionals_gate": true,
+	})
 
 
 ## Waits for all queued animations to finish.  No-op if AnimationManager

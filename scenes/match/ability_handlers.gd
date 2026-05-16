@@ -189,10 +189,11 @@ func _register_handlers() -> void:
 		AbilityEffects.POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC,
 		AbilityEffectDefinition.passive({})
 	)
-	## Plusle / Minun "Chain of Events" — placeholder.  The 2-active
-	## post-attack chain trigger is intentionally not wired in this wave;
-	## registering the key keeps the JSON-to-handler coverage check green
-	## and reserves the slug for the eventual implementation.
+	## Plusle / Minun "Chain of Events" — passive trigger fired by
+	## AttackResolver._maybe_chain_of_events after a regular attack resolves.
+	## The carrier in the other active slot uses its own attack[0] (Cheer On)
+	## as a sub-attack, gated by carrier energy cost + manager.chain_of_
+	## events_used_this_turn (one chain per turn even with multiple carriers).
 	AbilityEffectRegistry.register_def(
 		AbilityEffects.POWER_REUSE_LAST_ATTACK,
 		AbilityEffectDefinition.passive({})
