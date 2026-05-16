@@ -1,7 +1,0 @@
-[gd_scene format=3 uid="uid://cexmujh8xivdx"]
-
-[ext_resource type="PackedScene" path="res://scenes/overworld/maps/map_base.tscn" id="1_base"]
-[ext_resource type="Script" path="res://scenes/overworld/maps/dummy_map.gd" id="2_script"]
-
-[node name="DummyMap" unique_id=1371950832 instance=ExtResource("1_base")]
-script = ExtResource("2_script")
