@@ -44,6 +44,9 @@ func apply(manager) -> void:
 	manager.active_stadium       = card
 	manager.active_stadium_owner = player_id
 	manager.stadium_changed.emit(card, player_id)
+	## Reconcile aura bonuses (e.g. Low Pressure System +10 HP) against the
+	## new stadium for every in-play Pokémon.
+	StadiumEffects.reconcile_all_auras(manager)
 	if manager.trainer_resolver != null:
 		manager.trainer_resolver.dispatch(card, manager, player_id)
 

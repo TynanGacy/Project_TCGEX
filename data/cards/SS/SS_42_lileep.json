@@ -40,5 +40,7 @@
       "effect_params": {}
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ]
 }

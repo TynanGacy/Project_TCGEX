@@ -24,5 +24,7 @@
       }
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ]
 }

@@ -4,7 +4,9 @@
   "card_type": "TRAINER",
   "trainer_kind": "ITEM",
   "rules_text": "Choose 1 of your Basic Pokémon in play. If you have a Stage 1 or Stage 2 card that evolves from that Pokémon in your hand, put that card on the Basic Pokémon. (This counts as evolving that Pokémon.)",
-  "rarity": "Uncommon",
+  "rarities": [
+    "Uncommon"
+  ],
   "effect_key": "rare_candy_evolve",
   "effect_params": {}
 }

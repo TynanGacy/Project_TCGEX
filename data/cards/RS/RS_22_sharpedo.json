@@ -26,5 +26,18 @@
       }
     }
   ],
-  "rarity": "Rare"
+  "rarities": [
+    "Rare"
+  ],
+  "abilities": [
+    {
+      "name": "Rough Skin",
+      "text": "If Sharpedo is your Active Pokémon and is damaged by an opponent's attack (even if Sharpedo is Knocked Out), put 2 damage counters on the Attacking Pokémon.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_retaliate_damage",
+      "effect_params": {
+        "counters": 2
+      }
+    }
+  ]
 }

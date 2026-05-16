@@ -5,5 +5,7 @@
   "energy_type": "LIGHTNING",
   "provides": 1,
   "rules_text": "",
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ]
 }

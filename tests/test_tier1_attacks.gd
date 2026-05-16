@@ -352,6 +352,9 @@ func test_bonus_per_energy_defender() -> void:
 		"hp":     200,
 		"energy": ["RS_104_grass_energy", "RS_104_grass_energy", "RS_104_grass_energy"]
 	})
+	## Isolate from Shelgon's Energy Guard Poké-Body; this test asserts the
+	## per-energy bonus formula, not body interactions.
+	tgt.card.abilities = []
 	b.set_prizes(0); b.set_prizes(1)
 
 	## Psychic Boom is attack index 0.

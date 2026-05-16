@@ -91,6 +91,7 @@ var _save_load_mgr: SaveLoadManager = null
 var _anim_manager:    Node = null
 var _effect_handlers: Node = null
 var _trainer_handlers: Node = null
+var _ability_handlers: Node = null
 
 ## Deferred end-of-turn: set when an attack commits; cleared after prize
 ## selection and promotion both resolve so we don't end the turn too early.
@@ -106,6 +107,8 @@ func _ready() -> void:
 	add_child(_effect_handlers)
 	_trainer_handlers = load("res://scenes/match/trainer_handlers.gd").new()
 	add_child(_trainer_handlers)
+	_ability_handlers = load("res://scenes/match/ability_handlers.gd").new()
+	add_child(_ability_handlers)
 	ManagerSystemSingleton.animation_manager = _anim_manager
 
 	_pile_mgr = PileVisualManager.new()

@@ -33,5 +33,7 @@
       }
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ]
 }

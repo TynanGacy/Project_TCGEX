@@ -19,5 +19,18 @@
       "cost_colorless": 1
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ],
+  "abilities": [
+    {
+      "name": "Rain Dish",
+      "text": "At any time between turns, remove 1 damage counter from Lotad.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_between_turn_heal",
+      "effect_params": {
+        "counters": 1
+      }
+    }
+  ]
 }

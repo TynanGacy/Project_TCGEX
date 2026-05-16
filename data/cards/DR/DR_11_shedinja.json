@@ -25,5 +25,16 @@
       }
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Wonder Guard",
+      "text": "Prevent all effects of attacks, including damage, done to Shedinja by your opponent's Evolved Pokémon and Pokémon-ex.",
+      "kind": "POKE_BODY",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

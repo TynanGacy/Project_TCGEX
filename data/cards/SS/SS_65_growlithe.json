@@ -20,5 +20,18 @@
       "cost_colorless": 1
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ],
+  "abilities": [
+    {
+      "name": "Fire Veil",
+      "text": "If Growlithe is your Active Pokémon and is damaged by an opponent's attack (even if Growlithe is Knocked Out), the Attacking Pokémon is now Burned.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_retaliate_status",
+      "effect_params": {
+        "condition": "BURNED"
+      }
+    }
+  ]
 }

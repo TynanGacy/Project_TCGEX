@@ -25,5 +25,19 @@
       }
     }
   ],
-  "rarity": "Rare"
+  "rarities": [
+    "Rare"
+  ],
+  "abilities": [
+    {
+      "name": "Chaos Flash",
+      "text": "Once during your turn (before your attack), if Golduck is your Active Pokémon, you may flip a coin. If heads, the Defending Pokémon (choose 1 if there are 2) is now Confused. This power can't be used if Golduck is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_coin_inflict_status_on_defender",
+      "effect_params": {
+        "condition": "CONFUSED"
+      },
+      "repeatable": false
+    }
+  ]
 }

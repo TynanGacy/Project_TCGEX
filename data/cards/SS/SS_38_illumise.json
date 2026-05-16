@@ -36,5 +36,24 @@
       }
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Glowing Screen",
+      "text": "As long as Volbeat is in play, any damage done to Illumise by attacks from Fighting Pokémon and Darkness Pokémon is reduced by 30. You can't reduce more than 30 damage even if there is more than 1 Volbeat in play.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_damage_reduction_from_types",
+      "effect_params": {
+        "amount": 30,
+        "source_types": [
+          "FIGHTING",
+          "DARKNESS"
+        ],
+        "requires": "partner_in_play",
+        "partner_slug": "volbeat"
+      }
+    }
+  ]
 }

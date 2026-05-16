@@ -35,5 +35,16 @@
       }
     }
   ],
-  "rarity": "Rare Holo EX"
+  "rarities": [
+    "Rare Holo EX"
+  ],
+  "abilities": [
+    {
+      "name": "Toxic Gas",
+      "text": "As long as Muk ex is your Active Pokémon, ignore all Poké-Powers and Poké-Bodies other than Toxic Gas.",
+      "kind": "POKE_BODY",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

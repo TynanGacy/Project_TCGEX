@@ -24,5 +24,19 @@
       }
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Water Call",
+      "text": "Once during your turn (before your attack), you may attach a Water Energy card from your hand to your Active Pokémon. This power can't be used if Swampert is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_attach_basic_energy_from_hand_to_active",
+      "effect_params": {
+        "energy_type": "WATER"
+      },
+      "repeatable": false
+    }
+  ]
 }

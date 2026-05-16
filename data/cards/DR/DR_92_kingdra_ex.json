@@ -33,5 +33,7 @@
       }
     }
   ],
-  "rarity": "Rare Holo EX"
+  "rarities": [
+    "Rare Holo EX"
+  ]
 }

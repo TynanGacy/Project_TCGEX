@@ -34,5 +34,7 @@
       "effect_params": {}
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ]
 }

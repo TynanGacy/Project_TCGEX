@@ -79,6 +79,7 @@ var board_position: BoardPosition = null
 var game_position:  GamePosition = null
 var attack_resolver: AttackResolver = null
 var trainer_resolver: TrainerResolver = null
+var ability_resolver: AbilityResolver = null
 
 ## Set by the match scene in _ready(); cleared by full_reset() on match exit.
 ## Used by AttackResolver and cleanup phases for animation sequencing.
@@ -259,6 +260,9 @@ func _ready() -> void:
 	trainer_resolver = TrainerResolver.new()
 	trainer_resolver.name = "TrainerResolver"
 	add_child(trainer_resolver)
+	ability_resolver = AbilityResolver.new()
+	ability_resolver.name = "AbilityResolver"
+	add_child(ability_resolver)
 
 	board_position.slot_changed.connect(_on_slot_changed)
 	board_position.overflow_escalation.connect(_on_overflow_escalation)
@@ -318,6 +322,9 @@ func request_action_async(action: GameAction) -> ActionResult:
 	if result.ok and trainer_resolver != null and trainer_resolver.is_resolving() \
 			and (action is ActionPlayItem or action is ActionPlaySupporter or action is ActionPlayStadium):
 		await trainer_resolver.pipeline_completed
+	if result.ok and ability_resolver != null and ability_resolver.is_resolving() \
+			and action is ActionUseAbility:
+		await ability_resolver.pipeline_completed
 	return result
 
 
@@ -623,6 +630,7 @@ func full_reset() -> void:
 	game_position    = null
 	attack_resolver  = null
 	trainer_resolver = null
+	ability_resolver = null
 	animation_manager = null
 
 
@@ -655,6 +663,13 @@ func _reset_turn_flags(pid: int) -> void:
 	retreat_used_this_turn[pid]      = false
 	attack_used_this_turn[pid]       = false
 	pokemon_entered_play_this_turn[pid] = []
+	## Reset Poké-Power "once per turn" flags on every Pokémon controlled by
+	## the player whose turn is starting.
+	if board_position != null:
+		for sid in BoardPosition.all_slot_ids(pid):
+			var inst: PokemonInstance = board_position.get_instance(sid)
+			if inst != null:
+				inst.power_used_this_turn = false
 
 
 func _clear_expired_retreat_locks() -> void:
@@ -755,6 +770,13 @@ func _cleanup_instance_async(inst: PokemonInstance, slot_id: String,
 				await anim_mgr.wait_until_drained()
 			log_message.emit("[Cleanup] %s burn check: heads (no damage)." % pname)
 
+	## Between-turn Tool effects (Lum Berry, Oran Berry, Buffer Piece auto-discard).
+	## Fires after condition damage so heals are responsive to fresh damage.
+	if not inst.is_knocked_out():
+		ToolEffects.run_between_turn_effects(inst, slot_id, self)
+		## Between-turn Poké-Body heals (Rain Dish).
+		AbilityEffects.run_between_turn_heals(inst, slot_id, self)
+
 
 func _get_animation_manager() -> Node:
 	return animation_manager
@@ -769,6 +791,9 @@ func resolve_knockout(defending_slot: String, attacking_player: int) -> void:
 		return
 	var defender_player := board_position.player_of(defending_slot)
 	var ko_name := inst.card.display_name if inst.card != null else "Pokémon"
+	## Fossils "don't count as a Knocked Out Pokémon" — the card discards but
+	## the attacking player takes no prize.
+	var fossil_ko: bool = inst.is_fossil()
 	log_message.emit("[KO] %s was Knocked Out!" % ko_name)
 
 	board_position.clear(defending_slot)
@@ -791,6 +816,12 @@ func resolve_knockout(defending_slot: String, attacking_player: int) -> void:
 		phase_changed.emit(current_phase)
 		game_won.emit(attacking_player)
 		_log_state("[KO] %s KO'd — P%d wins" % [ko_name, attacking_player])
+		return
+
+	## Fossil KOs skip prize selection entirely and go straight to promotion.
+	if fossil_ko:
+		_log_state("[KO] %s KO'd (Fossil — no prize)" % ko_name)
+		_check_promotion_needed(defender_player)
 		return
 
 	## Begin prize selection for the attacking player.

@@ -31,5 +31,16 @@
       "cost_colorless": 1
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Lunar Eclipse",
+      "text": "Once during your turn (before your attack), if Solrock is in play, you may use this power. Until the end of your turn, Lunatone's type is Darkness. This power can't be used if Lunatone is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

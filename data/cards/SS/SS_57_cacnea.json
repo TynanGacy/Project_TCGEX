@@ -19,5 +19,18 @@
       "cost_colorless": 1
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ],
+  "abilities": [
+    {
+      "name": "Poison Payback",
+      "text": "If Cacnea is your Active Pokémon and is damaged by an opponent's attack (even if Cacnea is Knocked Out), the Attacking Pokémon is now Poisoned.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_retaliate_status",
+      "effect_params": {
+        "condition": "POISONED"
+      }
+    }
+  ]
 }

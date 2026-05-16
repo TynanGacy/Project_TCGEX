@@ -42,6 +42,7 @@ func apply(manager) -> void:
 	manager.game_position.take_from_hand(player_id, card)
 	var instance := PokemonInstance.create(card, player_id)
 	manager.board_position.place(target_slot, instance)
+	StadiumEffects.reconcile_aura_for(target_slot, instance, manager)
 
 
 func description() -> String:

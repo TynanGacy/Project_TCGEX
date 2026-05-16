@@ -29,6 +29,31 @@ var current_hp: int = 0
 var special_conditions: Array[SpecialCondition] = []
 var attached_energy: Array[CardData] = []
 var attached_tools: Array[CardData] = []
+## Maps tool card → manager.turn_number at attach time.  Read by ToolEffects
+## for time-gated discards (Buffer Piece discards at end of opponent's first
+## turn after attach).  Tool keys are erased when the tool is detached.
+var tool_attached_turn: Dictionary = {}
+
+## HP bonus currently granted by the active Stadium's aura (e.g. Low Pressure
+## System gives +10 HP to Grass/Lightning Pokémon in play).  Reconciled by
+## StadiumEffects whenever the stadium changes or this Pokémon enters play /
+## evolves.  Included in max_hp; reversed when the aura is removed.
+var aura_hp_bonus: int = 0
+
+## When non-null, this PokemonInstance represents a Fossil Trainer card played
+## as a synthetic Basic Pokémon (Claw Fossil, Mysterious Fossil, Root Fossil).
+## The instance's `card` field holds a runtime-synthesised PokemonCardData; on
+## release / KO, the original Trainer card is discarded instead.
+##
+## Fossils ignore special-condition application, can't attack or retreat, and
+## don't award prizes when knocked out.
+var source_trainer_card: TrainerCardData = null
+
+## True if this Pokémon already activated a Poké-Power this turn.  Reset by
+## ManagerSystem._begin_turn for the player whose turn is starting.  Cards
+## with multiple Poké-Powers share this flag (the canonical "once per turn,
+## any of the Pokémon's Poké-Powers" rule).
+var power_used_this_turn: bool = false
 
 ## Dynamic modifiers applied by board effects.  Keyed by modifier id (String),
 ## value is an arbitrary Dictionary the effect defines.  Cleared on release.
@@ -625,9 +650,21 @@ func heal(amount: int) -> void:
 
 
 func add_condition(c: SpecialCondition) -> void:
+	## Fossils ("can't be affected by any Special Conditions") silently ignore.
+	if source_trainer_card != null:
+		return
+	## Poké-Body status immunity (Roselia "Thick Skin", Zangoose "Poison
+	## Resistance"). Bypassed by the recursive nature of refresh_visual; only
+	## the add path needs the check.
+	if AbilityEffects.blocks_condition(self, c):
+		return
 	if not special_conditions.has(c):
 		special_conditions.append(c)
 	refresh_visual()
+
+
+func is_fossil() -> bool:
+	return source_trainer_card != null
 
 
 func remove_condition(c: SpecialCondition) -> void:
@@ -695,9 +732,15 @@ func devolve() -> PokemonCardData:
 
 ## Returns every card currently contained in this instance, in the order:
 ##   [top card, ...prior stages, ...attached energy, ...attached tools]
+##
+## For Fossil instances the original Trainer card replaces the synthetic
+## Pokémon card so callers (KO discard, return-to-hand) operate on the printed
+## card the player actually owns.
 func all_cards() -> Array[CardData]:
 	var out: Array[CardData] = []
-	if card != null:
+	if source_trainer_card != null:
+		out.append(source_trainer_card)
+	elif card != null:
 		out.append(card)
 	for c in prior_stages:
 		out.append(c)
@@ -714,9 +757,13 @@ func all_cards() -> Array[CardData]:
 func release_cards() -> Array[CardData]:
 	var out := all_cards()
 	card = null
+	source_trainer_card = null
 	prior_stages.clear()
 	attached_energy.clear()
 	attached_tools.clear()
+	tool_attached_turn.clear()
+	aura_hp_bonus = 0
+	power_used_this_turn = false
 	special_conditions.clear()
 	modifiers.clear()
 	retreat_locked_until_turn = -1

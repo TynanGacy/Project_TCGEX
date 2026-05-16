@@ -34,5 +34,19 @@
       ]
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Firestarter",
+      "text": "Once during your turn (before your attack), you may attach a Fire Energy card from your discard pile to 1 of your Benched Pokémon. This power can't be used if Blaziken is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_attach_basic_energy_from_discard_to_bench",
+      "effect_params": {
+        "energy_type": "FIRE"
+      },
+      "repeatable": false
+    }
+  ]
 }

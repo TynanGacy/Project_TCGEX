@@ -43,5 +43,7 @@
       "cost_colorless": 3
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ]
 }

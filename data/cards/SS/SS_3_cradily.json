@@ -42,5 +42,16 @@
       }
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Super Suction Cups",
+      "text": "As long as Cradily is your Active Pokémon, your opponent's Pokémon can't retreat.",
+      "kind": "POKE_BODY",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

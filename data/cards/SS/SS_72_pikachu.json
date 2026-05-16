@@ -26,5 +26,7 @@
       "cost_colorless": 2
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ]
 }

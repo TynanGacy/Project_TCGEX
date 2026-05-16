@@ -29,5 +29,16 @@
       "cost_colorless": 3
     }
   ],
-  "rarity": "Rare Holo EX"
+  "rarities": [
+    "Rare Holo EX"
+  ],
+  "abilities": [
+    {
+      "name": "Primal Lock",
+      "text": "As long as Aerodactyl ex is in play, your opponent can't play Pokémon Tool cards. Remove any Pokémon Tool cards attached to your opponent's Pokémon and put them into his or her discard pile.",
+      "kind": "POKE_BODY",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

@@ -19,5 +19,18 @@
       "cost_colorless": 2
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Natural Cure",
+      "text": "When you attach a Grass Energy card from your hand to Grovyle, remove all Special Conditions from Grovyle.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_natural_cure",
+      "effect_params": {
+        "required_type": "GRASS"
+      }
+    }
+  ]
 }

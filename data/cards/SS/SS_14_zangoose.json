@@ -36,5 +36,20 @@
       }
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Poison Resistance",
+      "text": "Zangoose can't be Poisoned.",
+      "kind": "POKE_BODY",
+      "effect_key": "body_status_immunity",
+      "effect_params": {
+        "conditions": [
+          "POISONED"
+        ]
+      }
+    }
+  ]
 }

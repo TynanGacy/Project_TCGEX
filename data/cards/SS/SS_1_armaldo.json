@@ -20,5 +20,16 @@
       "cost_colorless": 1
     }
   ],
-  "rarity": "Rare Holo"
+  "rarities": [
+    "Rare Holo"
+  ],
+  "abilities": [
+    {
+      "name": "Primal Veil",
+      "text": "As long as Armaldo is your Active Pokémon, each player can't play any Supporter Cards.",
+      "kind": "POKE_BODY",
+      "effect_key": "",
+      "effect_params": {}
+    }
+  ]
 }

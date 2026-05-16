@@ -24,5 +24,19 @@
       }
     }
   ],
-  "rarity": "Rare"
+  "rarities": [
+    "Rare"
+  ],
+  "abilities": [
+    {
+      "name": "Energy Trans",
+      "text": "As often as you like during your turn (before your attack), move a Grass Energy card attached to 1 of your Pokémon to another of your Pokémon. This power can't be used if Sceptile is affected by a Special Condition.",
+      "kind": "POKE_POWER",
+      "effect_key": "power_move_basic_energy_between_own",
+      "effect_params": {
+        "energy_type": "GRASS"
+      },
+      "repeatable": true
+    }
+  ]
 }

@@ -20,5 +20,18 @@
       "cost_colorless": 1
     }
   ],
-  "rarity": "Common"
+  "rarities": [
+    "Common"
+  ],
+  "abilities": [
+    {
+      "name": "Exoskeleton",
+      "text": "Any damage done to Pineco by attacks is reduced by 10 (after applying Weakness and Resistance).",
+      "kind": "POKE_BODY",
+      "effect_key": "body_damage_reduction",
+      "effect_params": {
+        "amount": 10
+      }
+    }
+  ]
 }

@@ -35,5 +35,18 @@
       "cost_colorless": 1
     }
   ],
-  "rarity": "Uncommon"
+  "rarities": [
+    "Uncommon"
+  ],
+  "abilities": [
+    {
+      "name": "Exoskeleton",
+      "text": "Any damage done to Kabuto by attacks is reduced by 20 (after applying Weakness and Resistance).",
+      "kind": "POKE_BODY",
+      "effect_key": "body_damage_reduction",
+      "effect_params": {
+        "amount": 20
+      }
+    }
+  ]
 }
