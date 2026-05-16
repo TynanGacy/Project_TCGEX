@@ -28,8 +28,12 @@
       "name": "Primal Veil",
       "text": "As long as Armaldo is your Active Pokémon, each player can't play any Supporter Cards.",
       "kind": "POKE_BODY",
-      "effect_key": "",
-      "effect_params": {}
+      "effect_key": "body_opponent_play_lock",
+      "effect_params": {
+        "block": ["SUPPORTER"],
+        "scope": "both",
+        "carrier_position": "active"
+      }
     }
   ]
 }

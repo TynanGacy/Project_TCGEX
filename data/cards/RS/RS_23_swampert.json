@@ -39,8 +39,11 @@
       "name": "Natural Remedy",
       "text": "Once during your turn (before your attack), when you attach a Water Energy card from your hand to Swampert, remove 1 damage counter from Swampert.",
       "kind": "POKE_BODY",
-      "effect_key": "",
-      "effect_params": {}
+      "effect_key": "body_heal_on_matching_energy_attach",
+      "effect_params": {
+        "required_type": "WATER",
+        "counters": 1
+      }
     }
   ]
 }

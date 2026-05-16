@@ -99,6 +99,14 @@ var damage_reduction_amount: int = 0
 ## removed or when this Pokémon is released.
 var poison_intensity: int = 1
 
+## Wave 6 — until-end-of-turn type override (Solrock "Solar Eclipse",
+## Lunatone "Lunar Eclipse").  Active while turn_number <= type_override_until_turn.
+## Consulted by AbilityEffects.effective_pokemon_type before Kecleon's morph
+## body.  Auto-cleared by ManagerSystem._clear_expired_retreat_locks() and
+## reset on release.
+var type_override_until_turn: int = -1
+var type_override_value: int = 0
+
 ## Wave 12: queued bonus-damage entries consumed on the controller's next attack.
 ## Each entry: {"amount": int, "until_turn": int, "attack_name": String (optional, "" = any)}
 ## Entries are one-shot — consumed when matched, removed when expired.
@@ -774,6 +782,8 @@ func release_cards() -> Array[CardData]:
 	next_attack_coin_fail_until_turn = -1
 	damage_reduction_until_turn = -1
 	damage_reduction_amount = 0
+	type_override_until_turn = -1
+	type_override_value = 0
 	next_turn_attack_bonuses.clear()
 	poison_intensity = 1
 	current_hp = 0

@@ -54,6 +54,10 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("This Pokémon is Paralyzed and cannot retreat.")
 	if active_inst.retreat_locked_until_turn >= manager.turn_number:
 		return ActionResult.fail("This Pokémon is retreat-locked until the end of your opponent's next turn.")
+	## Wave 6 — Cradily "Super Suction Cups": opponent's Pokémon can't retreat
+	## while Cradily is their Active.
+	if AbilityEffects.opp_retreat_locked_for(active_inst, manager):
+		return ActionResult.fail("Retreat is locked by an opposing Poké-Body.")
 
 	if not manager.board_position.has_slot(bench_slot):
 		return ActionResult.fail("Unknown bench slot '%s'." % bench_slot)

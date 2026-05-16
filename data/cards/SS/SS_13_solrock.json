@@ -39,8 +39,11 @@
       "name": "Solar Eclipse",
       "text": "Once during your turn (before your attack), if Lunatone is in play, you may use this power. Until the end of your turn, Solrock's type is Fire. This power can't be used if Solrock is affected by a Special Condition.",
       "kind": "POKE_POWER",
-      "effect_key": "",
-      "effect_params": {}
+      "effect_key": "power_type_override_until_turn_end",
+      "effect_params": {
+        "partner_slug": "lunatone",
+        "new_type": "FIRE"
+      }
     }
   ]
 }
