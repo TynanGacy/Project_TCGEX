@@ -39,7 +39,8 @@
       "kind": "POKE_BODY",
       "effect_key": "body_opponent_play_lock",
       "effect_params": {
-        "block": ["POKEMON_TOOL"]
+        "block": ["POKEMON_TOOL"],
+        "on_enter": "discard_blocked"
       }
     }
   ]
