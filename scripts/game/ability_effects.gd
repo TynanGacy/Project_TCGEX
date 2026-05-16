@@ -46,6 +46,14 @@ const POWER_REUSE_LAST_ATTACK              = "power_reuse_last_attack"
 ## Wave 5 (Baby Evolution).
 const POWER_BABY_EVOLUTION                 = "power_baby_evolution"
 
+## Wave 6 (Wave 3A + 3B in the plan — bodies + type-override power).
+const BODY_HEAL_ON_MATCHING_ENERGY_ATTACH  = "body_heal_on_matching_energy_attach"
+const BODY_OPPONENT_RETREAT_LOCK           = "body_opponent_retreat_lock"
+const POWER_TYPE_OVERRIDE_UNTIL_TURN_END   = "power_type_override_until_turn_end"
+
+## Wave 7 (Chain of Events). Note: POWER_REUSE_LAST_ATTACK was first
+## reserved as a placeholder in Wave 4 and is now functional.
+
 
 ## --- Damage modifiers (called from AttackResolver) -------------------------
 ##
@@ -138,10 +146,19 @@ static func coin_gated_reduction_for_target(target: PokemonInstance, manager) ->
 ## Returns true if [inst]'s Poké-Bodies prevent it from gaining [condition].
 ## Pattern D handler. Fossils already short-circuit add_condition() — this
 ## hook is for non-fossil immunity (Roselia, Zangoose, etc.).
+##
+## add_condition has no manager handle, so we fall back to the autoload
+## singleton (ManagerSystemSingleton) for Toxic Gas suppression checks. In
+## production there is only one match, and the singleton IS its manager —
+## so Toxic Gas on Muk ex correctly disables Roselia's "Thick Skin", etc.
+## In GUT tests the singleton's board is separate from per-test manager
+## instances; existing wave1 immunity tests don't seed Muk on the singleton
+## and continue to assert un-suppressed behavior.
 static func blocks_condition(inst: PokemonInstance, condition: int) -> bool:
 	if inst == null:
 		return false
-	for abil in _abilities_on(inst):
+	var manager_ref: Node = _current_manager()
+	for abil in _abilities_on(inst, manager_ref):
 		if abil.effect_key != BODY_STATUS_IMMUNITY:
 			continue
 		var blocked: Array = abil.effect_params.get("conditions", [])
@@ -152,6 +169,19 @@ static func blocks_condition(inst: PokemonInstance, condition: int) -> bool:
 		if blocked.has(name):
 			return true
 	return false
+
+
+## Returns the currently-active ManagerSystem, or null if unavailable.
+## Used by helpers called from contexts without a direct manager handle —
+## PokemonInstance mutators (add_condition) being the main case.
+##
+## ManagerSystemSingleton is the autoload registered in project.godot.  In
+## production it IS the game's manager.  In GUT tests it exists as an
+## empty autoload instance separate from any per-test ManagerSystem; the
+## existing wave1 immunity tests don't seed Muk on the singleton, so they
+## continue to see un-suppressed behavior.
+static func _current_manager() -> Node:
+	return ManagerSystemSingleton
 
 
 ## --- Retaliation (called from AttackResolver after damage is applied) ------
@@ -242,71 +272,173 @@ static func retreat_cost_override(inst: PokemonInstance, manager) -> int:
 
 ## Called from ActionAttachEnergy.apply() AFTER the energy is attached.  Fires
 ## any Poké-Body whose trigger matches the just-attached energy.
+##
+## Recognised bodies:
+##   BODY_NATURAL_CURE — clears all special conditions if matching type
+##     (params: {required_type})
+##   BODY_HEAL_ON_MATCHING_ENERGY_ATTACH — removes N damage counters if
+##     matching type (params: {required_type, counters})
 static func run_on_attached_energy(inst: PokemonInstance, slot_id: String,
 		energy: EnergyCardData, manager) -> void:
 	if inst == null or energy == null or manager == null:
 		return
 	for abil in _abilities_on(inst, manager):
-		if abil.effect_key != BODY_NATURAL_CURE:
-			continue
 		var want: String = str(abil.effect_params.get("required_type", ""))
 		var got: String = PokemonCardData.EnergyType.keys()[int(energy.energy_type)]
 		if want != "" and want != got:
 			continue
-		if inst.special_conditions.is_empty():
+		match abil.effect_key:
+			BODY_NATURAL_CURE:
+				if inst.special_conditions.is_empty():
+					continue
+				inst.special_conditions.clear()
+				inst.refresh_visual()
+				manager.pokemon_state_changed.emit(slot_id, inst)
+				manager.log_message.emit(
+					"[Body] %s — %s cleared all conditions." % [
+						abil.ability_name, inst.card.display_name,
+					]
+				)
+			BODY_HEAL_ON_MATCHING_ENERGY_ATTACH:
+				var counters: int = int(abil.effect_params.get("counters", 1))
+				var heal_hp: int = counters * 10
+				var missing: int = inst.max_hp - inst.current_hp
+				if missing <= 0:
+					continue
+				inst.heal(mini(heal_hp, missing))
+				manager.pokemon_state_changed.emit(slot_id, inst)
+				manager.log_message.emit(
+					"[Body] %s — %s healed %d HP." % [
+						abil.ability_name, inst.card.display_name,
+						mini(heal_hp, missing),
+					]
+				)
+
+
+## --- Wave 7: Chain of Events (Plusle / Minun) ------------------------------
+
+## Returns the slot of a Chain-of-Events carrier in the OTHER active slot on
+## the same side as [attacker_slot], or "" if none qualifies.
+## Used by AttackResolver after a regular attack resolves; if non-empty, the
+## resolver invokes the carrier's attack[0] (Cheer On) as a sub-attack.
+static func find_chain_of_events_carrier_slot(attacker_slot: String, manager) -> String:
+	if manager == null or attacker_slot == "":
+		return ""
+	var pid: int = -1
+	if attacker_slot.begins_with("p0_"):
+		pid = 0
+	elif attacker_slot.begins_with("p1_"):
+		pid = 1
+	if pid < 0:
+		return ""
+	for s in BoardPosition.ACTIVE_SLOTS:
+		var sid := "p%d_%s" % [pid, s]
+		if sid == attacker_slot:
 			continue
-		inst.special_conditions.clear()
-		inst.refresh_visual()
-		manager.pokemon_state_changed.emit(slot_id, inst)
-		manager.log_message.emit(
-			"[Body] %s — %s cleared all conditions." % [
-				abil.ability_name, inst.card.display_name,
-			]
-		)
+		var inst: PokemonInstance = manager.board_position.get_instance(sid)
+		if inst == null:
+			continue
+		for abil in _abilities_on(inst, manager):
+			if abil.effect_key == POWER_REUSE_LAST_ATTACK:
+				return sid
+	return ""
 
 
 ## --- Wave 4: Loose Shell (Ninjask) -----------------------------------------
 
 ## Called from ActionEvolve.apply() after the evolution swap.  Fires any
-## POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC powers on the new top card.  Params:
-##   {"target_slug": "shedinja"}
+## on-enter-play abilities present on the new top card.  Recognised:
 ##
-## v1 limitation: auto-accepts the "may" clause and auto-picks the first
-## matching basic in the deck.  Sufficient for the only printed user
-## (Ninjask), but a future revision should surface a Yes/No + chooser prompt.
-static func run_on_evolve(inst: PokemonInstance, slot_id: String, manager) -> void:
+##   POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC (Ninjask "Loose Shell") —
+##     params: {target_slug}
+##     v1 limitation: auto-accepts the "may" clause and auto-picks the
+##     first matching basic in the deck.
+##
+##   BODY_OPPONENT_PLAY_LOCK with on_enter="discard_blocked"
+##     (Aerodactyl ex "Primal Lock") — discards every attached tool on the
+##     opponent's Pokémon into their discard pile.
+static func run_on_evolve(inst: PokemonInstance, _slot_id: String, manager) -> void:
 	if inst == null or manager == null or inst.card == null:
 		return
 	for abil in _abilities_on(inst, manager):
-		if abil.effect_key != POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC:
-			continue
-		var slug: String = str(abil.effect_params.get("target_slug", ""))
-		if slug == "":
-			continue
-		var pid: int = inst.owner_id
-		var bench_slot: String = manager.board_position.first_empty_bench(pid)
-		if bench_slot == "":
-			continue
-		var deck: Array = manager.game_position.decks[pid]
-		var found: PokemonCardData = null
-		for c in deck:
-			if c is PokemonCardData and (c as PokemonCardData).name_slug == slug \
-					and (c as PokemonCardData).stage == PokemonCardData.Stage.BASIC:
-				found = c
-				break
-		if found == null:
-			manager.log_message.emit(
-				"[Power] %s — no %s in deck." % [abil.ability_name, slug.capitalize()]
-			)
-			continue
-		manager.game_position.take_from_deck(pid, found)
-		var new_inst := PokemonInstance.create(found, pid)
-		manager.board_position.place(bench_slot, new_inst)
-		manager.game_position.shuffle_deck(pid)
-		manager.pokemon_state_changed.emit(bench_slot, new_inst)
+		match abil.effect_key:
+			POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC:
+				_run_loose_shell(inst, abil, manager)
+			BODY_OPPONENT_PLAY_LOCK:
+				if str(abil.effect_params.get("on_enter", "")) == "discard_blocked":
+					_run_discard_opp_attachments(inst, abil, manager)
+
+
+## Ninjask "Loose Shell" — search the carrier's deck for a basic Pokémon
+## whose name_slug matches `target_slug`, place it on the first empty bench
+## slot, then shuffle. No-op if either side is unavailable.
+##
+## Deferred UX: the printed text reads "you may search your deck …".  We
+## auto-accept here because surfacing the yes/no prompt would require
+## making ActionEvolve.apply async (currently sync) and wiring a new
+## pipeline-completion signal into request_action_async.  Auto-yes is
+## strictly suboptimal only when the player declines a free Shedinja —
+## a vanishingly rare choice in normal play.
+static func _run_loose_shell(inst: PokemonInstance, abil: AbilityData, manager) -> void:
+	var slug: String = str(abil.effect_params.get("target_slug", ""))
+	if slug == "":
+		return
+	var pid: int = inst.owner_id
+	var bench_slot: String = manager.board_position.first_empty_bench(pid)
+	if bench_slot == "":
+		return
+	var deck: Array = manager.game_position.decks[pid]
+	var found: PokemonCardData = null
+	for c in deck:
+		if c is PokemonCardData and (c as PokemonCardData).name_slug == slug \
+				and (c as PokemonCardData).stage == PokemonCardData.Stage.BASIC:
+			found = c
+			break
+	if found == null:
 		manager.log_message.emit(
-			"[Power] %s — placed %s on Bench from deck." % [
-				abil.ability_name, found.display_name,
+			"[Power] %s — no %s in deck." % [abil.ability_name, slug.capitalize()]
+		)
+		return
+	manager.game_position.take_from_deck(pid, found)
+	var new_inst := PokemonInstance.create(found, pid)
+	manager.board_position.place(bench_slot, new_inst)
+	manager.game_position.shuffle_deck(pid)
+	manager.pokemon_state_changed.emit(bench_slot, new_inst)
+	manager.log_message.emit(
+		"[Power] %s — placed %s on Bench from deck." % [
+			abil.ability_name, found.display_name,
+		]
+	)
+
+
+## Aerodactyl ex "Primal Lock" on-enter — every Pokémon on the carrier's
+## opponent's side discards all attached_tools.  Per the printed text, the
+## tools "go into [opp's] discard pile". No-op if blocked list doesn't
+## include POKEMON_TOOL (the only attachable card kind).
+static func _run_discard_opp_attachments(inst: PokemonInstance,
+		abil: AbilityData, manager) -> void:
+	var blocked: Array = abil.effect_params.get("block", [])
+	if not blocked.has("POKEMON_TOOL"):
+		return
+	var opp := 1 - inst.owner_id
+	var discarded_total: int = 0
+	for sid in BoardPosition.all_slot_ids(opp):
+		var opp_inst: PokemonInstance = manager.board_position.get_instance(sid)
+		if opp_inst == null or opp_inst.attached_tools.is_empty():
+			continue
+		var detached: Array[CardData] = opp_inst.attached_tools.duplicate()
+		opp_inst.attached_tools.clear()
+		opp_inst.tool_attached_turn.clear()
+		opp_inst.refresh_visual()
+		manager.pokemon_state_changed.emit(sid, opp_inst)
+		for tool in detached:
+			manager.game_position.put_in_discard(opp, tool)
+			discarded_total += 1
+	if discarded_total > 0:
+		manager.log_message.emit(
+			"[Body] %s — discarded %d opposing Tool%s." % [
+				abil.ability_name, discarded_total,
+				"" if discarded_total == 1 else "s",
 			]
 		)
 
@@ -558,11 +690,13 @@ static func bench_damage_blocked(target: PokemonInstance, slot_id: String,
 ## applies — the resolver checks this flag between the damage step and the
 ## effect-execution / post-action steps.
 ##
-## Limitation: this implementation broadly skips the whole effect queue when
-## set, which over-blocks edge-case attacks that distribute effects to other
-## slots (e.g. bench AoE riders).  None of the printed roster's
-## Protective-Dust-relevant attacks in the current pool exercise that case;
-## revisit if a future card requires per-effect target awareness.
+## Limitation (deferred): the resolver currently skips the whole effect_queue
+## + run_post_actions when this returns true.  That over-blocks attacks that
+## distribute effects across multiple slots (e.g. a defender-status + bench-
+## damage rider).  Closing the gap requires per-handler target awareness —
+## every defender-mutating effect would need to consult a ctx flag.  Every
+## attack in the current pool is either pure damage or defender-only effects,
+## so the bug is unobservable; revisit once a card needs split routing.
 static func defender_blocks_attack_effects(target: PokemonInstance,
 		manager = null) -> bool:
 	if target == null:
@@ -583,6 +717,18 @@ static func defender_blocks_attack_effects(target: PokemonInstance,
 static func effective_pokemon_type(inst: PokemonInstance, manager = null) -> int:
 	if inst == null or inst.card == null:
 		return int(PokemonCardData.EnergyType.NONE)
+	## Static callers (e.g. ActionAttack._compute_damage) can't pass a
+	## manager — fall back to the autoload singleton so Toxic Gas
+	## suppression still gates Kecleon's morph during damage compute.
+	if manager == null:
+		manager = _current_manager()
+	## Until-end-of-turn type override (Solrock "Solar Eclipse",
+	## Lunatone "Lunar Eclipse").  Resolves before Kecleon's Energy Variation
+	## so a Pokémon affected by both falls back to its overridden type.
+	if manager != null \
+			and inst.type_override_until_turn != -1 \
+			and manager.turn_number <= inst.type_override_until_turn:
+		return inst.type_override_value
 	for abil in _abilities_on(inst, manager):
 		if abil.effect_key != BODY_TYPE_MORPH_FROM_ENERGY:
 			continue
@@ -604,24 +750,58 @@ static func effective_pokemon_type(inst: PokemonInstance, manager = null) -> int
 
 ## --- Wave 2: Primal Lock (Aerodactyl ex) -----------------------------------
 
-## Returns true when an opponent has a Pokémon (in any slot) whose
-## BODY_OPPONENT_PLAY_LOCK params include [card_kind] in `block`.  Called by
-## play actions to short-circuit illegal plays.  Aerodactyl ex's Primal Lock
-## reads "as long as Aerodactyl ex is in play", so we scan active + bench.
-##   card_kind ∈ {"POKEMON_TOOL", ...}
+## Returns true when a Pokémon in play carries a BODY_OPPONENT_PLAY_LOCK
+## body whose params block [card_kind] for [player_id].
+##
+## Per-ability schema:
+##   block               — Array of card kinds: "POKEMON_TOOL", "SUPPORTER", …
+##   scope               — "opponent" (default) blocks only opponent;
+##                         "both" blocks every player including the carrier's.
+##   carrier_position    — "in_play" (default) carrier active or benched;
+##                         "active" carrier must be in active slot to fire.
+##
+## Cards: Aerodactyl ex "Primal Lock" (default scope, in_play),
+##         Armaldo "Primal Veil" (scope=both, carrier_position=active).
 static func play_locked_for_player(manager, player_id: int, card_kind: String) -> bool:
 	if manager == null:
 		return false
-	var opp := 1 - player_id
-	for s in (BoardPosition.ACTIVE_SLOTS + BoardPosition.BENCH_SLOTS):
+	for src_pid in [0, 1]:
+		for s in (BoardPosition.ACTIVE_SLOTS + BoardPosition.BENCH_SLOTS):
+			var sid := "p%d_%s" % [src_pid, s]
+			var inst: PokemonInstance = manager.board_position.get_instance(sid)
+			if inst == null:
+				continue
+			for abil in _abilities_on(inst, manager):
+				if abil.effect_key != BODY_OPPONENT_PLAY_LOCK:
+					continue
+				var blocked: Array = abil.effect_params.get("block", [])
+				if not blocked.has(card_kind):
+					continue
+				var scope: String = str(abil.effect_params.get("scope", "opponent"))
+				if scope == "opponent" and src_pid == player_id:
+					continue
+				var carrier_position: String = str(abil.effect_params.get(
+					"carrier_position", "in_play"))
+				if carrier_position == "active" and "active" not in sid:
+					continue
+				return true
+	return false
+
+
+## Returns true when an opponent's Active carries a BODY_OPPONENT_RETREAT_LOCK
+## body. Cradily's "Super Suction Cups" prevents retreat while it is the
+## opponent's Active Pokémon.
+static func opp_retreat_locked_for(retreating_inst: PokemonInstance,
+		manager) -> bool:
+	if retreating_inst == null or manager == null:
+		return false
+	var opp := 1 - retreating_inst.owner_id
+	for s in BoardPosition.ACTIVE_SLOTS:
 		var sid := "p%d_%s" % [opp, s]
 		var inst: PokemonInstance = manager.board_position.get_instance(sid)
 		if inst == null:
 			continue
 		for abil in _abilities_on(inst, manager):
-			if abil.effect_key != BODY_OPPONENT_PLAY_LOCK:
-				continue
-			var blocked: Array = abil.effect_params.get("block", [])
-			if blocked.has(card_kind):
+			if abil.effect_key == BODY_OPPONENT_RETREAT_LOCK:
 				return true
 	return false

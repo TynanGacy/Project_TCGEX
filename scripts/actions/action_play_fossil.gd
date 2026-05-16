@@ -79,7 +79,13 @@ static func _build_synthetic_pokemon(fossil: TrainerCardData) -> PokemonCardData
 	p.display_name = str(spec.get("display_name", fossil.display_name))
 	p.card_type    = CardData.CardType.POKEMON
 	p.stage        = PokemonCardData.Stage.BASIC
-	p.name_slug    = fossil.card_id.to_lower()
+	## Extract the bare name portion of card_id ("SS_91_mysterious_fossil"
+	## → "mysterious_fossil") so evolution cards whose evolves_from is the
+	## printed slug (e.g. Aerodactyl ex evolves_from "mysterious_fossil") can
+	## match.  Previously this stored the full card_id and silently broke
+	## fossil-to-ex evolutions.
+	var parts := fossil.card_id.split("_", false, 2)
+	p.name_slug = (parts[2] if parts.size() >= 3 else fossil.card_id).to_lower()
 	p.evolves_from = ""
 	p.pokemon_type = PokemonCardData.EnergyType.COLORLESS
 	p.hp_max       = int(spec.get("hp", 40))

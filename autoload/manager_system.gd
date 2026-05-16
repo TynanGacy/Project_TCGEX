@@ -154,6 +154,10 @@ var supporter_played_this_turn: Array[bool] = [false, false]
 var energy_attached_this_turn:  Array[bool] = [false, false]
 var retreat_used_this_turn:     Array[bool] = [false, false]
 var attack_used_this_turn:      Array[bool] = [false, false]
+## Wave 7 — Chain of Events (Plusle/Minun): set true when a chain attack
+## fires after the controller's first attack.  Per the printed rule, only
+## one chain may resolve per turn even if multiple chain bodies are in play.
+var chain_of_events_used_this_turn: Array[bool] = [false, false]
 
 ## Prize-selection and promotion phases happen between turns (after a KO).
 ## These are cleared by ActionTakePrize / ActionPromote respectively.
@@ -662,6 +666,7 @@ func _reset_turn_flags(pid: int) -> void:
 	energy_attached_this_turn[pid]   = false
 	retreat_used_this_turn[pid]      = false
 	attack_used_this_turn[pid]       = false
+	chain_of_events_used_this_turn[pid] = false
 	pokemon_entered_play_this_turn[pid] = []
 	## Reset Poké-Power "once per turn" flags on every Pokémon controlled by
 	## the player whose turn is starting.
@@ -694,6 +699,10 @@ func _clear_expired_retreat_locks() -> void:
 					and inst.damage_reduction_until_turn < turn_number:
 				inst.damage_reduction_until_turn = -1
 				inst.damage_reduction_amount = 0
+			if inst.type_override_until_turn != -1 \
+					and inst.type_override_until_turn < turn_number:
+				inst.type_override_until_turn = -1
+				inst.type_override_value = 0
 			# next_attack_coin_fail clears on trigger, not on turn boundary —
 			# but if it somehow lingers past the Pokémon's next turn, sweep it.
 			if inst.next_attack_coin_fail_until_turn != -1 \

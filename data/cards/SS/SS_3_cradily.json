@@ -50,7 +50,7 @@
       "name": "Super Suction Cups",
       "text": "As long as Cradily is your Active Pokémon, your opponent's Pokémon can't retreat.",
       "kind": "POKE_BODY",
-      "effect_key": "",
+      "effect_key": "body_opponent_retreat_lock",
       "effect_params": {}
     }
   ]

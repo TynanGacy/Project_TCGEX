@@ -54,6 +54,37 @@ func test_play_fossil_creates_synthetic_basic_pokemon() -> void:
 		int(PokemonCardData.EnergyType.COLORLESS),
 		"Fossil synthetic type should be COLORLESS.")
 	assert_eq(inst.card.attacks.size(), 0, "Fossil should have no attacks.")
+	assert_eq(inst.card.name_slug, "claw_fossil",
+		"Synthetic name_slug should be the bare slug, not the full card_id.")
+
+
+## Regression: SS_91_mysterious_fossil → Aerodactyl ex was blocked because
+## ActionPlayFossil stored card_id.to_lower() as name_slug, missing the
+## bare 'mysterious_fossil' that Aerodactyl ex's evolves_from expects.
+func test_fossil_can_evolve_into_ex() -> void:
+	var b   := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	b.place_active(0, "DR_49_bagon")  ## Need an active for legal board.
+	var fossil: TrainerCardData = _lib.get_card("SS_91_mysterious_fossil") as TrainerCardData
+	mgr.game_position.put_in_hand(0, fossil)
+	var fr: ActionResult = await mgr.request_action_async(
+		ActionPlayFossil.new(0, fossil, "p0_bench1")
+	)
+	assert_true(fr.ok, "Mysterious Fossil should play: %s" % fr.reason)
+	## Aerodactyl ex (Stage 1) evolves_from "mysterious_fossil".
+	## Pre-clear the "entered play this turn" gate so we can evolve.
+	mgr.pokemon_entered_play_this_turn[0] = []
+	var aero: PokemonCardData = _lib.get_card("SS_94_aerodactyl_ex") as PokemonCardData
+	mgr.game_position.put_in_hand(0, aero)
+	var er: ActionResult = await mgr.request_action_async(
+		ActionEvolve.new(0, aero, "p0_bench1")
+	)
+	assert_true(er.ok,
+		"Aerodactyl ex should evolve from Mysterious Fossil: %s" % er.reason)
+	var inst: PokemonInstance = mgr.board_position.get_instance("p0_bench1")
+	assert_eq(inst.card.name_slug, "aerodactyl_ex",
+		"Slot occupant should now be Aerodactyl ex.")
 
 
 func test_play_fossil_rejects_active_slot() -> void:

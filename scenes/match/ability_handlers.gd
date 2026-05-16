@@ -189,12 +189,30 @@ func _register_handlers() -> void:
 		AbilityEffects.POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC,
 		AbilityEffectDefinition.passive({})
 	)
-	## Plusle / Minun "Chain of Events" — placeholder.  The 2-active
-	## post-attack chain trigger is intentionally not wired in this wave;
-	## registering the key keeps the JSON-to-handler coverage check green
-	## and reserves the slug for the eventual implementation.
+	## Plusle / Minun "Chain of Events" — passive trigger fired by
+	## AttackResolver._maybe_chain_of_events after a regular attack resolves.
+	## The carrier in the other active slot uses its own attack[0] (Cheer On)
+	## as a sub-attack, gated by carrier energy cost + manager.chain_of_
+	## events_used_this_turn (one chain per turn even with multiple carriers).
 	AbilityEffectRegistry.register_def(
 		AbilityEffects.POWER_REUSE_LAST_ATTACK,
+		AbilityEffectDefinition.passive({})
+	)
+
+	## ═══════════════════════════════════════════════════════════════════════
+	## Wave 6 — bodies + type-override power.
+	## ═══════════════════════════════════════════════════════════════════════
+
+	## Swampert "Natural Remedy" — fires from ActionAttachEnergy.apply() via
+	## AbilityEffects.run_on_attached_energy.
+	## Schema: {"required_type": "WATER", "counters": 1}
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_HEAL_ON_MATCHING_ENERGY_ATTACH,
+		AbilityEffectDefinition.passive({})
+	)
+	## Cradily "Super Suction Cups" — consulted by ActionRetreat.validate.
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_OPPONENT_RETREAT_LOCK,
 		AbilityEffectDefinition.passive({})
 	)
 
@@ -665,8 +683,64 @@ func _register_powers() -> void:
 	AbilityEffectRegistry.register_def(AbilityEffects.POWER_BABY_EVOLUTION,
 		baby_def)
 
+	## ═══════════════════════════════════════════════════════════════════════
+	## Wave 6 — Type override until end of turn.  Used by Solrock "Solar
+	## Eclipse" (→ FIRE if Lunatone partner) and Lunatone "Lunar Eclipse"
+	## (→ DARKNESS if Solrock partner).  Reads inst.type_override_until_turn
+	## via AbilityEffects.effective_pokemon_type; auto-clears in the manager
+	## sweep at the next turn boundary.
+	## Schema: {"partner_slug": "lunatone", "new_type": "FIRE"}
+	## ═══════════════════════════════════════════════════════════════════════
+	var type_morph_def := AbilityEffectDefinition.new()
+	type_morph_def.phase_handlers[AbilityResolver.Phase.VALIDATE] = func(ctx: AbilityContext) -> void:
+		var partner_slug: String = str(ctx.params.get("partner_slug", ""))
+		if partner_slug == "":
+			ctx.fail_validation("Type override: missing partner_slug param.")
+			return
+		var inst: PokemonInstance = ctx.manager.board_position.get_instance(ctx.source_slot)
+		## Power rule text: "can't be used if affected by a Special Condition."
+		## ActionUseAbility already blocks Asleep/Confused/Paralyzed for every
+		## Power; this extends the gate to Burned and Poisoned for this card.
+		if inst != null and not inst.special_conditions.is_empty():
+			ctx.fail_validation("%s is affected by a Special Condition." % (
+				inst.card.display_name if inst.card else "This Pokémon"
+			))
+		if not _partner_in_play(ctx, partner_slug):
+			ctx.fail_validation("%s must be in play." % partner_slug.capitalize())
+	type_morph_def.phase_handlers[AbilityResolver.Phase.APPLY] = func(ctx: AbilityContext) -> void:
+		var inst: PokemonInstance = ctx.manager.board_position.get_instance(ctx.source_slot)
+		if inst == null:
+			return
+		var type_name: String = str(ctx.params.get("new_type", ""))
+		var type_idx: int = _energy_type_from_name(type_name)
+		if type_idx < 0:
+			return
+		inst.type_override_until_turn = ctx.manager.turn_number
+		inst.type_override_value = type_idx
+		ctx.manager.pokemon_state_changed.emit(ctx.source_slot, inst)
+		ctx.manager.log_message.emit(
+			"[Power] %s — %s is now %s type until end of turn." % [
+				ctx.ability.ability_name,
+				inst.card.display_name if inst.card else "Pokémon",
+				type_name,
+			]
+		)
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.POWER_TYPE_OVERRIDE_UNTIL_TURN_END, type_morph_def)
+
 
 ## --- Poké-Power helpers -----------------------------------------------------
+
+
+## Returns true when any Pokémon on the caster's side has the given
+## name_slug in play (active or bench).  Used by partner-required powers.
+static func _partner_in_play(ctx: AbilityContext, target_slug: String) -> bool:
+	for s in (BoardPosition.ACTIVE_SLOTS + BoardPosition.BENCH_SLOTS):
+		var sid := "p%d_%s" % [ctx.player_id, s]
+		var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
+		if inst != null and inst.card != null and inst.card.name_slug == target_slug:
+			return true
+	return false
 
 ## Returns the first Basic Pokémon card in [ctx.player_id]'s hand whose
 ## name_slug matches [target_slug], or null.  Used by Baby Evolution.

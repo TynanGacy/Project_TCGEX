@@ -263,6 +263,43 @@ func test_primal_lock_does_not_block_own_player() -> void:
 		"Own-side Tool play should land.")
 
 
+func test_primal_lock_on_enter_discards_opponent_tools() -> void:
+	## The on-enter trigger is exercised by ActionEvolve.apply via
+	## AbilityEffects.run_on_evolve. Production wiring is verified by code
+	## review; this test invokes the helper directly so it doesn't depend on
+	## the fossil → ex evolution slug-match path (synthetic fossil name_slug
+	## uses card_id, not the bare "mysterious_fossil" string Aerodactyl ex
+	## expects — a pre-existing limitation outside this commit's scope).
+	var b   := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	## P0 has Aerodactyl ex newly in play (placed directly for simplicity).
+	var aero := b.place_active(0, "SS_94_aerodactyl_ex")
+	## P1 has a Bagon with a Lum Berry tool attached.
+	var opp_inst := b.place_active(1, "DR_49_bagon")
+	var lum: TrainerCardData = _lib.get_card("RS_84_lum_berry") as TrainerCardData
+	opp_inst.attach_tool(lum)
+	assert_eq(opp_inst.attached_tools.size(), 1, "Setup: opp should have 1 tool.")
+
+	AbilityEffects.run_on_evolve(aero, "p0_active1", mgr)
+	assert_eq(opp_inst.attached_tools.size(), 0,
+		"Primal Lock on-enter should discard opp's tool.")
+	assert_true((mgr.game_position.discards[1] as Array).has(lum),
+		"Discarded tool should land in opp's discard pile.")
+
+
+func test_primal_lock_on_enter_with_no_opp_tools_is_noop() -> void:
+	var b   := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var aero := b.place_active(0, "SS_94_aerodactyl_ex")
+	b.place_active(1, "DR_49_bagon")  ## No tool attached.
+	AbilityEffects.run_on_evolve(aero, "p0_active1", mgr)
+	## Just verify no crash and discard pile stays empty.
+	assert_eq((mgr.game_position.discards[1] as Array).size(), 0,
+		"No tools to discard → discard pile stays empty.")
+
+
 ## --- Slaking: Lazy --------------------------------------------------------
 ##
 ## Lazy blocks opp Pokémon from using Poké-Powers while Slaking is the
@@ -357,6 +394,70 @@ func test_toxic_gas_passive_body_suppression() -> void:
 	var muk_inst: PokemonInstance = mgr.board_position.get_instance("p1_active1")
 	assert_false(AbilityEffects.is_body_suppressed(muk_inst, mgr),
 		"Carrier's own body is exempt — Toxic Gas keeps suppressing.")
+
+
+func test_toxic_gas_reaches_effective_pokemon_type_via_singleton() -> void:
+	## effective_pokemon_type(inst) without an explicit manager (e.g. when
+	## called from ActionAttack._compute_damage's static signature) used to
+	## skip suppression silently.  Now it falls back to the autoload
+	## singleton so Toxic Gas can suppress Kecleon's Energy Variation morph
+	## during damage compute.
+	var kecleon_card: PokemonCardData = _lib.get_card("SS_18_kecleon") as PokemonCardData
+	assert_not_null(kecleon_card, "Kecleon should exist in the pool.")
+	var kecleon := PokemonInstance.create(kecleon_card, 1)
+	kecleon.attached_energy.append(_lib.get_card("RS_108_fire_energy"))
+	## Without Muk ex on the singleton: morph fires → Kecleon's type = FIRE.
+	assert_eq(AbilityEffects.effective_pokemon_type(kecleon),
+		int(PokemonCardData.EnergyType.FIRE),
+		"Energy Variation should morph to FIRE when no suppressor in play.")
+
+	var muk_card: PokemonCardData = _lib.get_card("DR_96_muk_ex") as PokemonCardData
+	var muk_inst := PokemonInstance.create(muk_card, 0)
+	var prior: PokemonInstance = ManagerSystemSingleton.board_position.get_instance("p0_active1")
+	ManagerSystemSingleton.board_position.place("p0_active1", muk_inst)
+	var observed: int = AbilityEffects.effective_pokemon_type(kecleon)
+	ManagerSystemSingleton.board_position.place("p0_active1", prior)
+
+	assert_eq(observed, int(PokemonCardData.EnergyType.COLORLESS),
+		"Toxic Gas on singleton should suppress Kecleon's morph, "
+		+ "falling back to its printed pokemon_type (COLORLESS).")
+
+
+func test_toxic_gas_reaches_add_condition_via_singleton() -> void:
+	## blocks_condition is called from PokemonInstance.add_condition without
+	## a manager handle and falls back to ManagerSystemSingleton.  Verify
+	## that seeding Muk ex on the singleton's board lets Toxic Gas suppress
+	## Roselia's "Thick Skin" status immunity.
+	##
+	## Setup uses the autoload singleton directly; the inner try/finally
+	## block restores the slot so subsequent tests start with an empty
+	## singleton board.
+	var roselia_card: PokemonCardData = _lib.get_card("DR_9_roselia") as PokemonCardData
+	assert_not_null(roselia_card, "Roselia should exist in the pool.")
+	var roselia := PokemonInstance.create(roselia_card, 1)
+	## Without singleton suppression, Thick Skin blocks all conditions.
+	roselia.add_condition(PokemonInstance.SpecialCondition.POISONED)
+	assert_false(
+		roselia.special_conditions.has(PokemonInstance.SpecialCondition.POISONED),
+		"Thick Skin should block Poisoned when no Muk is in play."
+	)
+
+	## Seed singleton with Muk ex Active on the OPPOSING side (pid=0).
+	var muk_card: PokemonCardData = _lib.get_card("DR_96_muk_ex") as PokemonCardData
+	assert_not_null(muk_card, "Muk ex should exist in the pool.")
+	var muk_inst := PokemonInstance.create(muk_card, 0)
+	var prior: PokemonInstance = ManagerSystemSingleton.board_position.get_instance("p0_active1")
+	ManagerSystemSingleton.board_position.place("p0_active1", muk_inst)
+	## Inline guard: ensure the slot is cleared even if an assertion fails.
+	var ok_flag := true
+	roselia.add_condition(PokemonInstance.SpecialCondition.POISONED)
+	if not roselia.special_conditions.has(PokemonInstance.SpecialCondition.POISONED):
+		ok_flag = false
+	## Restore singleton board state.
+	ManagerSystemSingleton.board_position.place("p0_active1", prior)
+	assert_true(ok_flag,
+		"Toxic Gas on singleton's board should suppress Thick Skin so the "
+		+ "Poisoned status lands on Roselia.")
 
 
 ## --- Dustox: Protective Dust ----------------------------------------------

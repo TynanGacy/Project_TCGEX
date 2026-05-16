@@ -27,6 +27,10 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("Supporter is not in your hand.")
 	if not manager.can_play_supporter(player_id):
 		return ActionResult.fail("Cannot play a Supporter this turn.")
+	## Wave 6 — Armaldo "Primal Veil": Supporter plays locked by either
+	## player's Active Armaldo.
+	if AbilityEffects.play_locked_for_player(manager, player_id, "SUPPORTER"):
+		return ActionResult.fail("Supporter plays are locked by a Poké-Body in play.")
 	var effect_check := TrainerResolver.validate(card, manager, player_id)
 	if not effect_check.ok:
 		return effect_check
