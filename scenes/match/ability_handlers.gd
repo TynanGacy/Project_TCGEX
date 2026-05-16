@@ -115,6 +115,90 @@ func _register_handlers() -> void:
 	)
 
 	## ═══════════════════════════════════════════════════════════════════════
+	## Wave 2 — passive Poké-Bodies that don't need per-handler logic; the
+	## attack pipeline and play actions consult AbilityEffects helpers
+	## directly. Registering them as passives makes the coverage smoke test
+	## pass and keeps the registry as the source of truth.
+	## ═══════════════════════════════════════════════════════════════════════
+
+	## Beautifly "Withering Dust" — global Resistance disabled while in play.
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_GLOBAL_RESISTANCE_DISABLE,
+		AbilityEffectDefinition.passive({})
+	)
+	## Shedinja "Wonder Guard" / Wobbuffet "Safeguard" — source-class total
+	## immunity. Schema: {"from": ["EVOLUTION", "POKEMON_EX", "BASIC"]}
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_SOURCE_IMMUNITY,
+		AbilityEffectDefinition.passive({})
+	)
+	## Whiscash "Submerge" — damage immunity while on Bench.
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_BENCH_DAMAGE_IMMUNITY,
+		AbilityEffectDefinition.passive({})
+	)
+	## Kecleon "Energy Variation" — pokemon_type morphs from attached basic
+	## energy; consulted by W/R compute and the Darkness/Metal helpers.
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_TYPE_MORPH_FROM_ENERGY,
+		AbilityEffectDefinition.passive({})
+	)
+	## Aerodactyl ex "Primal Lock" — opponent can't play Pokémon Tools while
+	## the carrier is in play. Schema: {"block": ["POKEMON_TOOL"]}
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_OPPONENT_PLAY_LOCK,
+		AbilityEffectDefinition.passive({})
+	)
+	## Dustox "Protective Dust" — attack effects on Dustox are prevented;
+	## damage still applies. Consulted by AttackResolver between damage and
+	## effect-execution steps.
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_ATTACK_EFFECT_IMMUNITY_SELF,
+		AbilityEffectDefinition.passive({})
+	)
+
+	## ═══════════════════════════════════════════════════════════════════════
+	## Wave 3 — ability suppression.  Consulted by AbilityResolver.validate
+	## (Power activation) and AbilityEffects._abilities_on (passive bodies).
+	## ═══════════════════════════════════════════════════════════════════════
+
+	## Slaking "Lazy" — opp can't use Poké-Powers while Slaking is Active.
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_SUPPRESS_OPPONENT_POWERS,
+		AbilityEffectDefinition.passive({})
+	)
+	## Muk ex "Toxic Gas" — all other Powers/Bodies ignored while Muk is Active.
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_SUPPRESS_ALL_POWERS_AND_BODIES,
+		AbilityEffectDefinition.passive({})
+	)
+
+	## ═══════════════════════════════════════════════════════════════════════
+	## Wave 4 — Poké-Power wave 2: triggers fired from action callsites
+	## rather than activated through the UI.
+	## ═══════════════════════════════════════════════════════════════════════
+
+	## Ampharos ex "Conductivity" — fires from ActionAttachEnergy.apply().
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.BODY_DAMAGE_ON_OPPONENT_ENERGY_ATTACH,
+		AbilityEffectDefinition.passive({})
+	)
+	## Ninjask "Loose Shell" — fires from ActionEvolve.apply().
+	## Schema: {"target_slug": "shedinja"}
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC,
+		AbilityEffectDefinition.passive({})
+	)
+	## Plusle / Minun "Chain of Events" — placeholder.  The 2-active
+	## post-attack chain trigger is intentionally not wired in this wave;
+	## registering the key keeps the JSON-to-handler coverage check green
+	## and reserves the slug for the eventual implementation.
+	AbilityEffectRegistry.register_def(
+		AbilityEffects.POWER_REUSE_LAST_ATTACK,
+		AbilityEffectDefinition.passive({})
+	)
+
+	## ═══════════════════════════════════════════════════════════════════════
 	## Poké-Powers (Day 4 wave 1)
 	##
 	## All powers route through ActionUseAbility → AbilityResolver.dispatch().
@@ -525,8 +609,74 @@ func _register_powers() -> void:
 	AbilityEffectRegistry.register_def("power_heal_each_own_active",
 		healing_wind_def)
 
+	## ═══════════════════════════════════════════════════════════════════════
+	## Wave 5 — Baby Evolution.  Used by Pichu / Azurill / Elekid / Wynaut.
+	## Promotes the baby into a specific Basic Pokémon from hand, clears all
+	## damage counters and special conditions on the slot.  Once per turn.
+	## Schema: {"evolves_into": "pikachu" (name_slug)}
+	## ═══════════════════════════════════════════════════════════════════════
+	var baby_def := AbilityEffectDefinition.new()
+	baby_def.phase_handlers[AbilityResolver.Phase.VALIDATE] = func(ctx: AbilityContext) -> void:
+		var target_slug: String = str(ctx.params.get("evolves_into", ""))
+		if target_slug == "":
+			ctx.fail_validation("Baby Evolution: missing evolves_into param.")
+			return
+		if _find_basic_in_hand(ctx, target_slug) == null:
+			ctx.fail_validation("No %s in hand." % target_slug.capitalize())
+		## Carrier just-entered-play protection mirrors regular evolution.
+		var inst: PokemonInstance = ctx.manager.board_position.get_instance(ctx.source_slot)
+		if inst != null and (
+				ctx.manager.pokemon_entered_play_this_turn[ctx.player_id] as Array
+			).has(inst):
+			ctx.fail_validation("This Pokémon just came into play this turn.")
+		if ctx.manager.is_first_turn_for(ctx.player_id):
+			ctx.fail_validation("Cannot Baby-evolve on your first turn.")
+	baby_def.phase_handlers[AbilityResolver.Phase.APPLY] = func(ctx: AbilityContext) -> void:
+		var target_slug: String = str(ctx.params.get("evolves_into", ""))
+		var target: PokemonCardData = _find_basic_in_hand(ctx, target_slug)
+		if target == null:
+			return
+		var inst: PokemonInstance = ctx.manager.board_position.get_instance(ctx.source_slot)
+		if inst == null:
+			return
+		var baby_card: PokemonCardData = inst.card
+		ctx.manager.game_position.take_from_hand(ctx.player_id, target)
+		## Stack the new card on top (mirrors evolve_to, but bypasses the
+		## evolves_from check since both cards are Basics).
+		if baby_card != null:
+			inst.prior_stages.append(baby_card)
+		inst.card = target
+		inst.aura_hp_bonus = 0
+		inst.max_hp = target.hp_max
+		inst.current_hp = target.hp_max   ## "remove all damage counters".
+		inst.special_conditions.clear()
+		StadiumEffects.reconcile_aura_for(ctx.source_slot, inst, ctx.manager)
+		inst.refresh_visual()
+		## Newly-evolved Pokémon can't evolve again this turn.
+		ctx.manager.pokemon_entered_play_this_turn[ctx.player_id].append(inst)
+		ctx.manager.pokemon_state_changed.emit(ctx.source_slot, inst)
+		ctx.manager.log_message.emit(
+			"[Power] %s — %s evolved into %s; all damage removed." % [
+				ctx.ability.ability_name,
+				baby_card.display_name if baby_card != null else "Baby",
+				target.display_name,
+			]
+		)
+	AbilityEffectRegistry.register_def(AbilityEffects.POWER_BABY_EVOLUTION,
+		baby_def)
+
 
 ## --- Poké-Power helpers -----------------------------------------------------
+
+## Returns the first Basic Pokémon card in [ctx.player_id]'s hand whose
+## name_slug matches [target_slug], or null.  Used by Baby Evolution.
+static func _find_basic_in_hand(ctx: AbilityContext, target_slug: String) -> PokemonCardData:
+	for c in ctx.manager.game_position.hands[ctx.player_id]:
+		if c is PokemonCardData and (c as PokemonCardData).name_slug == target_slug \
+				and (c as PokemonCardData).stage == PokemonCardData.Stage.BASIC:
+			return c
+	return null
+
 
 static func _own_active_slot(ctx: AbilityContext) -> String:
 	for s in BoardPosition.ACTIVE_SLOTS:

@@ -51,8 +51,7 @@ func test_water_call_attaches_water_from_hand_to_active() -> void:
 	var swampert := b.place_bench(0, "RS_13_swampert")
 	var water := _lib.get_card("RS_106_water_energy")
 	mgr.game_position.put_in_hand(0, water)
-	var bench_slot := mgr.board_position.first_empty_bench(0)
-#	_ = bench_slot  ## unused
+	var _bench_slot := mgr.board_position.first_empty_bench(0)
 
 	## Find swampert's slot.
 	var swampert_slot: String = ""

@@ -211,6 +211,19 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 		)
 		ctx.attack_blocked = true
 
+	## Wave 2 — Wonder Guard (Shedinja) / Safeguard (Wobbuffet): total
+	## immunity from attacks by a matching source class. Blocks both damage
+	## and post-damage effects, just like effect_immune_until_turn.
+	if not ctx.attack_blocked and primary_tgt != null \
+			and AbilityEffects.attack_blocked_by_source_immunity(primary_tgt, attacker, manager):
+		manager.log_message.emit(
+			"[Body] %s — attack has no effect on %s." % [
+				_immunity_body_name(primary_tgt),
+				primary_tgt.card.display_name if primary_tgt.card != null else "Target",
+			]
+		)
+		ctx.attack_blocked = true
+
 	if ctx.attack_blocked:
 		_is_resolving = false
 		pipeline_completed.emit()
@@ -285,6 +298,9 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 	var attacker_aura_bonus: int = AbilityEffects.damage_dealt_modifier_before_wr(
 		attacker, manager
 	)
+	## Darkness Energy: +10 per attached copy when the attacker qualifies
+	## (Darkness type or has "Dark" in its name). Stacks; pre-W/R.
+	attacker_aura_bonus += SpecialEnergyEffects.outgoing_attacker_bonus(attacker)
 
 	for sid in hit_slots:
 		var hit_target: PokemonInstance = manager.board_position.get_instance(sid)
@@ -300,10 +316,18 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 		)
 		entry.base_amount = maxi(0, entry.base_amount + defender_pre_wr)
 
+		## Wave 2 — Beautifly "Withering Dust": while in active position on
+		## either side, no Active Pokémon has Resistance. Force-skip the
+		## resistance leg of the W/R compute.
+		var skip_resistance_eff: bool = ctx.skip_resistance \
+				or AbilityEffects.global_resistance_disabled(manager)
 		entry.final_amount    = ActionAttack._compute_damage(
 			entry.base_amount, attacker, hit_target,
-			ctx.skip_weakness, ctx.skip_resistance
+			ctx.skip_weakness, skip_resistance_eff
 		)
+		## Wave 2 — Whiscash "Submerge": prevent damage while benched.
+		if AbilityEffects.bench_damage_blocked(hit_target, sid, manager):
+			entry.final_amount = 0
 		# Tier-3 damage immunity (Scrunch, Dragon Dance): zero damage but allow
 		# non-damage effects to still resolve.
 		if hit_target.damage_immune_until_turn != -1 \
@@ -320,6 +344,11 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 			var tool_reduction: int = ToolEffects.damage_reduction_for(hit_target)
 			if tool_reduction > 0:
 				entry.final_amount = maxi(0, entry.final_amount - tool_reduction)
+		# Metal Energy: -10 per attached copy when defender is Metal type. Post-W/R.
+		if entry.final_amount > 0:
+			var metal_reduction: int = SpecialEnergyEffects.incoming_reduction(hit_target)
+			if metal_reduction > 0:
+				entry.final_amount = maxi(0, entry.final_amount - metal_reduction)
 		# Poké-Body post-W/R modifiers (Exoskeleton, Energy Guard, Glowing Screen).
 		if entry.final_amount > 0:
 			var ability_delta: int = AbilityEffects.damage_taken_modifier_after_wr(
@@ -360,15 +389,28 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 				attacker, action.attacker_slot, manager
 			)
 
-	for effect: QueuedEffect in ctx.effect_queue:
-		if effect.category == QueuedEffect.Category.ATTACKER_MODIFIER \
-				or effect.category == QueuedEffect.Category.DEFENDER_MODIFIER:
-			continue
-		ctx._query_response = null
-		if effect.needs_query and effect.query_template != null:
-			player_query_requested.emit(effect.query_template)
-			ctx._query_response = await player_query_resolved
-		effect.execute.call(ctx)
+	## Wave 2 — Dustox "Protective Dust": prevent all attack effects (status,
+	## discard, etc.) on the primary target. Damage already applied above is
+	## kept. We skip both the effect_queue iteration and run_post_actions
+	## further down. This over-blocks split-target effects (rare in the
+	## current roster); see AbilityEffects.defender_blocks_attack_effects.
+	var effects_blocked: bool = AbilityEffects.defender_blocks_attack_effects(primary_tgt, manager)
+	if not effects_blocked:
+		for effect: QueuedEffect in ctx.effect_queue:
+			if effect.category == QueuedEffect.Category.ATTACKER_MODIFIER \
+					or effect.category == QueuedEffect.Category.DEFENDER_MODIFIER:
+				continue
+			ctx._query_response = null
+			if effect.needs_query and effect.query_template != null:
+				player_query_requested.emit(effect.query_template)
+				ctx._query_response = await player_query_resolved
+			effect.execute.call(ctx)
+	elif primary_tgt != null:
+		manager.log_message.emit(
+			"[Body] Protective Dust — attack effects on %s prevented." % (
+				primary_tgt.card.display_name if primary_tgt.card != null else "target"
+			)
+		)
 
 	## Step 9: On-damage-received (placeholder — no such effects implemented yet).
 	ctx.current_phase = Phase.ON_DAMAGE_RECEIVED
@@ -380,8 +422,10 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 			manager.resolve_knockout(entry.target_slot, action.player_id)
 
 	## Run post-actions (status conditions, heal, discard, retreat lock, etc.)
-	## after KO resolution so bench-damage KOs don't double-process.
-	ctx.run_post_actions()
+	## after KO resolution so bench-damage KOs don't double-process.  Skipped
+	## entirely when Protective Dust gates effects on the primary target.
+	if not effects_blocked:
+		ctx.run_post_actions()
 	manager.flush_deferred_effects()
 
 	if not is_sub:
@@ -411,3 +455,15 @@ func _execute_category(ctx: AttackContext, cat: int) -> void:
 		else:
 			remaining.append(effect)
 	ctx.effect_queue = remaining
+
+
+## Returns the name of the first source-immunity body on [inst] for log
+## prefix formatting.  Returns "Wonder Guard" / "Safeguard" / etc. so the
+## log line names the specific power instead of a generic "immunity".
+func _immunity_body_name(inst: PokemonInstance) -> String:
+	if inst == null or inst.card == null:
+		return "Immunity"
+	for abil in inst.card.abilities:
+		if abil != null and abil.effect_key == AbilityEffects.BODY_SOURCE_IMMUNITY:
+			return abil.ability_name
+	return "Immunity"

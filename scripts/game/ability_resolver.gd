@@ -55,6 +55,14 @@ static func validate(ability: AbilityData, source_slot: String, manager,
 		return ActionResult.success()
 	if not AbilityEffectRegistry.has_definition(ability.effect_key):
 		return ActionResult.success()
+	## Wave 3 suppression: Slaking "Lazy" / Muk ex "Toxic Gas".  Resolved
+	## here so the action is rejected before the resolver spins up.
+	if manager != null and source_slot != "":
+		var carrier: PokemonInstance = manager.board_position.get_instance(source_slot)
+		if AbilityEffects.is_power_suppressed(carrier, manager):
+			return ActionResult.fail(
+				"This Poké-Power is suppressed by an opposing ability."
+			)
 	var ctx := _build_ctx(ability, source_slot, manager, player_id)
 	AbilityEffectRegistry.dispatch_phase(ability.effect_key, Phase.VALIDATE, ctx)
 	if ctx.validation_failure != "":

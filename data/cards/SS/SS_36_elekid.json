@@ -32,8 +32,10 @@
       "name": "Baby Evolution",
       "text": "Once during your turn (before your attack), you may put Electabuzz from your hand onto Elekid (this counts as evolving Elekid) and remove all damage counters from Elekid.",
       "kind": "POKE_POWER",
-      "effect_key": "",
-      "effect_params": {}
+      "effect_key": "power_baby_evolution",
+      "effect_params": {
+        "evolves_into": "electabuzz"
+      }
     }
   ]
 }

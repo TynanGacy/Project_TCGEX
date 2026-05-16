@@ -47,6 +47,14 @@ func apply(manager) -> void:
 	## Cure"). Fires only when the just-attached energy matches the body's
 	## required_type.
 	AbilityEffects.run_on_attached_energy(inst, target_slot, card, manager)
+	## Special energy on-attach effects (Rainbow Energy places 1 damage
+	## counter on the receiving Pokémon). Runs after Natural Cure so a
+	## status clear can't be pre-empted by the self-damage.
+	SpecialEnergyEffects.run_on_attach(inst, card, manager)
+	## Wave 4 — Ampharos ex "Conductivity": opponent attaching energy places
+	## a damage counter on the receiving Pokémon.  Fires after the special-
+	## energy trigger so Rainbow's self-damage doesn't compound oddly.
+	AbilityEffects.run_on_opponent_energy_attach(inst, target_slot, manager)
 
 
 func description() -> String:

@@ -43,7 +43,7 @@
       "name": "Toxic Gas",
       "text": "As long as Muk ex is your Active Pokémon, ignore all Poké-Powers and Poké-Bodies other than Toxic Gas.",
       "kind": "POKE_BODY",
-      "effect_key": "",
+      "effect_key": "body_suppress_all_powers_and_bodies",
       "effect_params": {}
     }
   ]

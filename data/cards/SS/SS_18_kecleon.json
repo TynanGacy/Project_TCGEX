@@ -31,7 +31,7 @@
       "name": "Energy Variation",
       "text": "Kecleon's type is the same as every type of basic Energy card attached to Kecleon.",
       "kind": "POKE_BODY",
-      "effect_key": "",
+      "effect_key": "body_type_morph_from_energy",
       "effect_params": {}
     }
   ]

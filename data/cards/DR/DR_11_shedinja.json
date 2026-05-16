@@ -33,8 +33,10 @@
       "name": "Wonder Guard",
       "text": "Prevent all effects of attacks, including damage, done to Shedinja by your opponent's Evolved Pokémon and Pokémon-ex.",
       "kind": "POKE_BODY",
-      "effect_key": "",
-      "effect_params": {}
+      "effect_key": "body_source_immunity",
+      "effect_params": {
+        "from": ["EVOLUTION", "POKEMON_EX"]
+      }
     }
   ]
 }

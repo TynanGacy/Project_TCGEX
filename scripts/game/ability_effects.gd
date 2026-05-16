@@ -26,6 +26,26 @@ const BODY_BETWEEN_TURN_HEAL               = "body_between_turn_heal"
 const BODY_RETREAT_COST_OVERRIDE           = "body_retreat_cost_override"
 const BODY_NATURAL_CURE                    = "body_natural_cure"
 
+## Wave 2 patterns.
+const BODY_GLOBAL_RESISTANCE_DISABLE       = "body_global_resistance_disable"
+const BODY_SOURCE_IMMUNITY                 = "body_source_immunity"
+const BODY_BENCH_DAMAGE_IMMUNITY           = "body_bench_damage_immunity"
+const BODY_TYPE_MORPH_FROM_ENERGY          = "body_type_morph_from_energy"
+const BODY_OPPONENT_PLAY_LOCK              = "body_opponent_play_lock"
+const BODY_ATTACK_EFFECT_IMMUNITY_SELF     = "body_attack_effect_immunity_self"
+
+## Wave 3 patterns (ability suppression).
+const BODY_SUPPRESS_OPPONENT_POWERS        = "body_suppress_opponent_powers"
+const BODY_SUPPRESS_ALL_POWERS_AND_BODIES  = "body_suppress_all_powers_and_bodies"
+
+## Wave 4 patterns (Poké-Power wave 2).
+const BODY_DAMAGE_ON_OPPONENT_ENERGY_ATTACH = "body_damage_on_opponent_energy_attach"
+const POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC = "power_search_deck_play_specific_basic"
+const POWER_REUSE_LAST_ATTACK              = "power_reuse_last_attack"
+
+## Wave 5 (Baby Evolution).
+const POWER_BABY_EVOLUTION                 = "power_baby_evolution"
+
 
 ## --- Damage modifiers (called from AttackResolver) -------------------------
 ##
@@ -46,7 +66,7 @@ static func damage_taken_modifier_before_wr(target: PokemonInstance, manager) ->
 		var active: PokemonInstance = manager.board_position.get_instance(sid)
 		if active == null:
 			continue
-		for abil in _abilities_on(active):
+		for abil in _abilities_on(active, manager):
 			if abil.effect_key == BODY_DAMAGE_TAKEN_AURA_ACTIVE:
 				total -= int(abil.effect_params.get("amount", 0))
 	return total
@@ -59,7 +79,7 @@ static func damage_taken_modifier_after_wr(target: PokemonInstance,
 	if target == null or manager == null:
 		return 0
 	var total: int = 0
-	for abil in _abilities_on(target):
+	for abil in _abilities_on(target, manager):
 		match abil.effect_key:
 			BODY_DAMAGE_REDUCTION:
 				if _requirement_met(target, abil.effect_params, manager):
@@ -84,7 +104,7 @@ static func damage_dealt_modifier_before_wr(attacker: PokemonInstance, manager) 
 		var active: PokemonInstance = manager.board_position.get_instance(sid)
 		if active == null:
 			continue
-		for abil in _abilities_on(active):
+		for abil in _abilities_on(active, manager):
 			if abil.effect_key == BODY_DAMAGE_INCREASE_OUTGOING:
 				total += int(abil.effect_params.get("amount", 0))
 	return total
@@ -99,7 +119,7 @@ static func coin_gated_reduction_for_target(target: PokemonInstance, manager) ->
 	if target == null or manager == null:
 		return 0
 	var total: int = 0
-	for abil in _abilities_on(target):
+	for abil in _abilities_on(target, manager):
 		if abil.effect_key != BODY_COIN_GATED_REDUCTION:
 			continue
 		var params: Dictionary = abil.effect_params
@@ -148,7 +168,7 @@ static func run_on_damaged_by_attack(target: PokemonInstance, target_slot: Strin
 	## Active Pokémon and is damaged by an opponent's attack…")
 	if not _is_active_slot(target_slot):
 		return
-	for abil in _abilities_on(target):
+	for abil in _abilities_on(target, manager):
 		match abil.effect_key:
 			BODY_RETALIATE_DAMAGE:
 				var counters: int = int(abil.effect_params.get("counters", 1))
@@ -184,7 +204,7 @@ static func run_between_turn_heals(inst: PokemonInstance, slot_id: String,
 		manager) -> void:
 	if inst == null or inst.is_knocked_out():
 		return
-	for abil in _abilities_on(inst):
+	for abil in _abilities_on(inst, manager):
 		if abil.effect_key != BODY_BETWEEN_TURN_HEAL:
 			continue
 		var counters: int = int(abil.effect_params.get("counters", 1))
@@ -210,7 +230,7 @@ static func run_between_turn_heals(inst: PokemonInstance, slot_id: String,
 static func retreat_cost_override(inst: PokemonInstance, manager) -> int:
 	if inst == null:
 		return -1
-	for abil in _abilities_on(inst):
+	for abil in _abilities_on(inst, manager):
 		if abil.effect_key != BODY_RETREAT_COST_OVERRIDE:
 			continue
 		if _requirement_met(inst, abil.effect_params, manager):
@@ -226,7 +246,7 @@ static func run_on_attached_energy(inst: PokemonInstance, slot_id: String,
 		energy: EnergyCardData, manager) -> void:
 	if inst == null or energy == null or manager == null:
 		return
-	for abil in _abilities_on(inst):
+	for abil in _abilities_on(inst, manager):
 		if abil.effect_key != BODY_NATURAL_CURE:
 			continue
 		var want: String = str(abil.effect_params.get("required_type", ""))
@@ -245,12 +265,151 @@ static func run_on_attached_energy(inst: PokemonInstance, slot_id: String,
 		)
 
 
+## --- Wave 4: Loose Shell (Ninjask) -----------------------------------------
+
+## Called from ActionEvolve.apply() after the evolution swap.  Fires any
+## POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC powers on the new top card.  Params:
+##   {"target_slug": "shedinja"}
+##
+## v1 limitation: auto-accepts the "may" clause and auto-picks the first
+## matching basic in the deck.  Sufficient for the only printed user
+## (Ninjask), but a future revision should surface a Yes/No + chooser prompt.
+static func run_on_evolve(inst: PokemonInstance, slot_id: String, manager) -> void:
+	if inst == null or manager == null or inst.card == null:
+		return
+	for abil in _abilities_on(inst, manager):
+		if abil.effect_key != POWER_SEARCH_DECK_PLAY_SPECIFIC_BASIC:
+			continue
+		var slug: String = str(abil.effect_params.get("target_slug", ""))
+		if slug == "":
+			continue
+		var pid: int = inst.owner_id
+		var bench_slot: String = manager.board_position.first_empty_bench(pid)
+		if bench_slot == "":
+			continue
+		var deck: Array = manager.game_position.decks[pid]
+		var found: PokemonCardData = null
+		for c in deck:
+			if c is PokemonCardData and (c as PokemonCardData).name_slug == slug \
+					and (c as PokemonCardData).stage == PokemonCardData.Stage.BASIC:
+				found = c
+				break
+		if found == null:
+			manager.log_message.emit(
+				"[Power] %s — no %s in deck." % [abil.ability_name, slug.capitalize()]
+			)
+			continue
+		manager.game_position.take_from_deck(pid, found)
+		var new_inst := PokemonInstance.create(found, pid)
+		manager.board_position.place(bench_slot, new_inst)
+		manager.game_position.shuffle_deck(pid)
+		manager.pokemon_state_changed.emit(bench_slot, new_inst)
+		manager.log_message.emit(
+			"[Power] %s — placed %s on Bench from deck." % [
+				abil.ability_name, found.display_name,
+			]
+		)
+
+
+## --- Wave 4: Conductivity (Ampharos ex) ------------------------------------
+
+## Called from ActionAttachEnergy.apply() after the energy is on the target.
+## Places 1 damage counter on [target_inst] if [target_inst]'s controller is
+## the opponent of any Ampharos ex carrying Conductivity in play.  Per the
+## printed rule, only one counter is placed even with multiple Ampharos ex.
+static func run_on_opponent_energy_attach(target_inst: PokemonInstance,
+		target_slot: String, manager) -> void:
+	if target_inst == null or manager == null:
+		return
+	if target_inst.source_trainer_card != null:
+		return  ## Fossils ignore damage triggers.
+	var attacher_pid: int = target_inst.owner_id
+	var opp := 1 - attacher_pid
+	for s in (BoardPosition.ACTIVE_SLOTS + BoardPosition.BENCH_SLOTS):
+		var sid := "p%d_%s" % [opp, s]
+		var inst: PokemonInstance = manager.board_position.get_instance(sid)
+		if inst == null:
+			continue
+		for abil in _abilities_on(inst, manager):
+			if abil.effect_key == BODY_DAMAGE_ON_OPPONENT_ENERGY_ATTACH:
+				target_inst.apply_damage(10)
+				manager.pokemon_state_changed.emit(target_slot, target_inst)
+				manager.log_message.emit(
+					"[Body] %s — 1 damage counter to %s." % [
+						abil.ability_name,
+						target_inst.card.display_name if target_inst.card else "target",
+					]
+				)
+				return  ## Only one counter total even with multiple carriers.
+
+
 ## --- Internal helpers ------------------------------------------------------
 
-static func _abilities_on(inst: PokemonInstance) -> Array:
+## Returns the ability list on [inst].  When a [manager] is provided, the
+## list is filtered through is_body_suppressed so Muk ex "Toxic Gas" hides
+## every other carrier's bodies while it's Active.  Callers without manager
+## access (e.g. PokemonInstance.add_condition's blocks_condition gate) get
+## the raw list — a known but narrow gap.
+static func _abilities_on(inst: PokemonInstance, manager = null) -> Array:
 	if inst == null or inst.card == null or inst.card.abilities == null:
 		return []
+	if manager != null and is_body_suppressed(inst, manager):
+		return []
 	return inst.card.abilities
+
+
+## Returns true when activated-power dispatch for [carrier_inst] should be
+## blocked by an in-play suppression body (Slaking "Lazy" for opp powers,
+## Muk ex "Toxic Gas" for all powers on the board).
+static func is_power_suppressed(carrier_inst: PokemonInstance, manager) -> bool:
+	if carrier_inst == null or manager == null:
+		return false
+	## Toxic Gas: any active Muk ex on either side suppresses everyone
+	## except its own carrier.
+	for pid in [0, 1]:
+		for s in BoardPosition.ACTIVE_SLOTS:
+			var sid := "p%d_%s" % [pid, s]
+			var inst: PokemonInstance = manager.board_position.get_instance(sid)
+			if inst == null or inst == carrier_inst:
+				continue
+			if _has_effect_key(inst, BODY_SUPPRESS_ALL_POWERS_AND_BODIES):
+				return true
+	## Lazy: opponent's active Slaking suppresses my powers.
+	var opp := 1 - carrier_inst.owner_id
+	for s in BoardPosition.ACTIVE_SLOTS:
+		var sid := "p%d_%s" % [opp, s]
+		var inst: PokemonInstance = manager.board_position.get_instance(sid)
+		if inst == null:
+			continue
+		if _has_effect_key(inst, BODY_SUPPRESS_OPPONENT_POWERS):
+			return true
+	return false
+
+
+## Returns true when [carrier_inst]'s passive bodies should be ignored due
+## to Toxic Gas active on the board.  The carrier itself is exempt so Muk
+## ex's own Toxic Gas keeps suppressing while it's the carrier.
+static func is_body_suppressed(carrier_inst: PokemonInstance, manager) -> bool:
+	if carrier_inst == null or manager == null:
+		return false
+	for pid in [0, 1]:
+		for s in BoardPosition.ACTIVE_SLOTS:
+			var sid := "p%d_%s" % [pid, s]
+			var inst: PokemonInstance = manager.board_position.get_instance(sid)
+			if inst == null or inst == carrier_inst:
+				continue
+			if _has_effect_key(inst, BODY_SUPPRESS_ALL_POWERS_AND_BODIES):
+				return true
+	return false
+
+
+static func _has_effect_key(inst: PokemonInstance, key: String) -> bool:
+	if inst == null or inst.card == null or inst.card.abilities == null:
+		return false
+	for abil in inst.card.abilities:
+		if abil != null and abil.effect_key == key:
+			return true
+	return false
 
 
 static func _is_active_slot(slot_id: String) -> bool:
@@ -310,4 +469,159 @@ static func _attacker_type_matches(attacker: PokemonInstance, params: Dictionary
 	for t in types:
 		if str(t) == atype:
 			return true
+	return false
+
+
+## --- Wave 2: Withering Dust (Beautifly) ------------------------------------
+
+## Returns true when any Pokémon with the BODY_GLOBAL_RESISTANCE_DISABLE
+## effect_key is currently in play on either side (active or bench).  While
+## this is the case, _compute_damage should treat skip_resistance as true.
+## Beautifly's Withering Dust reads "as long as Beautifly is in play", so
+## we scan every slot, not just actives.
+static func global_resistance_disabled(manager) -> bool:
+	if manager == null:
+		return false
+	for pid in [0, 1]:
+		for s in (BoardPosition.ACTIVE_SLOTS + BoardPosition.BENCH_SLOTS):
+			var sid := "p%d_%s" % [pid, s]
+			var inst: PokemonInstance = manager.board_position.get_instance(sid)
+			if inst == null:
+				continue
+			for abil in _abilities_on(inst, manager):
+				if abil.effect_key == BODY_GLOBAL_RESISTANCE_DISABLE:
+					return true
+	return false
+
+
+## --- Wave 2: Wonder Guard / Safeguard --------------------------------------
+
+## Returns true if [target]'s Poké-Body provides total immunity (damage AND
+## post-damage effects) from [attacker]'s attack.  Schema:
+##   params.from: Array of source-class strings to match. Recognised:
+##     "EVOLUTION" — attacker.card.stage != BASIC
+##     "POKEMON_EX" — attacker is a Pokémon-ex
+##     "BASIC"     — attacker.card.stage == BASIC
+## Any match → immunity applies.
+static func attack_blocked_by_source_immunity(target: PokemonInstance,
+		attacker: PokemonInstance, manager = null) -> bool:
+	if target == null or attacker == null or attacker.card == null:
+		return false
+	for abil in _abilities_on(target, manager):
+		if abil.effect_key != BODY_SOURCE_IMMUNITY:
+			continue
+		var sources: Array = abil.effect_params.get("from", [])
+		for s in sources:
+			match str(s).to_upper():
+				"EVOLUTION":
+					if attacker.card.stage != PokemonCardData.Stage.BASIC:
+						return true
+				"BASIC":
+					if attacker.card.stage == PokemonCardData.Stage.BASIC:
+						return true
+				"POKEMON_EX":
+					if is_pokemon_ex(attacker.card):
+						return true
+	return false
+
+
+## True if [card]'s card_id has the "_ex" suffix used by Pokémon-ex prints.
+## Centralised here so other systems (Phase 3 suppression, Phase 4 Conductivity)
+## can reuse it without duplicating the slug rule.
+static func is_pokemon_ex(card: PokemonCardData) -> bool:
+	if card == null:
+		return false
+	return String(card.card_id).to_lower().ends_with("_ex")
+
+
+## --- Wave 2: Submerge ------------------------------------------------------
+
+## Returns true if [target]'s Poké-Body should zero out incoming damage at
+## [slot_id] because the carrier is currently benched (Whiscash's "Submerge"
+## reads "while it is Benched", which only matters on bench slots).
+static func bench_damage_blocked(target: PokemonInstance, slot_id: String,
+		manager = null) -> bool:
+	if target == null:
+		return false
+	if "bench" not in slot_id:
+		return false
+	for abil in _abilities_on(target, manager):
+		if abil.effect_key == BODY_BENCH_DAMAGE_IMMUNITY:
+			return true
+	return false
+
+
+## --- Wave 2: Protective Dust (Dustox) --------------------------------------
+
+## Returns true if [target] has a Poké-Body that prevents post-damage attack
+## effects (status, energy discard, etc.) from landing on it.  Damage still
+## applies — the resolver checks this flag between the damage step and the
+## effect-execution / post-action steps.
+##
+## Limitation: this implementation broadly skips the whole effect queue when
+## set, which over-blocks edge-case attacks that distribute effects to other
+## slots (e.g. bench AoE riders).  None of the printed roster's
+## Protective-Dust-relevant attacks in the current pool exercise that case;
+## revisit if a future card requires per-effect target awareness.
+static func defender_blocks_attack_effects(target: PokemonInstance,
+		manager = null) -> bool:
+	if target == null:
+		return false
+	for abil in _abilities_on(target, manager):
+		if abil.effect_key == BODY_ATTACK_EFFECT_IMMUNITY_SELF:
+			return true
+	return false
+
+
+## --- Wave 2: Energy Variation (type morph) ---------------------------------
+
+## Returns the EnergyType to use for in-battle calculations.  Kecleon's
+## "Energy Variation" sets its type to the type of the basic Energy attached
+## (or Colorless if none / multiple types are attached).  Other Pokémon
+## return their printed pokemon_type unchanged.  Used by AttackResolver's
+## W/R compute and the Darkness/Metal energy gates.
+static func effective_pokemon_type(inst: PokemonInstance, manager = null) -> int:
+	if inst == null or inst.card == null:
+		return int(PokemonCardData.EnergyType.NONE)
+	for abil in _abilities_on(inst, manager):
+		if abil.effect_key != BODY_TYPE_MORPH_FROM_ENERGY:
+			continue
+		## Kecleon: type = the single basic-energy type attached, else Colorless.
+		var observed := -1
+		for e in inst.attached_energy:
+			if not (e is EnergyCardData):
+				continue
+			if not _is_basic_energy(e as EnergyCardData):
+				continue
+			var t: int = int((e as EnergyCardData).energy_type)
+			if observed == -1:
+				observed = t
+			elif observed != t:
+				return int(PokemonCardData.EnergyType.COLORLESS)
+		return observed if observed != -1 else int(PokemonCardData.EnergyType.COLORLESS)
+	return int(inst.card.pokemon_type)
+
+
+## --- Wave 2: Primal Lock (Aerodactyl ex) -----------------------------------
+
+## Returns true when an opponent has a Pokémon (in any slot) whose
+## BODY_OPPONENT_PLAY_LOCK params include [card_kind] in `block`.  Called by
+## play actions to short-circuit illegal plays.  Aerodactyl ex's Primal Lock
+## reads "as long as Aerodactyl ex is in play", so we scan active + bench.
+##   card_kind ∈ {"POKEMON_TOOL", ...}
+static func play_locked_for_player(manager, player_id: int, card_kind: String) -> bool:
+	if manager == null:
+		return false
+	var opp := 1 - player_id
+	for s in (BoardPosition.ACTIVE_SLOTS + BoardPosition.BENCH_SLOTS):
+		var sid := "p%d_%s" % [opp, s]
+		var inst: PokemonInstance = manager.board_position.get_instance(sid)
+		if inst == null:
+			continue
+		for abil in _abilities_on(inst, manager):
+			if abil.effect_key != BODY_OPPONENT_PLAY_LOCK:
+				continue
+			var blocked: Array = abil.effect_params.get("block", [])
+			if blocked.has(card_kind):
+				return true
 	return false

@@ -33,7 +33,7 @@
       "name": "Conductivity",
       "text": "As long as Ampharos ex is in play, whenever your opponent attaches an Energy card to his or her Pokémon from hand, put 1 damage counter on that Pokémon. You can't put more than 1 damage counter even if there is more than 1 Ampharos ex in play.",
       "kind": "POKE_BODY",
-      "effect_key": "",
+      "effect_key": "body_damage_on_opponent_energy_attach",
       "effect_params": {}
     }
   ]
