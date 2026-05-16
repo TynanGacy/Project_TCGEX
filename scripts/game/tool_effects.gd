@@ -15,6 +15,15 @@ const _BALLOON_BERRY_KEY: String = "tool_free_retreat_once"
 const _BUFFER_PIECE_KEY: String = "tool_damage_reduction"
 
 
+## Returns true iff [key] is a tool effect_key handled by this helper.
+## Used by the registry coverage smoke test to validate Tool card JSON.
+static func is_known_key(key: String) -> bool:
+	return key == _LUM_BERRY_KEY \
+		or key == _ORAN_BERRY_KEY \
+		or key == _BALLOON_BERRY_KEY \
+		or key == _BUFFER_PIECE_KEY
+
+
 ## Returns the flat damage reduction (after W/R) applied by any tool attached
 ## to [target].  Returns 0 if no relevant tool is attached.
 ##
