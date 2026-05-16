@@ -45,7 +45,7 @@ text = "Match"
 [node name="OverworldButton" type="Button" parent="VBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(300, 48)
-text = "Overworld (WIP)"
+text = "Overworld"
 
 [node name="CardListButton" type="Button" parent="VBox"]
 layout_mode = 2

@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://b_tcgex_overworld_town"]
+
+[ext_resource type="PackedScene" path="res://scenes/overworld/maps/map_base.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scenes/overworld/maps/town.gd" id="2_script"]
+
+[node name="Town" instance=ExtResource("1_base")]
+script = ExtResource("2_script")
+
+[node name="DefaultSpawn" parent="Entities" index="0"]
+position = Vector2(160, 152)
+
+[node name="FromEast" type="Marker2D" parent="Entities"]
+position = Vector2(312, 136)
