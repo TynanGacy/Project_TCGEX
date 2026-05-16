@@ -35,6 +35,10 @@ func validate(manager) -> ActionResult:
 		return ActionResult.fail("No Pokemon in that slot to attach to.")
 	if not inst.attached_tools.is_empty():
 		return ActionResult.fail("That Pokemon already has a Tool attached.")
+	## Wave 2 — Aerodactyl ex "Primal Lock": opponent's Active disables
+	## Pokémon Tool plays for both players.
+	if AbilityEffects.play_locked_for_player(manager, player_id, "POKEMON_TOOL"):
+		return ActionResult.fail("Pokémon Tool plays are locked by an opposing Poké-Body.")
 	return ActionResult.success()
 
 

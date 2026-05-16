@@ -78,6 +78,9 @@ func apply(manager) -> void:
 	inst.refresh_visual()
 	## The newly-evolved Pokemon also can't evolve again this turn.
 	manager.pokemon_entered_play_this_turn[player_id].append(inst)
+	## Wave 4 — on-evolve Poké-Power trigger (Ninjask "Loose Shell": search
+	## deck for Shedinja, bench it).
+	AbilityEffects.run_on_evolve(inst, target_slot, manager)
 
 
 func description() -> String:

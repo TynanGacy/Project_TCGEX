@@ -85,26 +85,47 @@ func affected_slots() -> Array[String]:
 ## --- Energy helpers -----------------------------------------------------------
 
 ## Returns ActionResult.fail if [inst] cannot pay [attack]'s cost.
+##
+## Energy is bucketed in two pools:
+##   * `counts` — typed energies (basic Grass/Fire/.../Fighting, plus
+##     Darkness/Metal Energy, plus a degraded Multi providing Colorless).
+##   * `wild`  — energies that provide every type and can fill any single
+##     cost slot (Rainbow, and a non-degraded Multi). One energy = one wild.
+##
+## Typed costs drain `counts[type]` first, then dip into `wild`. The
+## Colorless leftover then consumes any remaining typed energies + wild.
 static func _check_energy(inst: PokemonInstance, attack: AttackData) -> ActionResult:
 	var counts: Dictionary = {}
+	var wild: int = 0
 	for e: CardData in inst.attached_energy:
-		if e is EnergyCardData:
-			var t: int = int((e as EnergyCardData).energy_type)
-			counts[t] = counts.get(t, 0) + 1
+		if not (e is EnergyCardData):
+			continue
+		var types := SpecialEnergyEffects.types_for_attached(inst, e)
+		if types.is_empty():
+			wild += 1
+		else:
+			for t: int in types:
+				counts[t] = counts.get(t, 0) + 1
 
 	var specific := _specific_costs(attack)
 	for type_int: int in specific:
 		var needed: int = specific[type_int]
 		var have: int   = counts.get(type_int, 0)
-		if have < needed:
+		var from_typed: int = mini(have, needed)
+		counts[type_int] = have - from_typed
+		needed -= from_typed
+		if needed > 0:
+			var from_wild: int = mini(wild, needed)
+			wild -= from_wild
+			needed -= from_wild
+		if needed > 0:
 			var type_name: String = PokemonCardData.EnergyType.keys()[type_int]
 			return ActionResult.fail(
-				"Need %d %s energy, have %d." % [needed, type_name, have]
+				"Need %d more %s energy." % [needed, type_name]
 			)
-		counts[type_int] = have - needed
 
 	if attack.cost_colorless > 0:
-		var remaining: int = 0
+		var remaining: int = wild
 		for cnt: int in counts.values():
 			remaining += cnt
 		if remaining < attack.cost_colorless:
@@ -129,6 +150,11 @@ static func _specific_costs(attack: AttackData) -> Dictionary:
 
 
 ## Applies weakness (×2) and resistance (−30) to base_damage.
+##
+## Attacker type is read via AbilityEffects.effective_pokemon_type so Kecleon's
+## "Energy Variation" Poké-Body morphs its W/R comparison to its current
+## energy type.  Caller is responsible for passing skip_resistance=true when
+## a global "Resistance is ignored" effect is active (Beautifly Withering Dust).
 static func _compute_damage(
 		base_damage: int,
 		attacker: PokemonInstance,
@@ -138,10 +164,11 @@ static func _compute_damage(
 	if base_damage <= 0:
 		return 0
 	var dmg := base_damage
+	var attacker_type: int = AbilityEffects.effective_pokemon_type(attacker)
 	if not skip_weakness and target.card != null and target.card.weakness != PokemonCardData.EnergyType.NONE:
-		if attacker.card != null and attacker.card.pokemon_type == target.card.weakness:
+		if attacker.card != null and attacker_type == int(target.card.weakness):
 			dmg *= 2
 	if not skip_resistance and target.card != null and target.card.resistance != PokemonCardData.EnergyType.NONE:
-		if attacker.card != null and attacker.card.pokemon_type == target.card.resistance:
+		if attacker.card != null and attacker_type == int(target.card.resistance):
 			dmg = maxi(0, dmg - 30)
 	return dmg

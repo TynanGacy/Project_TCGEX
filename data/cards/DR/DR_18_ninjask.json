@@ -31,8 +31,10 @@
       "name": "Loose Shell",
       "text": "Once during your turn, when you play Ninjask from your hand to evolve 1 of your Pokémon, you may search your deck for Shedinja and put it onto your Bench. Treat the new Benched Pokémon as a Basic Pokémon. Shuffle your deck afterward.",
       "kind": "POKE_POWER",
-      "effect_key": "",
-      "effect_params": {}
+      "effect_key": "power_search_deck_play_specific_basic",
+      "effect_params": {
+        "target_slug": "shedinja"
+      }
     }
   ]
 }

@@ -43,7 +43,7 @@
       "name": "Withering Dust",
       "text": "As long as Beautifly is in play, do not apply Resistance for all Active Pokémon.",
       "kind": "POKE_BODY",
-      "effect_key": "",
+      "effect_key": "body_global_resistance_disable",
       "effect_params": {}
     }
   ]

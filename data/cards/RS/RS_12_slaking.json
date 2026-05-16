@@ -38,7 +38,7 @@
       "name": "Lazy",
       "text": "As long as Slaking is your Active Pokémon, your opponent's Pokémon can't use any Poké-Powers.",
       "kind": "POKE_BODY",
-      "effect_key": "",
+      "effect_key": "body_suppress_opponent_powers",
       "effect_params": {}
     }
   ]
