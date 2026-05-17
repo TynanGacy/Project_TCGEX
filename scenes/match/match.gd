@@ -59,10 +59,22 @@ var _p1_hand_transform: Transform3D = Transform3D.IDENTITY
 
 ## --- Setup state ------------------------------------------------------------
 var is_developer_mode: bool = false
+## Set true by SetupManager when mode == "player".  Toggles the AIDriver as
+## the source of P1 input and tells the dialog/match code to skip showing
+## CPU-facing prompts.
+var opponent_is_cpu: bool = false
 var _prize_count:      int  = 6
 var _active_slots:     int  = 1
 var _bench_slots:      int  = 5
 var _setup_dialog: Control = null
+
+## CPU driver (null in developer mode or before _start_game runs).
+var _ai_driver: AIDriver = null
+
+
+## True when [pid] is being driven by AIDriver (P1 in Player Mode).
+func is_cpu_player(pid: int) -> bool:
+	return opponent_is_cpu and pid == 1
 
 ## Coin flip overlay — created in _ready(), shown for every coin flip.
 var _coin_flip_overlay: Control = null
@@ -450,10 +462,14 @@ func _on_retreat_pressed() -> void:
 
 
 func _on_prize_selection_required(player_id: int) -> void:
+	if is_cpu_player(player_id):
+		return  ## AIDriver answers on the CPU side.
 	_dialog_mgr.on_prize_selection_required(player_id)
 
 
 func _on_promotion_required(player_id: int) -> void:
+	if is_cpu_player(player_id):
+		return  ## AIDriver answers on the CPU side.
 	_dialog_mgr.on_promotion_required(player_id)
 
 
@@ -480,19 +496,27 @@ func _on_game_won(player_id: int) -> void:
 
 func _on_energy_discard_choice_required(
 		player_id: int, eligible: Array, count: int, attacker_slot: String) -> void:
+	if is_cpu_player(player_id):
+		return
 	_dialog_mgr.on_energy_discard_choice_required(player_id, eligible, count, attacker_slot)
 
 
 func _on_retreat_energy_choice_required(
 		player_id: int, eligible: Array, count: int, active_slot: String) -> void:
+	if is_cpu_player(player_id):
+		return
 	_dialog_mgr.on_retreat_energy_choice_required(player_id, eligible, count, active_slot)
 
 
 func _on_trainer_query_requested(query: TrainerQuery) -> void:
+	if query != null and is_cpu_player(query.player_id):
+		return
 	_dialog_mgr.on_trainer_query_requested(query)
 
 
 func _on_attack_query_requested(query: AttackQuery) -> void:
+	if query != null and is_cpu_player(query.player_id):
+		return
 	_dialog_mgr.on_attack_query_requested(query)
 
 

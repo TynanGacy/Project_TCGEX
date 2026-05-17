@@ -153,7 +153,7 @@ func show_setup_dialog() -> void:
 		_setup_selected_mode = "player"
 		player_btn.modulate = Color(0.4, 0.4, 0.9)
 		dev_btn.modulate    = Color.WHITE
-		mode_desc.text = "Player Mode: CPU opponent will be restored with the turn system."
+		mode_desc.text = "Player Mode: P1 is a CPU opponent (DR Fire deck)."
 		start_btn.disabled = false
 	)
 	start_btn.pressed.connect(func() -> void:
@@ -193,11 +193,16 @@ func _on_setup_confirmed(
 	opponent_deck_path: String
 ) -> void:
 	_main.is_developer_mode   = (mode == "developer")
+	_main.opponent_is_cpu     = (mode == "player")
 	_main._prize_count        = prizes
 	_main._active_slots       = active_slots
 	_main._bench_slots        = bench_slots
 	_player_deck_path   = player_deck_path
 	_opponent_deck_path = opponent_deck_path
+	## Phase A: CPU always plays the DR Fire opponent deck. Per-NPC deck
+	## selection lands with W5 (overworld NPC battles).
+	if _main.opponent_is_cpu:
+		_opponent_deck_path = "res://data/decks/opponents/dr_fire.json"
 	_start_game()
 
 
@@ -224,6 +229,14 @@ func _start_game() -> void:
 
 	_main._authority.draw_starting_hand(0, 7)
 	_main._authority.draw_starting_hand(1, 7)
+
+	## Stand up the CPU driver before the setup coroutine runs so it is
+	## already listening for turn_started by the time begin_game() fires.
+	if _main.opponent_is_cpu and _main._ai_driver == null:
+		_main._ai_driver = AIDriver.new()
+		_main.add_child(_main._ai_driver)
+		var deck_id := _opponent_deck_path.get_file().trim_suffix(".json")
+		_main._ai_driver.init(_main, deck_id)
 
 	_run_setup_sequence()
 
@@ -330,6 +343,14 @@ func _show_placement_phase(placing_pid: int) -> void:
 	_main.end_turn_button.disabled = not _is_placement_ready(placing_pid)
 	_main._update_phase_label()
 
+	## CPU side auto-places its basics and returns without waiting on a click.
+	if _main.is_cpu_player(placing_pid) and _main._ai_driver != null:
+		_main._ai_driver.auto_place_setup(placing_pid)
+		_main.end_turn_button.text     = "End Turn"
+		_main.end_turn_button.disabled = false
+		_main._in_placement_phase      = false
+		return
+
 	var refresh := func(_sid: String, _inst: PokemonInstance) -> void:
 		_main.end_turn_button.disabled = not _is_placement_ready(placing_pid)
 	_main._authority.board_slot_changed.connect(refresh)
@@ -359,6 +380,9 @@ func _show_setup_info(message: String) -> void:
 
 
 func _show_mulligan_card_offer(offer_pid: int) -> bool:
+	## CPU declines the bonus draw silently — no UI, no decision tree yet.
+	if _main.is_cpu_player(offer_pid):
+		return false
 	var panel := _make_panel()
 	var vbox := panel.get_child(0) as VBoxContainer
 	var lbl := Label.new()

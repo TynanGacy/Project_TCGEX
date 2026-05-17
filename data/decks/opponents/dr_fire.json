@@ -1,0 +1,11 @@
+{
+  "_comment": "DR Fire — Phase A opponent deck. Heavy on basics + fire energy so the heuristic AI (which does not evolve or play trainers in Phase A) always has a legal attach + attack to make. Lives in data/decks/opponents/ so it does not appear in the human deck picker.",
+  "cards": [
+    { "card_id": "DR_98_charmander", "count": 4 },
+    { "card_id": "DR_77_torchic",    "count": 4 },
+    { "card_id": "DR_72_slugma",     "count": 4 },
+    { "card_id": "DR_69_numel",      "count": 4 },
+    { "card_id": "DR_12_torkoal",    "count": 4 },
+    { "card_id": "RS_108_fire_energy", "count": 40 }
+  ]
+}
