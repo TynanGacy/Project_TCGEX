@@ -291,7 +291,11 @@ func _run_setup_sequence() -> void:
 
 	for placing_pid: int in [0, 1]:
 		_main._authority.begin_setup_placement(placing_pid)
-		_main._apply_perspective(placing_pid)
+		## Only flip the view to the placing player in Developer Mode (both
+		## sides driven by the operator). In Player Mode the human always
+		## sees P0; the CPU places silently behind the scenes.
+		if _main.is_developer_mode:
+			_main._apply_perspective(placing_pid)
 		_main._hand_mgr.rebuild(0)
 		_main._hand_mgr.rebuild(1)
 		_main._in_setup_phase = false

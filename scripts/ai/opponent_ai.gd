@@ -117,11 +117,24 @@ func _try_attach_energy(manager, pid: int) -> GameAction:
 	return null
 
 
-## --- 4. Attack with highest base damage attack that's affordable + legal -----
+## --- 4. Attack with the best-tier legal attack -------------------------------
+##
+## Priority (per user spec):
+##   tier 0 — damage > 0 (pick highest damage)
+##   tier 1 — damage == 0, inflicts a status NOT already on the target
+##   tier 2 — damage == 0, no status effect at all (vanilla effect / search)
+##   tier 3 — damage == 0, status the target already has (no-op stacking)
+##
+## Returns the best legal attack across all of [pid]'s active slots, or null
+## if no attack is legal.
+
+const _STATUS_NAMES: Array[String] = [
+	"ASLEEP", "BURNED", "CONFUSED", "PARALYZED", "POISONED",
+]
+
 
 func _try_attack(manager, pid: int) -> GameAction:
-	var best: ActionAttack = null
-	var best_damage: int = -1
+	var tiers: Array = [[], [], [], []]
 	for i in range(1, manager.active_slot_count + 1):
 		var atk_slot := "p%d_active%d" % [pid, i]
 		var attacker: PokemonInstance = manager.board_position.get_instance(atk_slot)
@@ -131,15 +144,78 @@ func _try_attack(manager, pid: int) -> GameAction:
 		var tgt_slot: String = _first_opponent_active(manager, opp_id)
 		if tgt_slot == "":
 			continue
+		var target: PokemonInstance = manager.board_position.get_instance(tgt_slot)
 		for atk_idx in attacker.card.attacks.size():
 			var action := ActionAttack.new(pid, atk_slot, atk_idx, tgt_slot)
 			if not action.validate(manager).ok:
 				continue
-			var dmg: int = int(attacker.card.attacks[atk_idx].base_damage)
-			if dmg > best_damage:
-				best_damage = dmg
-				best = action
-	return best
+			var atk: AttackData = attacker.card.attacks[atk_idx]
+			var dmg: int = int(atk.base_damage)
+			var tier: int = _tier_for_attack(atk, dmg, target)
+			tiers[tier].append({"action": action, "damage": dmg})
+
+	for tier in tiers:
+		if (tier as Array).is_empty():
+			continue
+		var best: Dictionary = (tier as Array)[0]
+		for entry: Dictionary in tier:
+			if int(entry["damage"]) > int(best["damage"]):
+				best = entry
+		return best["action"] as ActionAttack
+	return null
+
+
+## Returns the priority tier (0 best → 3 worst) for an attack.  See _try_attack
+## for the full ordering.
+func _tier_for_attack(atk: AttackData, dmg: int, target: PokemonInstance) -> int:
+	if dmg > 0:
+		return 0
+	var status: String = _status_inflicted_by(atk)
+	if status.is_empty():
+		return 2
+	if target != null and _target_has_status(target, status):
+		return 3
+	return 1
+
+
+## Returns the SpecialCondition name (e.g. "BURNED") that [atk] would apply to
+## its target, or "" if the attack has no status-inflict component.  Covers
+## inflict_status, coin_status (probabilistic — counts as inflicts), and the
+## inflict_burned_retreat_lock + inflict_status entries in effect_chain.
+func _status_inflicted_by(atk: AttackData) -> String:
+	var direct_keys: Array[String] = [
+		"inflict_status",
+		"coin_status",
+		"conditional_inflict_status",
+		"inflict_status_by_attached_count",
+	]
+	if atk.effect_key in direct_keys:
+		var cond: String = str(atk.effect_params.get("condition", ""))
+		if cond in _STATUS_NAMES:
+			return cond
+	if atk.effect_key == "inflict_burned_retreat_lock":
+		return "BURNED"
+	for raw in atk.effect_chain:
+		if not (raw is Dictionary):
+			continue
+		var key: String = str((raw as Dictionary).get("key", ""))
+		var params: Dictionary = (raw as Dictionary).get("params", {}) as Dictionary
+		if key in direct_keys:
+			var cond_chain: String = str(params.get("condition", ""))
+			if cond_chain in _STATUS_NAMES:
+				return cond_chain
+		if key == "inflict_burned_retreat_lock":
+			return "BURNED"
+	return ""
+
+
+func _target_has_status(target: PokemonInstance, status_name: String) -> bool:
+	var idx: int = _STATUS_NAMES.find(status_name)
+	if idx < 0:
+		return false
+	## SpecialCondition enum order matches _STATUS_NAMES:
+	## ASLEEP=0, BURNED=1, CONFUSED=2, PARALYZED=3, POISONED=4
+	return target.special_conditions.has(idx)
 
 
 ## --- helpers -----------------------------------------------------------------

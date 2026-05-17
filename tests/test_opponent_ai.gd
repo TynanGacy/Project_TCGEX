@@ -136,6 +136,56 @@ func test_attack_picks_highest_damage_legal_option() -> void:
 		"AI must pick Tackle (20 dmg) over Firebreathing (10 dmg) when both are payable")
 
 
+## ── 5b. Tier ordering: prefer a status-inflicting attack over a vanilla
+##       zero-damage attack when no damaging attack is available. ───────────
+
+func test_attack_prefers_status_over_vanilla_when_all_zero_damage() -> void:
+	var b := _builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	## Torkoal: Power Generation (0 dmg, search effect, cost_colorless 1) vs.
+	## Scorching Smoke (0 dmg, inflict BURNED, cost_fire 1). With 1 fire energy
+	## both are legal — AI must pick Scorching Smoke (tier 1) over Power
+	## Generation (tier 2).
+	b.place_active(0, "DR_12_torkoal", {"energy": ["RS_108_fire_energy"]})
+	b.place_active(1, "DR_98_charmander")
+	for i in OpponentAI.MAX_BENCH_FILL:
+		b.place("p0_bench%d" % (i + 1), "DR_72_slugma")
+	mgr.energy_attached_this_turn[0] = true
+
+	var action: GameAction = _ai.decide_action(mgr, 0)
+	assert_true(action is ActionAttack, "Expected ActionAttack")
+	var atk := action as ActionAttack
+	var attacker: PokemonInstance = mgr.board_position.get_instance("p0_active1")
+	var chosen_name: String = attacker.card.attacks[atk.attack_index].name
+	assert_eq(chosen_name, "Scorching Smoke",
+		"AI must prefer status-inflicting attack over vanilla 0-damage attack")
+
+
+## ── 5c. Tier ordering: avoid stacking a status the target already has. ─────
+
+func test_attack_deprioritises_status_already_on_target() -> void:
+	var b := _builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	## Same Torkoal scenario, but target already BURNED. Scorching Smoke would
+	## be a no-op stack (tier 3); Power Generation (tier 2) should win.
+	b.place_active(0, "DR_12_torkoal", {"energy": ["RS_108_fire_energy"]})
+	b.place_active(1, "DR_98_charmander",
+		{"conditions": [PokemonInstance.SpecialCondition.BURNED]})
+	for i in OpponentAI.MAX_BENCH_FILL:
+		b.place("p0_bench%d" % (i + 1), "DR_72_slugma")
+	mgr.energy_attached_this_turn[0] = true
+
+	var action: GameAction = _ai.decide_action(mgr, 0)
+	assert_true(action is ActionAttack, "Expected ActionAttack")
+	var atk := action as ActionAttack
+	var attacker: PokemonInstance = mgr.board_position.get_instance("p0_active1")
+	var chosen_name: String = attacker.card.attacks[atk.attack_index].name
+	assert_eq(chosen_name, "Power Generation",
+		"AI must avoid restacking a status the target already has")
+
+
 ## ── 6. Nothing to do → returns null (driver will end turn) ──────────────────
 
 func test_returns_null_when_no_legal_action() -> void:

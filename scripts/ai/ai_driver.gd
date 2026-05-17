@@ -66,7 +66,7 @@ func auto_place_setup(pid: int) -> void:
 		var basic: PokemonCardData = _first_basic_in_hand(pid)
 		if basic == null:
 			break
-		var result := _main._authority.request_action(
+		var result: ActionResult = _main._authority.request_action(
 				ActionSetupPlayBasic.new(pid, basic, slot))
 		if result.ok:
 			placed += 1
