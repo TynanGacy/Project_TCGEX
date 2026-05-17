@@ -28,13 +28,35 @@ scenes/
   hand/         # Hand layout and management
   board/        # Game board with play zones
   main/         # Main scene entry point
+  overworld/    # 3D overworld mode (player, camera, maps, gates, exits)
 assets/
   images/       # Card art, backgrounds, UI elements
+  models/       # 3D models (overworld glTFs, etc.)
+  textures/     # Texture pack subsets used in scenes
 addons/
   gut/          # Unit testing framework
   godot-git-plugin/  # Git integration
 tests/          # GUT test scripts
 ```
+
+## Game modes
+- **Match (card game)** — `res://scenes/match/match.tscn`. Card sim.
+- **Overworld (3D exploration)** — `res://scenes/overworld/overworld_root.tscn`. Pokemon Colosseum/XD-style 3D world. Phase plan in `.claude/plans/i-m-happy-to-tackle-quirky-moler.md`.
+
+## Isolation Rules — card game ↔ overworld
+These two modes must NEVER share state at runtime. Keep them strictly separated:
+
+1. **Mode switches are full scene swaps.** Always `GameStateManager.change_state(...)` / `change_scene_to_file(...)`. No additive `add_child` of the other mode's root.
+2. **No cross-imports between mode folders.** Code under `scenes/overworld/` and `autoload/overworld/` must not `preload` or `load` anything under `scenes/match/`, `scenes/card/`, `scenes/hand/`, `scenes/board/`, `scenes/deck_builder/`, or `autoload/manager_system.gd` / `card_database.gd` / `sleeves_manager.gd`. The reverse also applies.
+3. **Disjoint collision layers** (configured in `project.godot` → `[layer_names]`):
+   - Layer 1 `cards`, Layer 4 `cards_drop_zones` — **card game only**.
+   - Layer 2 `ow_player`, Layer 3 `ow_world`, Layer 5 `ow_gates`, Layer 6 `ow_exit_triggers`, Layer 7 `ow_interact` — **overworld only**.
+   - Never set Layer 1 or 4 on an overworld node, or Layers 2/3/5/6/7 on a card-game node.
+4. **Prefixed input actions** — all overworld actions start with `ow_` (e.g. `ow_move_up`, `ow_interact`, `ow_back`). Card-game actions must not use this prefix.
+5. **Disjoint autoloads** — `OverworldInventory` and `OverworldWorldManager` are overworld-only; `ManagerSystemSingleton`, `CardDatabase`, `SleevesManager` are card-game-only. `GameStateManager` and `MCPInputServer` are shared infrastructure.
+6. **Only sanctioned crossover point**: `scenes/main_menu/main_menu.tscn` (and `GameStateManager`) — these are allowed to know about both modes.
+
+If you find yourself wanting to bridge them, stop and ask the user before adding the dependency.
 
 ## Running Tests
 Tests use the GUT addon. Test files go in `tests/` with the prefix `test_`.

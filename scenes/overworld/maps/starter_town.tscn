@@ -1,0 +1,48 @@
+[gd_scene load_steps=6 format=3 uid="uid://ow_starter_town_scene"]
+
+[ext_resource type="Script" path="res://scenes/overworld/maps/map_base.gd" id="1_map_base"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(40, 40)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.35, 0.55, 0.28, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(40, 0.2, 40)
+
+[sub_resource type="BoxMesh" id="BoxMesh_marker"]
+size = Vector3(0.3, 0.3, 0.3)
+
+[node name="StarterTown" type="Node3D"]
+script = ExtResource("1_map_base")
+map_id = &"starter_town"
+
+[node name="Terrain" type="Node3D" parent="."]
+
+[node name="Ground" type="StaticBody3D" parent="Terrain"]
+collision_layer = 4
+collision_mask = 0
+
+[node name="GroundMesh" type="MeshInstance3D" parent="Terrain/Ground"]
+mesh = SubResource("PlaneMesh_ground")
+surface_material_override/0 = SubResource("StandardMaterial3D_ground")
+
+[node name="GroundCollider" type="CollisionShape3D" parent="Terrain/Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+shape = SubResource("BoxShape3D_ground")
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="Gates" type="Node3D" parent="."]
+
+[node name="Exits" type="Node3D" parent="."]
+
+[node name="SpawnPoints" type="Node3D" parent="."]
+
+[node name="default" type="Marker3D" parent="SpawnPoints" groups=["ow_spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+
+[node name="Marker" type="MeshInstance3D" parent="SpawnPoints/default"]
+mesh = SubResource("BoxMesh_marker")
+visible = false

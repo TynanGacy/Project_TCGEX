@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://ow_follow_camera_scene"]
+
+[ext_resource type="Script" path="res://scenes/overworld/camera/follow_camera.gd" id="1_cam"]
+
+[node name="FollowCamera" type="Node3D"]
+script = ExtResource("1_cam")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+fov = 55.0
