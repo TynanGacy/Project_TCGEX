@@ -1,20 +1,12 @@
-[gd_scene format=3 uid="uid://ow_starter_town_scene"]
+[gd_scene format=3 uid="uid://b130qls7vh5ci"]
 
-[ext_resource type="Script" path="res://scenes/overworld/maps/map_base.gd" id="1_map_base"]
-[ext_resource type="PackedScene" uid="uid://ow_map_exit_scene" path="res://scenes/overworld/exits/map_exit.tscn" id="2_exit"]
-[ext_resource type="PackedScene" uid="uid://ow_terrain_gate_scene" path="res://scenes/overworld/gates/terrain_gate.tscn" id="3_gate"]
+[ext_resource type="Script" uid="uid://be2rkv664yjdk" path="res://scenes/overworld/maps/map_base.gd" id="1_map_base"]
+[ext_resource type="PackedScene" path="res://scenes/overworld/exits/map_exit.tscn" id="2_exit"]
+[ext_resource type="Script" path="res://scenes/overworld/props/auto_collider.gd" id="3_auto_collider"]
+[ext_resource type="PackedScene" uid="uid://b6fujqmpxvmld" path="res://assets/models/overworld/nature/lilypad_01.glb" id="4_shrine_model"]
 
-[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
-size = Vector2(40, 40)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
-albedo_color = Color(0.35, 0.55, 0.28, 1)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
-size = Vector3(40, 0.2, 40)
-
-[sub_resource type="BoxMesh" id="BoxMesh_marker"]
-size = Vector3(0.3, 0.3, 0.3)
+[sub_resource type="BoxShape3D" id="BoxShape3D_safety"]
+size = Vector3(200, 1, 200)
 
 [node name="StarterTown" type="Node3D"]
 script = ExtResource("1_map_base")
@@ -22,41 +14,34 @@ map_id = &"starter_town"
 
 [node name="Terrain" type="Node3D" parent="."]
 
-[node name="Ground" type="StaticBody3D" parent="Terrain"]
+[node name="SafetyFloor" type="StaticBody3D" parent="Terrain"]
 collision_layer = 4
 collision_mask = 0
 
-[node name="GroundMesh" type="MeshInstance3D" parent="Terrain/Ground"]
-mesh = SubResource("PlaneMesh_ground")
-surface_material_override/0 = SubResource("StandardMaterial3D_ground")
-
-[node name="GroundCollider" type="CollisionShape3D" parent="Terrain/Ground"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
-shape = SubResource("BoxShape3D_ground")
+[node name="SafetyFloorCollider" type="CollisionShape3D" parent="Terrain/SafetyFloor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -10, 0)
+shape = SubResource("BoxShape3D_safety")
 
 [node name="Props" type="Node3D" parent="."]
 
-[node name="Gates" type="Node3D" parent="."]
+[node name="RelicShrine" type="Node3D" parent="Props"]
+script = ExtResource("3_auto_collider")
 
-[node name="TestGate" parent="Gates" instance=ExtResource("3_gate")]
-transform = Transform3D(2.5, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -14)
-required_item = &"test_key"
+[node name="Model" parent="Props/RelicShrine" instance=ExtResource("4_shrine_model")]
+
+[node name="Gates" type="Node3D" parent="."]
 
 [node name="Exits" type="Node3D" parent="."]
 
 [node name="ToTestField" parent="Exits" instance=ExtResource("2_exit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 14)
 target_map = "res://scenes/overworld/maps/test_field.tscn"
 target_spawn = &"from_west"
 
 [node name="SpawnPoints" type="Node3D" parent="."]
 
 [node name="default" type="Marker3D" parent="SpawnPoints" groups=["ow_spawn_points"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
-
-[node name="Marker" type="MeshInstance3D" parent="SpawnPoints/default"]
-mesh = SubResource("BoxMesh_marker")
-visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.5, 0)
 
 [node name="from_east" type="Marker3D" parent="SpawnPoints" groups=["ow_spawn_points"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0.1, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 12)

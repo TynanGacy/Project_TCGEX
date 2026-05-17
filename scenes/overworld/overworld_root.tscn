@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scenes/overworld/overworld_root.gd" id="1_root"]
 [ext_resource type="PackedScene" uid="uid://ow_player_scene" path="res://scenes/overworld/player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" uid="uid://ow_follow_camera_scene" path="res://scenes/overworld/camera/follow_camera.tscn" id="3_camera"]
-[ext_resource type="PackedScene" uid="uid://ow_starter_town_scene" path="res://scenes/overworld/maps/starter_town.tscn" id="4_starter_town"]
+[ext_resource type="PackedScene" uid="uid://b130qls7vh5ci" path="res://scenes/overworld/maps/starter_town.tscn" id="4_starter_town"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.35, 0.55, 0.85, 1)

@@ -10,6 +10,7 @@ extends CharacterBody3D
 @export var acceleration: float = 18.0
 @export var rotation_speed: float = 12.0
 @export var gravity: float = 24.0
+@export var jump_velocity: float = 8.5
 
 ## Set by `overworld_root.gd` once the camera rig is in the tree so we can
 ## resolve camera-relative input. Falls back to world axes if unset.
@@ -31,10 +32,12 @@ func _physics_process(delta: float) -> void:
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
 
-	if not is_on_floor():
-		velocity.y -= gravity * delta
-	else:
+	if is_on_floor():
 		velocity.y = min(velocity.y, 0.0)
+		if Input.is_action_just_pressed(&"ow_jump"):
+			velocity.y = jump_velocity
+	else:
+		velocity.y -= gravity * delta
 
 	move_and_slide()
 
