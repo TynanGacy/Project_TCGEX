@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3 uid="uid://pack_opening_scene"]
+
+[ext_resource type="Script" path="res://scenes/pack_opening/pack_opening.gd" id="1_open"]
+
+[node name="PackOpening" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_open")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.08, 0.1, 0.13, 1)

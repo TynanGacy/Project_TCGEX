@@ -1,0 +1,15 @@
+{
+	"pack_id": "SS_booster",
+	"display_name": "EX Sandstorm Booster",
+	"set_code": "SS",
+	"price_coins": 200,
+	"slots": [
+		{ "count": 5, "rarity_pool": ["Common"] },
+		{ "count": 3, "rarity_pool": ["Uncommon"] },
+		{
+			"count": 1,
+			"rarity_pool": ["Rare", "Rare Holo", "Rare Holo EX"],
+			"weights":      [5834,   3333,        833]
+		}
+	]
+}

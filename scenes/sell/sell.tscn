@@ -1,0 +1,112 @@
+[gd_scene load_steps=4 format=3 uid="uid://sell_scene"]
+
+[ext_resource type="Script" path="res://scenes/sell/sell.gd" id="1_sell"]
+[ext_resource type="Script" path="res://scenes/ui/card_grid.gd" id="2_grid"]
+[ext_resource type="Script" path="res://scenes/ui/card_filter_bar.gd" id="3_filter"]
+
+[node name="Sell" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_sell")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.12, 0.15, 1)
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BackButton" type="Button" parent="Layout/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+text = "← Shop"
+
+[node name="Title" type="Label" parent="Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+text = "Sell Cards"
+theme_override_font_sizes/font_size = 24
+
+[node name="RerollButton" type="Button" parent="Layout/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+text = "Re-roll Prices"
+tooltip_text = "Re-randomize every appraisal. Later this will be driven by in-game time."
+
+[node name="CoinLabel" type="Label" parent="Layout/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 40)
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 18
+
+[node name="FilterBar" type="HFlowContainer" parent="Layout"]
+layout_mode = 2
+script = ExtResource("3_filter")
+
+[node name="Body" type="HSplitContainer" parent="Layout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+split_offset = -360
+
+[node name="PoolGrid" type="VBoxContainer" parent="Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_grid")
+
+[node name="Cart" type="VBoxContainer" parent="Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="CartHeader" type="Label" parent="Layout/Body/Cart"]
+layout_mode = 2
+text = "Sell Cart"
+theme_override_font_sizes/font_size = 18
+
+[node name="CartGrid" type="VBoxContainer" parent="Layout/Body/Cart"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_grid")
+
+[node name="CartFooter" type="HBoxContainer" parent="Layout/Body/Cart"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TotalLabel" type="Label" parent="Layout/Body/Cart/CartFooter"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Total: 0 ⛁"
+theme_override_font_sizes/font_size = 18
+
+[node name="SellButton" type="Button" parent="Layout/Body/Cart/CartFooter"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+text = "Sell"
+disabled = true
+
+[node name="LastCopyDialog" type="ConfirmationDialog" parent="."]
+title = "Sell last copies?"
+initial_position = 2
+ok_button_text = "Sell anyway"

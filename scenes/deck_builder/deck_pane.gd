@@ -145,7 +145,10 @@ func _rebuild() -> void:
 			continue
 		var tile := CardTile.create(card, int(_model[cid]), true)
 		tile.set_view_mode(_view_mode)
-		tile.set_count_style(CardTile.CountStyle.CENTER_RIGHT_LARGE)
+		## Same small middle-right pill the collection / pack-opening / pool
+		## tiles use — kept consistent so a number in the same place always
+		## means "copies recorded here", regardless of which view you're in.
+		tile.set_count_style(CardTile.CountStyle.CORNER)
 		if _view_mode == CardTile.ViewMode.TEXT:
 			tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tile.clicked.connect(func(cd: CardData): add_card(cd.card_id, 1))

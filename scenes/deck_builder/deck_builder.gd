@@ -21,6 +21,7 @@ extends Control
 @onready var _load_btn: Button = $Layout/Header/Buttons/LoadButton
 @onready var _save_btn: Button = $Layout/Header/Buttons/SaveButton
 @onready var _save_as_btn: Button = $Layout/Header/Buttons/SaveAsButton
+@onready var _full_pool_toggle: CheckBox = $Layout/Header/Buttons/FullPoolToggle
 
 @onready var _save_dialog: AcceptDialog = $SaveDialog
 @onready var _save_name_edit: LineEdit = $SaveDialog/V/NameEdit
@@ -36,9 +37,15 @@ var _preview_visible: bool = true
 
 func _ready() -> void:
 	_grid.show_counts = true
-	_grid.set_pool(CardDatabase.all_cards())
+	## Owned counts populate the pool badge denominators ("in_deck/owned").
+	## Refreshed in _on_collection_changed and _on_collection_reset below.
+	_grid.set_subcounts(PlayerProfile.collection.duplicate())
+	_apply_pool()
 	_filter_bar.filters_changed.connect(_grid.set_filters)
 	_grid.set_filters(_filter_bar.get_filters())
+	_full_pool_toggle.toggled.connect(_on_full_pool_toggled)
+	PlayerProfile.collection_changed.connect(_on_player_collection_changed)
+	PlayerProfile.collection_reset.connect(_on_player_collection_reset)
 	_apply_preview_rounded_shader()
 	_grid.card_activated.connect(_on_pool_card_clicked)
 	_grid.card_zoom.connect(_on_pool_card_zoomed)
@@ -63,7 +70,27 @@ func _ready() -> void:
 
 
 func _on_pool_card_clicked(card: CardData) -> void:
+	## Block adds that would exceed the player's owned count when restricted
+	## to the collection. Full-pool mode is the sandbox/testing escape hatch.
+	if not _full_pool_toggle.button_pressed:
+		var owned: int = PlayerProfile.owned_count(card.card_id)
+		var in_deck: int = _pane.count_of(card.card_id)
+		if in_deck >= owned:
+			return
 	_pane.add_card(card.card_id, 1)
+
+
+func _on_full_pool_toggled(_pressed: bool) -> void:
+	_apply_pool()
+
+
+func _apply_pool() -> void:
+	var all := CardDatabase.all_cards()
+	if _full_pool_toggle != null and _full_pool_toggle.button_pressed:
+		_grid.set_pool(all)
+	else:
+		_grid.set_pool(all.filter(
+			func(c: CardData) -> bool: return PlayerProfile.owned_count(c.card_id) > 0))
 
 
 func _on_pool_card_zoomed(card: CardData) -> void:
@@ -103,8 +130,22 @@ func _on_card_unhovered(_card: CardData) -> void:
 
 
 func _on_deck_changed(_model: Dictionary) -> void:
+	## Primary count = copies currently in the deck. Secondary count = owned
+	## copies, refreshed only on collection changes (cheap to set every time
+	## but kept here for completeness if owned-count changes via dev tools).
+	_grid.set_subcounts(PlayerProfile.collection.duplicate())
 	_grid.set_counts(_pane.get_model(), true)
 	_refresh_status()
+
+
+func _on_player_collection_changed(_card_id: String, _new_count: int) -> void:
+	_grid.set_subcounts(PlayerProfile.collection.duplicate())
+	_apply_pool()
+
+
+func _on_player_collection_reset() -> void:
+	_grid.set_subcounts({})
+	_apply_pool()
 
 
 func _on_preview_toggle() -> void:

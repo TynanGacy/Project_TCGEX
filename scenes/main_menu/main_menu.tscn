@@ -16,6 +16,19 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 color = Color(0.1, 0.12, 0.15, 1)
 
+[node name="CoinLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 48.0
+text = "Coins: 0"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 18
+
 [node name="VBox" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 8
@@ -47,20 +60,20 @@ layout_mode = 2
 custom_minimum_size = Vector2(300, 48)
 text = "Overworld"
 
-[node name="CardListButton" type="Button" parent="VBox"]
+[node name="CollectionButton" type="Button" parent="VBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(300, 48)
-text = "Card List"
+text = "Collection"
 
 [node name="DeckBuilderButton" type="Button" parent="VBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(300, 48)
 text = "Deck Builder"
 
-[node name="PackOpeningButton" type="Button" parent="VBox"]
+[node name="ShopButton" type="Button" parent="VBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(300, 48)
-text = "Pack Opening (WIP)"
+text = "Shop"
 
 [node name="MiniGame1Button" type="Button" parent="VBox"]
 layout_mode = 2

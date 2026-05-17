@@ -157,6 +157,16 @@ func _sort_options() -> Array:
 	]
 
 
+func add_sort_option(label: String, metadata_key: String) -> void:
+	## Append a screen-specific sort option after the bar is built. The
+	## sell screen uses this to inject "Price" without polluting the global
+	## sort list — pricing is per-session state, not a property of the card.
+	if _sort_opt == null:
+		return
+	_sort_opt.add_item(label)
+	_sort_opt.set_item_metadata(_sort_opt.item_count - 1, metadata_key)
+
+
 # ---------------------------------------------------------------------------
 # Multi-select menu
 # ---------------------------------------------------------------------------

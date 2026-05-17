@@ -16,8 +16,38 @@ signal card_unhovered(card: CardData)
 var _pool: Array = []
 var _filtered: Array = []
 var _counts: Dictionary = {}  ## card_id -> int
+## Optional secondary counts rendered as a denominator alongside _counts.
+## When non-empty each tile shows "primary/sub" (e.g. "2/4"); when empty the
+## tile falls back to "×N".
+var _subcounts: Dictionary = {}
+## Optional per-card subtitle strings (e.g. sell prices like "12 ⛁"). When
+## non-empty the tile shows the subtitle below the art in image mode or as
+## an extra column in text mode. Empty subtitles render nothing.
+var _subtitles: Dictionary = {}
+## Caller-supplied comparators registered by sort_key. Used by the sell
+## screen to plug a "price" sort that needs per-card prices the default
+## CardTextFormat comparator can't see.
+var _custom_comparators: Dictionary = {}  ## sort_key -> Callable
 var _view_mode: int = CardTile.ViewMode.IMAGE
 var _filters: Dictionary = {}
+## Set true by apply_filters() to coalesce multiple set_* calls (counts,
+## subcounts, subtitles, pool, filters) made in the same frame into a
+## single deferred rebuild. Without this, adding one card to the sell cart
+## was triggering 3+ full grid rebuilds back-to-back — visible as lag.
+var _rebuild_queued: bool = false
+
+## Incremental-build state. Each call to _rebuild_grid bumps the generation
+## and starts an async coroutine. Build is two-phase to hide the cost:
+## Phase 1 instantiates ALL filtered tiles at once with the card-back as a
+## placeholder texture so the scroll fills immediately with no gaps; phase
+## 2 then walks the tiles in batches and swaps in the real art. Any
+## coroutine still mid-upgrade bails out the moment a new rebuild bumps
+## the generation.
+var _rebuild_generation: int = 0
+## Tiles whose real art is upgraded per frame during phase 2. 40 gives the
+## first viewport's worth a chance to fully populate within ~one second on
+## a typical 700-card pool while keeping per-frame cost low.
+const TILES_PER_FRAME: int = 40
 
 ## Container that holds the tiles. Swapped between HFlowContainer (image
 ## mode, wraps based on width) and VBoxContainer (text mode, single column).
@@ -43,6 +73,25 @@ func set_counts(counts: Dictionary, show: bool = true) -> void:
 	apply_filters()
 
 
+func set_subcounts(subcounts: Dictionary) -> void:
+	_subcounts = subcounts
+	apply_filters()
+
+
+func set_subtitles(subtitles: Dictionary) -> void:
+	_subtitles = subtitles
+	apply_filters()
+
+
+func set_custom_comparator(sort_key: String, comparator: Callable) -> void:
+	## Register a comparator that supersedes CardTextFormat.comparator_for()
+	## when the active sort key matches. Lets external screens (e.g. the
+	## sell screen's "price" sort) plug in state-dependent sort orders
+	## without touching the global comparator registry.
+	_custom_comparators[sort_key] = comparator
+	apply_filters()
+
+
 func set_filters(f: Dictionary) -> void:
 	_filters = f
 	apply_filters()
@@ -62,11 +111,31 @@ func get_view_mode() -> int:
 
 
 func apply_filters() -> void:
+	## Queue exactly one deferred rebuild per frame regardless of how many
+	## set_* calls fire. Synchronously triggering _rebuild_grid here used
+	## to do 3+ full rebuilds for a single sell-cart click because we set
+	## counts, subtitles, and pool all in sequence; with deferral the rebuild
+	## sees the final state of all three after the call chain unwinds.
+	if _grid == null:
+		return
+	if _rebuild_queued:
+		return
+	_rebuild_queued = true
+	call_deferred("_apply_filters_now")
+
+
+func _apply_filters_now() -> void:
+	_rebuild_queued = false
 	if _grid == null:
 		return
 	_filtered = _pool.filter(_passes_filters)
 	var sort_key: String = str(_filters.get("sort", "default"))
-	_filtered.sort_custom(CardTextFormat.comparator_for(sort_key))
+	var comparator: Callable
+	if _custom_comparators.has(sort_key):
+		comparator = _custom_comparators[sort_key]
+	else:
+		comparator = CardTextFormat.comparator_for(sort_key)
+	_filtered.sort_custom(comparator)
 	if bool(_filters.get("reverse", false)):
 		_filtered.reverse()
 	_rebuild_grid()
@@ -125,22 +194,103 @@ func _passes_filters(item: Variant) -> bool:
 
 
 func _rebuild_grid() -> void:
-	for child in _grid.get_children():
-		child.queue_free()
+	## Diff-based rebuild. The previous version queue_freed every existing
+	## tile and recreated the whole pool on each call, which made cart
+	## clicks visibly stutter — every click reset and rebuilt ~300 tiles.
+	## Now we:
+	##   1. Index existing tiles by card_id.
+	##   2. Walk _filtered in order; reuse existing tiles where possible
+	##      (just updating count/subcount/subtitle in place), and create
+	##      new ones only for cards that weren't already present.
+	##   3. Free any old tiles that aren't in the new _filtered.
+	##   4. Reorder kept tiles via move_child to match _filtered's order.
+	##   5. Run the art-upgrade coroutine only on newly created tiles —
+	##      kept tiles already have real art.
+	##
+	## Generation is bumped so any still-running upgrade coroutine for the
+	## prior rebuild gives up before touching tiles we may have freed.
+	_rebuild_generation += 1
+	var my_gen: int = _rebuild_generation
+	_match_label.text = "%d / %d cards" % [_filtered.size(), _pool.size()]
+
+	var existing: Dictionary = {}  ## card_id -> CardTile
+	for c in _grid.get_children():
+		if c is CardTile and is_instance_valid(c):
+			var ct := c as CardTile
+			if ct.card != null:
+				existing[ct.card.card_id] = ct
+
 	var stretch_in_text := _view_mode == CardTile.ViewMode.TEXT
+	var ordered: Array[CardTile] = []
+	var created: Array[CardTile] = []
 	for c in _filtered:
 		var card: CardData = c as CardData
+		if card == null:
+			continue
 		var count: int = int(_counts.get(card.card_id, 0))
-		var tile := CardTile.create(card, count, show_counts)
-		tile.set_view_mode(_view_mode)
-		if stretch_in_text:
-			tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tile.clicked.connect(func(cd: CardData): card_activated.emit(cd))
-		tile.right_clicked.connect(func(cd: CardData): card_zoom.emit(cd))
-		tile.hovered.connect(func(cd: CardData): card_hovered.emit(cd))
-		tile.unhovered.connect(func(cd: CardData): card_unhovered.emit(cd))
-		_grid.add_child(tile)
-	_match_label.text = "%d / %d cards" % [_filtered.size(), _pool.size()]
+		var subcount: int = int(_subcounts.get(card.card_id, 0))
+		var subtitle: String = str(_subtitles.get(card.card_id, ""))
+		var tile: CardTile
+		if existing.has(card.card_id):
+			tile = existing[card.card_id]
+			existing.erase(card.card_id)
+			## In-place update — no node churn.
+			tile.set_count(count)
+			tile.set_subcount(subcount)
+			tile.set_subtitle(subtitle)
+		else:
+			tile = CardTile.create(card, count, show_counts, subcount,
+				subtitle, true)
+			tile.set_view_mode(_view_mode)
+			if stretch_in_text:
+				tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			tile.clicked.connect(func(cd: CardData): card_activated.emit(cd))
+			tile.right_clicked.connect(func(cd: CardData): card_zoom.emit(cd))
+			tile.hovered.connect(func(cd: CardData): card_hovered.emit(cd))
+			tile.unhovered.connect(func(cd: CardData): card_unhovered.emit(cd))
+			_grid.add_child(tile)
+			created.append(tile)
+		ordered.append(tile)
+
+	## Anything left in `existing` was in the prior view but isn't in the
+	## new filtered set — drop those tiles.
+	for card_id in existing.keys():
+		var stale: CardTile = existing[card_id]
+		if is_instance_valid(stale):
+			stale.queue_free()
+
+	## Reorder kept tiles to match _filtered. move_child is O(N) per call;
+	## in the common case (sort unchanged) most calls are no-ops.
+	for i in ordered.size():
+		_grid.move_child(ordered[i], i)
+
+	if not created.is_empty():
+		_upgrade_art_incremental(my_gen, created)
+
+
+func _upgrade_art_incremental(my_gen: int, tiles: Array[CardTile]) -> void:
+	## Phase 2: swap each tile's card-back placeholder for the real art in
+	## batches of TILES_PER_FRAME. Bails out if a new rebuild has started.
+	## Text mode skips this entirely — text-view tiles never show art.
+	##
+	## Iterates direct CardTile references captured during phase 1, so a
+	## stale child mix (queue_free'd siblings from a prior rebuild) can't
+	## shift our cursor or corrupt indices. is_instance_valid still guards
+	## against the tile itself being torn down between yields.
+	if _view_mode == CardTile.ViewMode.TEXT:
+		return
+	var i: int = 0
+	while i < tiles.size():
+		if my_gen != _rebuild_generation:
+			return
+		var stop: int = min(i + TILES_PER_FRAME, tiles.size())
+		for j in range(i, stop):
+			var t: CardTile = tiles[j]
+			if is_instance_valid(t):
+				t.populate_art()
+		i = stop
+		if i < tiles.size():
+			await get_tree().process_frame
 
 
 # ---------------------------------------------------------------------------
