@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://ow_terrain_gate_scene"]
+
+[ext_resource type="Script" path="res://scenes/overworld/gates/terrain_gate.gd" id="1_gate"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gate"]
+size = Vector3(4, 2, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_gate"]
+size = Vector3(4, 2, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gate"]
+albedo_color = Color(0.4, 0.3, 0.3, 1)
+
+[node name="TerrainGate" type="StaticBody3D"]
+collision_layer = 16
+collision_mask = 0
+script = ExtResource("1_gate")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("BoxShape3D_gate")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("BoxMesh_gate")
+surface_material_override/0 = SubResource("StandardMaterial3D_gate")

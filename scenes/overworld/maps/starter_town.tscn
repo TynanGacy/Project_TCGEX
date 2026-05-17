@@ -1,6 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://ow_starter_town_scene"]
+[gd_scene format=3 uid="uid://ow_starter_town_scene"]
 
 [ext_resource type="Script" path="res://scenes/overworld/maps/map_base.gd" id="1_map_base"]
+[ext_resource type="PackedScene" uid="uid://ow_map_exit_scene" path="res://scenes/overworld/exits/map_exit.tscn" id="2_exit"]
+[ext_resource type="PackedScene" uid="uid://ow_terrain_gate_scene" path="res://scenes/overworld/gates/terrain_gate.tscn" id="3_gate"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 size = Vector2(40, 40)
@@ -36,7 +38,16 @@ shape = SubResource("BoxShape3D_ground")
 
 [node name="Gates" type="Node3D" parent="."]
 
+[node name="TestGate" parent="Gates" instance=ExtResource("3_gate")]
+transform = Transform3D(2.5, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -14)
+required_item = &"test_key"
+
 [node name="Exits" type="Node3D" parent="."]
+
+[node name="ToTestField" parent="Exits" instance=ExtResource("2_exit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 0, 0)
+target_map = "res://scenes/overworld/maps/test_field.tscn"
+target_spawn = &"from_west"
 
 [node name="SpawnPoints" type="Node3D" parent="."]
 
@@ -46,3 +57,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
 [node name="Marker" type="MeshInstance3D" parent="SpawnPoints/default"]
 mesh = SubResource("BoxMesh_marker")
 visible = false
+
+[node name="from_east" type="Marker3D" parent="SpawnPoints" groups=["ow_spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0.1, 0)

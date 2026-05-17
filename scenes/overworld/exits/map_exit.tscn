@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://ow_map_exit_scene"]
+
+[ext_resource type="Script" path="res://scenes/overworld/exits/map_exit.gd" id="1_exit"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_exit"]
+size = Vector3(3, 2, 2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_exit_marker"]
+size = Vector3(3, 0.05, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_exit"]
+albedo_color = Color(0.95, 0.85, 0.2, 0.5)
+transparency = 1
+emission_enabled = true
+emission = Color(0.95, 0.85, 0.2, 1)
+emission_energy_multiplier = 0.5
+
+[node name="MapExit" type="Area3D"]
+collision_layer = 32
+collision_mask = 2
+monitoring = true
+monitorable = false
+script = ExtResource("1_exit")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("BoxShape3D_exit")
+
+[node name="GroundMarker" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("BoxMesh_exit_marker")
+surface_material_override/0 = SubResource("StandardMaterial3D_exit")

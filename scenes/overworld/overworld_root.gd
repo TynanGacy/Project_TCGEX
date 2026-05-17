@@ -16,6 +16,7 @@ extends Node3D
 
 func _ready() -> void:
 	OverworldWorldManager.register_root(_map_slot, _player)
+	OverworldWorldManager.map_changed.connect(_on_map_changed)
 
 	# Camera-relative input: tell the player where to read its "forward" from.
 	_player.camera_basis_source = _camera
@@ -43,6 +44,12 @@ func _find_spawn(map: Node3D, spawn_id: StringName) -> Node3D:
 		if StringName(node.name) == spawn_id:
 			return node
 	return null
+
+
+func _on_map_changed(_map_id: StringName, _spawn_id: StringName) -> void:
+	# Snap the camera so the rig doesn't visibly lerp from the previous
+	# map's coordinates.
+	_camera.global_position = _player.global_position
 
 
 func _unhandled_input(event: InputEvent) -> void:
