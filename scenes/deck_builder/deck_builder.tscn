@@ -68,6 +68,11 @@ layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 2
 
+[node name="FullPoolToggle" type="CheckBox" parent="Layout/Header/Buttons"]
+layout_mode = 2
+text = "Show full pool"
+tooltip_text = "When off, pool is limited to cards you own."
+
 [node name="BackButton" type="Button" parent="Layout/Header/Buttons"]
 layout_mode = 2
 custom_minimum_size = Vector2(80, 32)

@@ -1,0 +1,16 @@
+{
+	"pack_id": "DR_booster",
+	"display_name": "EX Dragon Booster",
+	"set_code": "DR",
+	"price_coins": 200,
+	"_note_rare_slot": "Weights are integers /10000. Rare Secret is held at the documented ex-Dragon rate of ~1 in 36 packs (~2.78%). The remaining 97.22% is split among Rare / Rare Holo / Rare Holo EX in the same proportions as a no-secret set (RS / SS): 58.33 / 33.33 / 8.33 scaled by 0.9722. Previously the secret rate was carved out of Rare only, leaving Holo and Holo EX rates untouched — that overrepresented the chase tiers in DR vs the other sets.",
+	"slots": [
+		{ "count": 5, "rarity_pool": ["Common"] },
+		{ "count": 3, "rarity_pool": ["Uncommon"] },
+		{
+			"count": 1,
+			"rarity_pool": ["Rare", "Rare Holo", "Rare Holo EX", "Rare Secret"],
+			"weights":      [5672,   3240,        810,             278]
+		}
+	]
+}
