@@ -1,0 +1,14 @@
+{
+  "_comment": "SS Electric — Phase B1 opponent deck. Two basic + Stage 1 lines (Mareep/Flaaffy and Magnemite/Magneton) plus Plusle/Minun/Pichu/Elekid for tempo basics. Lives in data/decks/opponents/ so it does not appear in the human deck picker.",
+  "cards": [
+    { "card_id": "DR_64_mareep",       "count": 4 },
+    { "card_id": "DR_27_flaaffy",      "count": 3 },
+    { "card_id": "DR_61_magnemite",    "count": 4 },
+    { "card_id": "DR_17_magneton",     "count": 3 },
+    { "card_id": "DR_8_plusle",        "count": 4 },
+    { "card_id": "DR_7_minun",         "count": 4 },
+    { "card_id": "SS_20_pichu",        "count": 4 },
+    { "card_id": "SS_36_elekid",       "count": 3 },
+    { "card_id": "RS_109_lightning_energy", "count": 31 }
+  ]
+}

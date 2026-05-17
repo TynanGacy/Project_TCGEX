@@ -33,6 +33,13 @@ func decide_action(manager, pid: int) -> GameAction:
 	if bench_action != null:
 		return bench_action
 
+	## 2b. Evolve any in-play Pokemon whose evolution is in hand.  ActionEvolve
+	## handles the same-turn / first-turn restrictions in its validate(); we
+	## just enumerate candidates and submit the first legal one.
+	var evolve_action: GameAction = _try_evolve(manager, pid)
+	if evolve_action != null:
+		return evolve_action
+
 	## 3. Attach one energy (once per turn) — prefer the active's needed type.
 	if not manager.energy_attached_this_turn[pid]:
 		var energy_action: GameAction = _try_attach_energy(manager, pid)
@@ -86,6 +93,36 @@ func _try_play_basic_to_bench(manager, pid: int) -> GameAction:
 		var action := ActionPlayPokemon.new(pid, basic, slot)
 		if action.validate(manager).ok:
 			return action
+	return null
+
+
+## --- 2b. Evolve in-play Pokemon ----------------------------------------------
+
+func _try_evolve(manager, pid: int) -> GameAction:
+	var evolutions: Array[PokemonCardData] = []
+	for card: CardData in manager.game_position.hands[pid] as Array:
+		if card is PokemonCardData \
+				and (card as PokemonCardData).stage != PokemonCardData.Stage.BASIC:
+			evolutions.append(card)
+	if evolutions.is_empty():
+		return null
+
+	var slots: Array[String] = []
+	for i in range(1, manager.active_slot_count + 1):
+		slots.append("p%d_active%d" % [pid, i])
+	for i in range(1, manager.bench_slot_count + 1):
+		slots.append("p%d_bench%d" % [pid, i])
+
+	for evo: PokemonCardData in evolutions:
+		for slot: String in slots:
+			var inst: PokemonInstance = manager.board_position.get_instance(slot)
+			if inst == null or inst.card == null:
+				continue
+			if inst.card.name_slug != evo.evolves_from:
+				continue
+			var action := ActionEvolve.new(pid, evo, slot)
+			if action.validate(manager).ok:
+				return action
 	return null
 
 

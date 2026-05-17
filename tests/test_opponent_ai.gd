@@ -70,6 +70,50 @@ func test_decides_to_fill_bench_when_empty() -> void:
 		"First empty bench slot")
 
 
+## ── 2b. Evolve a basic when the Stage 1 is in hand ──────────────────────────
+
+func test_decides_to_evolve_when_stage1_in_hand() -> void:
+	var b := _builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)  ## turn_num=3 in builder, past first-turn restriction
+	## Place Charmander as the active, fill bench to skip bench-fill step,
+	## and put Charmeleon in hand so evolution is legal.
+	b.place_active(0, "DR_98_charmander")
+	for i in OpponentAI.MAX_BENCH_FILL:
+		b.place("p0_bench%d" % (i + 1), "DR_72_slugma")
+	b.give_hand(0, ["DR_99_charmeleon"])
+
+	var action: GameAction = _ai.decide_action(mgr, 0)
+	assert_not_null(action, "AI should choose to evolve")
+	assert_true(action is ActionEvolve, "Expected ActionEvolve")
+	var ev := action as ActionEvolve
+	assert_eq(ev.target_slot, "p0_active1",
+		"AI must target the matching basic's slot")
+	assert_true(ev.validate(mgr).ok, "Suggested evolution must validate")
+
+
+## ── 2c. Skip evolution if the basic was just played this turn ───────────────
+
+func test_does_not_evolve_freshly_played_basic() -> void:
+	var b := _builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var basic := b.place_active(0, "DR_98_charmander")
+	for i in OpponentAI.MAX_BENCH_FILL:
+		b.place("p0_bench%d" % (i + 1), "DR_72_slugma")
+	b.give_hand(0, ["DR_99_charmeleon"])
+	## Simulate the engine's "played this turn" tracking — ActionPlayPokemon.apply
+	## appends the new instance to this list, which ActionEvolve.validate rejects.
+	mgr.pokemon_entered_play_this_turn[0].append(basic)
+
+	var action: GameAction = _ai.decide_action(mgr, 0)
+	## AI should fall through to energy attach (we have no energy in hand) and
+	## ultimately return null, NOT propose an ActionEvolve on the fresh basic.
+	if action != null:
+		assert_false(action is ActionEvolve,
+			"AI must not evolve a Pokemon that entered play this turn")
+
+
 ## ── 3. Bench at MAX_BENCH_FILL, energy in hand, not yet attached → attach ────
 
 func test_decides_to_attach_energy_after_bench_is_filled() -> void:

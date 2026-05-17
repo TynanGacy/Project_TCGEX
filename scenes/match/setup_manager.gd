@@ -199,11 +199,26 @@ func _on_setup_confirmed(
 	_main._bench_slots        = bench_slots
 	_player_deck_path   = player_deck_path
 	_opponent_deck_path = opponent_deck_path
-	## Phase A: CPU always plays the DR Fire opponent deck. Per-NPC deck
+	## Phase B1: CPU rolls a random deck from the opponent pool. Per-NPC deck
 	## selection lands with W5 (overworld NPC battles).
 	if _main.opponent_is_cpu:
-		_opponent_deck_path = "res://data/decks/opponents/dr_fire.json"
+		_opponent_deck_path = _pick_random_opponent_deck()
 	_start_game()
+
+
+## Scans data/decks/opponents/ and returns one path at random.  Falls back to
+## the DR Fire deck if the folder is empty or unreadable.
+func _pick_random_opponent_deck() -> String:
+	const POOL_DIR := "res://data/decks/opponents/"
+	const FALLBACK := "res://data/decks/opponents/dr_fire.json"
+	var files := DirAccess.get_files_at(POOL_DIR)
+	var paths: Array[String] = []
+	for fname in files:
+		if fname.ends_with(".json"):
+			paths.append(POOL_DIR + fname)
+	if paths.is_empty():
+		return FALLBACK
+	return paths[randi() % paths.size()]
 
 
 ## ---------------------------------------------------------------------------
