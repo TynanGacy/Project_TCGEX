@@ -5,7 +5,7 @@ extends Control
 
 func _ready() -> void:
 	$VBox/MatchButton.pressed.connect(_on_match_pressed)
-	$VBox/OverworldButton.pressed.connect(func(): GameStateManager.go_to_placeholder("Overworld"))
+	$VBox/OverworldButton.pressed.connect(func(): GameStateManager.change_state("res://scenes/overworld/overworld_root.tscn"))
 	$VBox/CardListButton.pressed.connect(func(): GameStateManager.change_state("res://scenes/card_browser/card_browser.tscn"))
 	$VBox/DeckBuilderButton.pressed.connect(func(): GameStateManager.change_state("res://scenes/deck_builder/deck_builder.tscn"))
 	$VBox/PackOpeningButton.pressed.connect(func(): GameStateManager.go_to_placeholder("Pack Opening"))

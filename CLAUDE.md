@@ -28,13 +28,76 @@ scenes/
   hand/         # Hand layout and management
   board/        # Game board with play zones
   main/         # Main scene entry point
+  overworld/    # 3D overworld mode (player, camera, maps, gates, exits)
 assets/
   images/       # Card art, backgrounds, UI elements
+  models/       # 3D models (overworld glTFs, etc.)
+  textures/     # Texture pack subsets used in scenes
 addons/
   gut/          # Unit testing framework
   godot-git-plugin/  # Git integration
 tests/          # GUT test scripts
 ```
+
+## Game modes
+- **Match (card game)** — `res://scenes/match/match.tscn`. Card sim.
+- **Overworld (3D exploration)** — `res://scenes/overworld/overworld_root.tscn`. Pokemon Colosseum/XD-style 3D world. Phase plan in `.claude/plans/i-m-happy-to-tackle-quirky-moler.md`.
+
+## Overworld asset pipeline (XD / Colosseum → Godot)
+ISOs and texture packs live OUTSIDE the repo at
+`C:\Users\tgsha\OneDrive\Desktop\Important Docs\GC_Extraction\` and
+`...\HD_Textures\`. Only the final `.glb` files are committed under
+`assets/models/overworld/`.
+
+Tools (validated working):
+- **Dolphin Emulator** — built-in Filesystem browser (right-click ISO →
+  Properties → Filesystem) extracts `.fsys` archives.
+- **Blender 4.5.7 LTS** with **StarsMmd/Blender-Addon-Gamecube-Models**.
+  Import via **File → Import → Gamecube model (.dat)**; in the file
+  picker change the filter to **All Files** to see `.fsys` archives. The
+  addon auto-unpacks them. Large valley/town FSYSes take 1–3 min and
+  Blender appears frozen during import — open the system console
+  (Window → Toggle System Console) to watch progress.
+
+Per-model workflow:
+1. Dolphin: extract `<area>.fsys` to `GC_Extraction\raw_export\`.
+2. Blender: New General → delete defaults → File → Import → Gamecube
+   model (.dat) → All Files → pick the .fsys.
+3. Outliner shows top-level `*_skeleton_0` nodes — each is one
+   merged object containing every mesh in that skeleton. Importing
+   one skeleton gives you the *whole* environment (trees, terrain,
+   props all welded). Isolating a single prop usually requires
+   Edit-mode separation, not just selecting in Object mode.
+4. With the target selected: Object → Apply → All Transforms →
+   Set Origin → Origin to Geometry.
+5. File → Export → glTF 2.0 → format: glTF Binary (.glb),
+   Include: Selected Objects, Transform: +Y Up → save to
+   `assets/models/overworld/<category>/<name>.glb`.
+
+Godot import notes:
+- glTFs with embedded textures expand to one `_tex_<hash>.png` sidecar
+  per material slot at import time (Godot extracts embedded textures
+  to disk). Both the `.glb` and the sidecar PNGs need to be committed.
+- GameCube source models are not at 1u=1m. The Celebi shrine
+  (`relic_shrine_01.glb`) sits naturally around 0.3 scale relative to
+  the player capsule; expect to scale-tune every imported model.
+- The .glb auto-imports as a PackedScene; instance it in a map's
+  `Props/` group like any other scene.
+
+## Isolation Rules — card game ↔ overworld
+These two modes must NEVER share state at runtime. Keep them strictly separated:
+
+1. **Mode switches are full scene swaps.** Always `GameStateManager.change_state(...)` / `change_scene_to_file(...)`. No additive `add_child` of the other mode's root.
+2. **No cross-imports between mode folders.** Code under `scenes/overworld/` and `autoload/overworld/` must not `preload` or `load` anything under `scenes/match/`, `scenes/card/`, `scenes/hand/`, `scenes/board/`, `scenes/deck_builder/`, or `autoload/manager_system.gd` / `card_database.gd` / `sleeves_manager.gd`. The reverse also applies.
+3. **Disjoint collision layers** (configured in `project.godot` → `[layer_names]`):
+   - Layer 1 `cards`, Layer 4 `cards_drop_zones` — **card game only**.
+   - Layer 2 `ow_player`, Layer 3 `ow_world`, Layer 5 `ow_gates`, Layer 6 `ow_exit_triggers`, Layer 7 `ow_interact` — **overworld only**.
+   - Never set Layer 1 or 4 on an overworld node, or Layers 2/3/5/6/7 on a card-game node.
+4. **Prefixed input actions** — all overworld actions start with `ow_` (e.g. `ow_move_up`, `ow_interact`, `ow_back`). Card-game actions must not use this prefix.
+5. **Disjoint autoloads** — `OverworldInventory` and `OverworldWorldManager` are overworld-only; `ManagerSystemSingleton`, `CardDatabase`, `SleevesManager` are card-game-only. `GameStateManager` and `MCPInputServer` are shared infrastructure.
+6. **Only sanctioned crossover point**: `scenes/main_menu/main_menu.tscn` (and `GameStateManager`) — these are allowed to know about both modes.
+
+If you find yourself wanting to bridge them, stop and ask the user before adding the dependency.
 
 ## Running Tests
 Tests use the GUT addon. Test files go in `tests/` with the prefix `test_`.

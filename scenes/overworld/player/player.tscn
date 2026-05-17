@@ -1,0 +1,35 @@
+[gd_scene load_steps=5 format=3 uid="uid://ow_player_scene"]
+
+[ext_resource type="Script" path="res://scenes/overworld/player/player.gd" id="1_player"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+height = 1.6
+radius = 0.35
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_player"]
+albedo_color = Color(0.85, 0.5, 0.25, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
+material = SubResource("StandardMaterial3D_player")
+height = 1.6
+radius = 0.35
+
+[node name="Player" type="CharacterBody3D" groups=["ow_player"]]
+collision_layer = 2
+collision_mask = 20
+floor_snap_length = 0.5
+floor_max_angle = 1.0
+safe_margin = 0.05
+script = ExtResource("1_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("CapsuleMesh_player")
+
+[node name="FacingMarker" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.12, 0, 0, 0, 0.12, 0, 0, 0, 0.35, 0, 1.0, -0.3)
+mesh = SubResource("CapsuleMesh_player")
