@@ -32,7 +32,7 @@ Snapshot of how plans in `.claude/plans/` have actually landed.
 
 | Plan file | Goal | Status | Alpha disposition |
 |---|---|---|---|
-| `goofy-enchanting-sedgewick.md` | Tier 2/3 attack handlers + tests | **Partial** — handlers exist at [`scenes/match/effect_handlers.gd:354`](../scenes/match/effect_handlers.gd); tests missing | Folded into **W1** |
+| `goofy-enchanting-sedgewick.md` | Tier 2/3 attack handlers + tests | **Done** — Tier 0/1/2/3 suites + `test_effect_registry_coverage.gd` landed pre-Alpha; verified green 2026-05-17 on `version_0.0.4.4` | Closes **W1** |
 | `i-d-like-to-do-fluffy-octopus.md` | main.gd split + lazy art + multi-state arch | **Phase 1 ✅, Phase 2 ⛔ abandoned, Phase 3 ✅** | Deprecate Phase 2 — lazy art deferred post-Alpha |
 | `just-for-fun-i-m-smooth-naur.md` | Eeveelutions niche test deck | **Abandoned** | Dropped — superseded by **W4** opponent decks |
 | `please-continue-with-the-curried-pond.md` | Tier 1 attack rewrite | **Done** | No action |
@@ -59,13 +59,29 @@ Snapshot of how plans in `.claude/plans/` have actually landed.
 
 Each workstream is self-contained enough to be picked up in a fresh session.
 
-### W1 — Card coverage to "fully coded + tested"
+### ~~W1 — Card coverage to "fully coded + tested"~~ ✅
 
-- Audit `data/cards/{DR,RS,SS}/*.json`; fill missing `effect_key` / `attack_data`. Skip energy cards (legitimately keyless).
-- Author `tests/test_tier2_attacks.gd` covering Tier 2 handlers in [`scenes/match/effect_handlers.gd`](../scenes/match/effect_handlers.gd).
-- Author `tests/test_tier3_attacks.gd` covering Tier 3 (status, coin flip, conditional damage).
-- Use [`tests/test_tier1_attacks.gd`](../tests/test_tier1_attacks.gd) as the template.
-- Run via godot-ai MCP `test_run`; ship green.
+**Landed on branch `version_0.0.4.4`, verified 2026-05-17.**
+
+Re-audit found the original "~24 missing effect_keys" estimate was wrong:
+the only non-energy cards without an `effect_key` are vanilla-damage attacks
+(empty `text`) — they legitimately need no key. Hariyama and Fearow use
+`hits_each_defending: true`, read directly by the resolver at
+[`scripts/game/attack_resolver.gd:287`](../scripts/game/attack_resolver.gd),
+also no `effect_key` required. Hariyama's flag path is covered by
+`test_json_super_slap_push_hits_each_defending` at
+[`tests/test_tier3_attacks.gd:2474`](../tests/test_tier3_attacks.gd).
+
+Verified by:
+- [`tests/test_tier0_attacks.gd`](../tests/test_tier0_attacks.gd) (vanilla attacks)
+- [`tests/test_tier1_attacks.gd`](../tests/test_tier1_attacks.gd)
+- [`tests/test_tier2_attacks.gd`](../tests/test_tier2_attacks.gd)
+- [`tests/test_tier3_attacks.gd`](../tests/test_tier3_attacks.gd) (~100+ tests, 4 179 lines)
+- [`tests/test_effect_registry_coverage.gd`](../tests/test_effect_registry_coverage.gd)
+  — asserts every `effect_key` in card data resolves in its registry
+  (Ability / Trainer / Attack + chain / Tool).
+
+Full GUT suite is green on this branch.
 
 ### W2 — Opening town blockout
 
