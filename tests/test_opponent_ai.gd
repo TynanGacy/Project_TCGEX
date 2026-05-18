@@ -114,6 +114,41 @@ func test_does_not_evolve_freshly_played_basic() -> void:
 		"AI must not evolve a Pokemon that entered play this turn")
 
 
+## ── 1b. Trainer play: picks an Item from hand before bench/energy steps. ────
+
+func test_decides_to_play_item_trainer() -> void:
+	var b := _builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	## Active placed, bench needs a backup so Switch validates legally.
+	b.place_active(0, "DR_77_torchic")
+	b.place("p0_bench1", "DR_72_slugma")
+	b.give_hand(0, ["RS_92_switch", "DR_98_charmander"])
+
+	var action: GameAction = _ai.decide_action(mgr, 0)
+	assert_not_null(action, "AI should choose to play Switch")
+	assert_true(action is ActionPlayItem,
+		"Trainer step must beat bench fill — expected ActionPlayItem")
+	var item := action as ActionPlayItem
+	assert_eq(item.card.card_id, "RS_92_switch", "Plays the Switch in hand")
+	assert_true(item.validate(mgr).ok, "Suggested item must validate")
+
+
+## ── 1c. Trainer step skipped when no Trainer cards are in hand. ─────────────
+
+func test_skips_trainer_step_when_hand_has_no_trainers() -> void:
+	var b := _builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	b.place_active(0, "DR_77_torchic")
+	b.give_hand(0, ["DR_98_charmander"])
+
+	var action: GameAction = _ai.decide_action(mgr, 0)
+	## Should fall through to bench fill (no trainer in hand to play).
+	assert_true(action is ActionPlayPokemon,
+		"Without a trainer to play, AI should fall through to bench fill")
+
+
 ## ── 3. Bench at MAX_BENCH_FILL, energy in hand, not yet attached → attach ────
 
 func test_decides_to_attach_energy_after_bench_is_filled() -> void:

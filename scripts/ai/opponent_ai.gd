@@ -28,6 +28,14 @@ func decide_action(manager, pid: int) -> GameAction:
 	if active_action != null:
 		return active_action
 
+	## 1b. Play a Trainer card if any legal one is in hand.  Trainers (search,
+	## draw, switch, etc.) often set up later steps, so they fire before the
+	## bench/evolve/attach decisions.  Phase B2 is "play any legal trainer";
+	## smart guards (Potion-only-when-damaged, etc.) land with Phase B3 scoring.
+	var trainer_action: GameAction = _try_play_trainer(manager, pid)
+	if trainer_action != null:
+		return trainer_action
+
 	## 2. Fill bench up to MAX_BENCH_FILL with basics from hand.
 	var bench_action: GameAction = _try_play_basic_to_bench(manager, pid)
 	if bench_action != null:
@@ -67,6 +75,76 @@ func _try_play_basic_to_first_empty_active(manager, pid: int) -> GameAction:
 		if basic == null:
 			return null
 		var action := ActionPlayPokemon.new(pid, basic, slot)
+		if action.validate(manager).ok:
+			return action
+	return null
+
+
+## --- 1b. Play a Trainer card if any legal one is in hand --------------------
+##
+## Iterates the hand left-to-right and returns the first trainer whose
+## validate() passes.  Phase B2 has no "is this play worthwhile?" guard —
+## the engine validators block obvious illegal cases (supporter-once-per-turn,
+## tool-on-already-tooled, etc.), but a card that's *legal but wasteful*
+## (e.g. Potion on a full-HP Pokemon) will still fire.  Phase B3 scoring
+## will add those nuances.
+
+func _try_play_trainer(manager, pid: int) -> GameAction:
+	for card: CardData in manager.game_position.hands[pid] as Array:
+		if not (card is TrainerCardData):
+			continue
+		var tc := card as TrainerCardData
+
+		## Fossils play as Pokemon onto a bench slot.
+		if tc.plays_as_pokemon:
+			var fossil_action: GameAction = _build_fossil_action(manager, pid, tc)
+			if fossil_action != null:
+				return fossil_action
+			continue
+
+		match tc.trainer_kind:
+			TrainerCardData.TrainerKind.ITEM:
+				var action := ActionPlayItem.new(pid, tc)
+				if action.validate(manager).ok:
+					return action
+			TrainerCardData.TrainerKind.SUPPORTER:
+				var action := ActionPlaySupporter.new(pid, tc)
+				if action.validate(manager).ok:
+					return action
+			TrainerCardData.TrainerKind.STADIUM:
+				var action := ActionPlayStadium.new(pid, tc)
+				if action.validate(manager).ok:
+					return action
+			TrainerCardData.TrainerKind.TOOL:
+				var tool_action: GameAction = _build_tool_action(manager, pid, tc)
+				if tool_action != null:
+					return tool_action
+	return null
+
+
+func _build_fossil_action(manager, pid: int, tc: TrainerCardData) -> GameAction:
+	for i in range(1, manager.bench_slot_count + 1):
+		var slot := "p%d_bench%d" % [pid, i]
+		if not manager.board_position.is_empty(slot):
+			continue
+		var action := ActionPlayFossil.new(pid, tc, slot)
+		if action.validate(manager).ok:
+			return action
+	return null
+
+
+func _build_tool_action(manager, pid: int, tc: TrainerCardData) -> GameAction:
+	## Iterate own actives + bench; attach to the first slot whose Pokemon has
+	## no Tool yet.  Active first so a tool that buffs the attacker lands where
+	## it matters.
+	for i in range(1, manager.active_slot_count + 1):
+		var slot := "p%d_active%d" % [pid, i]
+		var action := ActionAttachTool.new(pid, tc, slot)
+		if action.validate(manager).ok:
+			return action
+	for i in range(1, manager.bench_slot_count + 1):
+		var slot := "p%d_bench%d" % [pid, i]
+		var action := ActionAttachTool.new(pid, tc, slot)
 		if action.validate(manager).ok:
 			return action
 	return null
