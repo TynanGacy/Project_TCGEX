@@ -29,13 +29,18 @@ static func dispatch_phase(key: String, phase: int, ctx: TrainerContext) -> void
 ## Returns the TrainerQuery produced by the PROMPT handler, or null if the
 ## key has no PROMPT handler.  PROMPT handlers may also return null to
 ## indicate "no query needed for this play" (e.g. only one valid target).
+##
+## PROMPT handlers can be coroutines (e.g. Pokemon Reversal awaits the coin
+## animation before deciding whether to prompt for a bench target).  Callers
+## MUST `await` this function; await on a synchronously-returning handler is
+## a no-op, so non-coroutine handlers remain compatible.
 static func get_query(key: String, ctx: TrainerContext) -> TrainerQuery:
 	if key == "" or not _definitions.has(key):
 		return null
 	var def: TrainerEffectDefinition = _definitions[key]
 	if not def.phase_handlers.has(TrainerResolver.Phase.PROMPT):
 		return null
-	var result = def.phase_handlers[TrainerResolver.Phase.PROMPT].call(ctx)
+	var result = await def.phase_handlers[TrainerResolver.Phase.PROMPT].call(ctx)
 	if result is TrainerQuery:
 		return result
 	return null

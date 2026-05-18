@@ -71,7 +71,7 @@ func dispatch(card: TrainerCardData, manager, player_id: int) -> void:
 
 	var ctx := _build_ctx(card, manager, player_id)
 
-	var query: TrainerQuery = TrainerEffectRegistry.get_query(card.effect_key, ctx)
+	var query: TrainerQuery = await TrainerEffectRegistry.get_query(card.effect_key, ctx)
 	if query != null:
 		player_query_requested.emit(query)
 		ctx.query_response = await player_query_resolved

@@ -34,13 +34,17 @@ static func dispatch_phase(key: String, phase: int, ctx: AbilityContext) -> void
 ## Returns the AbilityQuery produced by the PROMPT handler, or null if the
 ## key has no PROMPT handler.  PROMPT handlers may also return null to
 ## indicate "no query needed for this activation".
+##
+## PROMPT handlers can be coroutines (await coin animations, etc.).  Callers
+## MUST `await` this function; await on a synchronous handler is a no-op so
+## non-coroutine handlers remain compatible.
 static func get_query(key: String, ctx: AbilityContext) -> AbilityQuery:
 	if key == "" or not _definitions.has(key):
 		return null
 	var def: AbilityEffectDefinition = _definitions[key]
 	if not def.phase_handlers.has(AbilityResolver.Phase.PROMPT):
 		return null
-	var result = def.phase_handlers[AbilityResolver.Phase.PROMPT].call(ctx)
+	var result = await def.phase_handlers[AbilityResolver.Phase.PROMPT].call(ctx)
 	if result is AbilityQuery:
 		return result
 	return null

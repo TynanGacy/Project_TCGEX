@@ -97,7 +97,7 @@ func invoke_trainer_effect_inline(effect_key: String, ctx: AttackContext,
 		tctx.params = card.effect_params.duplicate(true)
 	tctx.params["invoked_inline"] = true
 	# Run PROMPT if present — supporter may need a query.
-	var query: TrainerQuery = TrainerEffectRegistry.get_query(effect_key, tctx)
+	var query: TrainerQuery = await TrainerEffectRegistry.get_query(effect_key, tctx)
 	if query != null:
 		ctx.manager.trainer_resolver.player_query_requested.emit(query)
 		tctx.query_response = await ctx.manager.trainer_resolver.player_query_resolved

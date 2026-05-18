@@ -222,7 +222,10 @@ func _register_handlers() -> void:
 	## active player pick the opponent's bench, since there is no AI yet.
 	var reversal_def := TrainerEffectDefinition.new()
 	reversal_def.phase_handlers[TrainerResolver.Phase.PROMPT] = func(ctx: TrainerContext) -> TrainerQuery:
-		var heads: bool = ctx.manager.flip_coin(ctx.card.display_name)
+		## PROMPT handlers can now be coroutines (callers `await` get_query).
+		## Wait on the coin overlay before the bench picker so the player sees
+		## the flip resolve before being asked to choose.
+		var heads: bool = await _flip_coin_awaited(ctx)
 		ctx.manager.log_message.emit(
 			"[Coin] %s — %s" % [ctx.card.display_name, "Heads" if heads else "Tails"]
 		)

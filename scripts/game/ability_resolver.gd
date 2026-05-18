@@ -84,7 +84,7 @@ func dispatch(ability: AbilityData, source_slot: String, manager,
 
 	var ctx := _build_ctx(ability, source_slot, manager, player_id)
 
-	var query: AbilityQuery = AbilityEffectRegistry.get_query(ability.effect_key, ctx)
+	var query: AbilityQuery = await AbilityEffectRegistry.get_query(ability.effect_key, ctx)
 	if query != null:
 		player_query_requested.emit(query)
 		ctx.query_response = await player_query_resolved
