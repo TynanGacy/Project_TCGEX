@@ -33,7 +33,12 @@ func rebuild(player_id: int) -> void:
 			(card as Card).queue_free()
 	(_hand_cards[player_id] as Dictionary).clear()
 
-	var face_up: bool = (player_id == _main._authority.current_player_id())
+	## Face-up follows the *viewing* perspective, not the active turn. In
+	## Developer Mode _controlling_player flips with the turn (operator drives
+	## both sides). In Player Mode it stays at 0 so the human always sees
+	## their own hand face-up — including during the opponent's CPU turn and
+	## during setup placement for P1.
+	var face_up: bool = (player_id == _main._controlling_player)
 	var hand: Array = _main.manager.game_position.hands[player_id]
 	for data in hand:
 		var card_node := _main.card_scene.instantiate() as Card
@@ -52,7 +57,7 @@ func rebuild(player_id: int) -> void:
 func sync_new_cards(player_id: int) -> void:
 	if hand_node(player_id) == null:
 		return
-	var face_up: bool = (player_id == _main._authority.current_player_id())
+	var face_up: bool = (player_id == _main._controlling_player)
 	var dict: Dictionary = _hand_cards[player_id]
 	for data: CardData in _main.manager.game_position.hands[player_id]:
 		if not dict.has(data):

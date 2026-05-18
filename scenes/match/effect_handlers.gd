@@ -2850,6 +2850,59 @@ func _search_deck_basic_to_bench(ctx: AttackContext, p: Dictionary) -> void:
 		ctx.manager.board_position.place(bench, inst)
 	ctx.manager.game_position.shuffle_deck(ctx.player_id)
 
+	## Optional follow-up: Dunsparce-style "you may switch attacker with a
+	## benched Pokémon" tacked onto the same effect.  Runs inline so the
+	## prompts resolve in order with the search (post_action queue would
+	## interleave them).
+	if bool(p.get("then_may_switch", false)):
+		await _may_switch_attacker_with_bench(ctx)
+
+
+## Prompts the player (MAY_CONFIRM) to switch the attacker with one of their
+## benched Pokemon.  No-op if the attacker is no longer in its slot or the
+## bench is empty.  Used by attacks with "you may switch" tail text.
+func _may_switch_attacker_with_bench(ctx: AttackContext) -> void:
+	var pid: int = ctx.player_id
+	var atk_slot: String = ctx.attacker_slot
+	if ctx.manager.board_position.get_instance(atk_slot) == null:
+		return
+	var bench_options: Array[String] = []
+	for s: String in BoardPosition.BENCH_SLOTS:
+		var sid := "p%d_%s" % [pid, s]
+		if not ctx.manager.board_position.is_empty(sid):
+			bench_options.append(sid)
+	if bench_options.is_empty():
+		return
+
+	var confirm := AttackQuery.new()
+	confirm.kind = AttackQuery.Kind.MAY_CONFIRM
+	confirm.player_id = pid
+	confirm.prompt = "Switch the attacker with a benched Pokémon?"
+	confirm.options = [true, false]
+	var did_confirm: Variant = await ctx.manager.attack_resolver.ask(confirm)
+	if did_confirm != true:
+		return
+
+	var swap_slot: String
+	if bench_options.size() == 1:
+		swap_slot = bench_options[0]
+	else:
+		var pick := AttackQuery.new()
+		pick.kind = AttackQuery.Kind.CHOOSE_BENCH_TARGET
+		pick.player_id = pid
+		pick.prompt = "Switch with which Pokémon?"
+		pick.options = bench_options
+		var resp: Variant = await ctx.manager.attack_resolver.ask(pick)
+		swap_slot = str(resp)
+		if swap_slot == "" or not bench_options.has(swap_slot):
+			return
+
+	ctx.manager.board_position.swap(atk_slot, swap_slot)
+	ctx.manager.pokemon_state_changed.emit(atk_slot,
+		ctx.manager.board_position.get_instance(atk_slot))
+	ctx.manager.pokemon_state_changed.emit(swap_slot,
+		ctx.manager.board_position.get_instance(swap_slot))
+
 
 ## Emits an AttackQuery.CHOOSE_FROM_LIST and returns the player's picks.
 ## Caller is responsible for capping max_pick to a sensible value.

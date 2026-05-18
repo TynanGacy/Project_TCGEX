@@ -117,6 +117,7 @@ func _register_handlers() -> void:
 	heal_choice_def.phase_handlers[TrainerResolver.Phase.APPLY] = func(ctx: TrainerContext) -> void:
 		var sid: String = str(ctx.query_response) if ctx.query_response != null else ""
 		if sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] %s — cancelled." % ctx.card.display_name)
 			return
 		var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
@@ -156,6 +157,7 @@ func _register_handlers() -> void:
 	switch_def.phase_handlers[TrainerResolver.Phase.APPLY] = func(ctx: TrainerContext) -> void:
 		var bench_sid: String = str(ctx.query_response) if ctx.query_response != null else ""
 		if bench_sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] %s — cancelled." % ctx.card.display_name)
 			return
 		var active_sid: String = _own_active_slot(ctx)
@@ -191,6 +193,7 @@ func _register_handlers() -> void:
 	briney_def.phase_handlers[TrainerResolver.Phase.APPLY] = func(ctx: TrainerContext) -> void:
 		var sid: String = str(ctx.query_response) if ctx.query_response != null else ""
 		if sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] %s — cancelled." % ctx.card.display_name)
 			return
 		var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
@@ -260,6 +263,7 @@ func _register_handlers() -> void:
 			return
 		var bench_sid: String = str(ctx.query_response) if ctx.query_response != null else ""
 		if bench_sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] %s — cancelled." % ctx.card.display_name)
 			return
 		var opp_id: int = 1 - ctx.player_id
@@ -356,6 +360,7 @@ func _register_handlers() -> void:
 		src_q.options = src_arr
 		var src_sid: String = str(await resolver.ask(src_q))
 		if src_sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] Energy Switch — cancelled.")
 			return
 		var src_inst: PokemonInstance = ctx.manager.board_position.get_instance(src_sid)
@@ -378,6 +383,7 @@ func _register_handlers() -> void:
 		var chosen_variant: Variant = await resolver.ask(energy_q)
 		var chosen: CardData = chosen_variant as CardData
 		if chosen == null:
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] Energy Switch — cancelled.")
 			return
 		var dest_q := TrainerQuery.new()
@@ -391,6 +397,7 @@ func _register_handlers() -> void:
 		dest_q.options = dest_arr
 		var dest_sid: String = str(await resolver.ask(dest_q))
 		if dest_sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] Energy Switch — cancelled.")
 			return
 		var dest_inst: PokemonInstance = ctx.manager.board_position.get_instance(dest_sid)

@@ -205,31 +205,127 @@ func _try_evolve(manager, pid: int) -> GameAction:
 
 
 ## --- 3. Attach one energy (prefer typed match) -------------------------------
+##
+## Priority:
+##   pass 1 — actives that still NEED energy to fund an attack
+##   pass 2 — benched Pokemon (build them up while active waits to attack)
+##   pass 3 — fallback: any active (last resort if bench is empty and
+##            active already covers all its attacks; better than wasting
+##            the energy attachment for the turn)
 
 func _try_attach_energy(manager, pid: int) -> GameAction:
 	var energies: Array[EnergyCardData] = _energies_in_hand(manager, pid)
 	if energies.is_empty():
 		return null
 
-	## Prefer to attach to the active so it can attack.  Fall back to first
-	## bench slot with a Pokémon.
-	var targets: Array[String] = []
+	## Pass 1: active slots that still need more energy.
 	for i in range(1, manager.active_slot_count + 1):
-		targets.append("p%d_active%d" % [pid, i])
-	for i in range(1, manager.bench_slot_count + 1):
-		targets.append("p%d_bench%d" % [pid, i])
-
-	for slot: String in targets:
+		var slot := "p%d_active%d" % [pid, i]
 		var inst: PokemonInstance = manager.board_position.get_instance(slot)
 		if inst == null:
 			continue
-		var preferred: EnergyCardData = _pick_best_energy_for(energies, inst)
-		if preferred == null:
-			preferred = energies[0]
-		var action := ActionAttachEnergy.new(pid, preferred, slot)
-		if action.validate(manager).ok:
+		if _has_full_attack_coverage(inst, energies):
+			continue
+		var action: GameAction = _build_attach_action(energies, manager, pid, slot, inst)
+		if action != null:
+			return action
+
+	## Pass 2: bench Pokemon (build them up so they can step in after a KO).
+	for i in range(1, manager.bench_slot_count + 1):
+		var slot := "p%d_bench%d" % [pid, i]
+		var inst: PokemonInstance = manager.board_position.get_instance(slot)
+		if inst == null:
+			continue
+		var action: GameAction = _build_attach_action(energies, manager, pid, slot, inst)
+		if action != null:
+			return action
+
+	## Pass 3: fallback — any active even if it already has full coverage,
+	## so we don't waste the turn's attachment.
+	for i in range(1, manager.active_slot_count + 1):
+		var slot := "p%d_active%d" % [pid, i]
+		var inst: PokemonInstance = manager.board_position.get_instance(slot)
+		if inst == null:
+			continue
+		var action: GameAction = _build_attach_action(energies, manager, pid, slot, inst)
+		if action != null:
 			return action
 	return null
+
+
+## Build and validate an ActionAttachEnergy for [slot] with the typed energy
+## matching [inst]'s attack costs, or fall back to the first available energy.
+func _build_attach_action(energies: Array[EnergyCardData], manager, pid: int,
+		slot: String, inst: PokemonInstance) -> GameAction:
+	var preferred: EnergyCardData = _pick_best_energy_for(energies, inst)
+	if preferred == null:
+		preferred = energies[0]
+	var action := ActionAttachEnergy.new(pid, preferred, slot)
+	if action.validate(manager).ok:
+		return action
+	return null
+
+
+## True iff every attack on [inst] is either already payable OR unreachable
+## (its typed cost requires an energy type that's neither attached nor in
+## hand).  In either case, attaching more energy to [inst] from [hand_energies]
+## won't unlock any new attack, so the AI moves on to a different target.
+##
+## False when the card has no attacks (preserves the prior "still needs
+## energy" stance so the AI doesn't refuse to fuel an unevolved Pokemon
+## whose evolution adds attacks).
+func _has_full_attack_coverage(inst: PokemonInstance,
+		hand_energies: Array[EnergyCardData]) -> bool:
+	if inst == null or inst.card == null:
+		return false
+	if inst.card.attacks.is_empty():
+		return false
+	var available_types: Dictionary = _energy_types_available_for(inst, hand_energies)
+	for atk: AttackData in inst.card.attacks:
+		if ActionAttack._check_energy(inst, atk).ok:
+			continue  ## already payable
+		if not _attack_is_reachable(atk, available_types):
+			continue  ## unreachable (e.g. requires FIGHTING, none in hand) — skip
+		return false  ## still has a growable attack
+	return true
+
+
+## Returns a set (Dictionary used as set) of EnergyType ints reachable from
+## the union of [inst]'s currently-attached energies and [hand_energies].
+## Special energies that provide multiple types (Rainbow, Multi) contribute
+## every type they cover.
+func _energy_types_available_for(inst: PokemonInstance,
+		hand_energies: Array[EnergyCardData]) -> Dictionary:
+	var types: Dictionary = {}
+	if inst != null:
+		for e in inst.attached_energy:
+			if e is EnergyCardData:
+				types[int((e as EnergyCardData).energy_type)] = true
+				for et in (e as EnergyCardData).extra_types:
+					types[int(et)] = true
+	for e in hand_energies:
+		types[int(e.energy_type)] = true
+		for et in e.extra_types:
+			types[int(et)] = true
+	return types
+
+
+## True if [atk]'s typed costs can be funded from [available_types].  Colorless
+## costs are always reachable (any energy fills colorless), so this only
+## checks typed costs.  A typed cost whose type is missing from the set means
+## the attack cannot be paid even with infinite future attachments from the
+## current pool.
+func _attack_is_reachable(atk: AttackData, available_types: Dictionary) -> bool:
+	var ET := PokemonCardData.EnergyType
+	if atk.cost_fire > 0      and not available_types.has(int(ET.FIRE)):      return false
+	if atk.cost_water > 0     and not available_types.has(int(ET.WATER)):     return false
+	if atk.cost_grass > 0     and not available_types.has(int(ET.GRASS)):     return false
+	if atk.cost_lightning > 0 and not available_types.has(int(ET.LIGHTNING)): return false
+	if atk.cost_psychic > 0   and not available_types.has(int(ET.PSYCHIC)):   return false
+	if atk.cost_fighting > 0  and not available_types.has(int(ET.FIGHTING)):  return false
+	if atk.cost_darkness > 0  and not available_types.has(int(ET.DARKNESS)):  return false
+	if atk.cost_metal > 0     and not available_types.has(int(ET.METAL)):     return false
+	return true
 
 
 ## --- 4. Attack with the best-tier legal attack -------------------------------

@@ -31,6 +31,12 @@ var runtime: Dictionary = {}
 ## VALIDATE handlers set this via fail_validation() to reject the play.
 var validation_failure: String = ""
 
+## APPLY handlers set this to true when the player aborts the effect at a
+## prompt (e.g. cancels the Switch dialog).  TrainerResolver.dispatch then
+## restores the played card from the discard pile back into the player's
+## hand so the play does not silently consume the card.
+var cancelled: bool = false
+
 
 ## Reject the play during VALIDATE phase.  No-op outside VALIDATE.
 func fail_validation(reason: String) -> void:

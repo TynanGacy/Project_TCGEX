@@ -298,6 +298,28 @@ func test_sharpedo_rough_skin_puts_2_counters_on_attacker() -> void:
 		"Rough Skin (Sharpedo) should put 2 damage counters on the attacker.")
 
 
+func test_growlithe_fire_veil_burns_attacker() -> void:
+	## Regression for a playtest report that Fire Veil wasn't burning the
+	## attacker.  Same logic as the Arcanine test below but using the basic
+	## Growlithe card to isolate any per-card parsing differences.
+	var b   := _make_builder()
+	var mgr: ManagerSystem = b._manager
+	b.set_turn(0)
+	var attacker := b.place_active(0, "DR_49_bagon",
+		{"energy": ["RS_104_grass_energy"]})
+	attacker.card.attacks[0].base_damage = 20
+	attacker.card.attacks[0].effect_key = ""
+	b.place_active(1, "SS_65_growlithe", {"hp": 50})
+	b.set_prizes(0)
+	b.set_prizes(1)
+
+	await mgr.request_action_async(
+		ActionAttack.new(0, "p0_active1", 0, "p1_active1")
+	)
+	assert_true(attacker.special_conditions.has(PokemonInstance.SpecialCondition.BURNED),
+		"Growlithe Fire Veil should Burn the attacker.")
+
+
 func test_arcanine_fire_veil_burns_attacker() -> void:
 	var b   := _make_builder()
 	var mgr: ManagerSystem = b._manager

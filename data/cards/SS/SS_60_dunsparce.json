@@ -20,7 +20,8 @@
       "effect_key": "search_deck_basic_to_bench",
       "effect_params": {
         "count": 3,
-        "or_any_basic": true
+        "or_any_basic": true,
+        "then_may_switch": true
       }
     },
     {
