@@ -15,7 +15,7 @@ class_name DeckLoader
 ##
 ## Each "card_id" must match the id field in one of the JSON files under
 ## data/cards/.  If a file is missing, unreadable, or resolves to an empty
-## deck, the loader falls back to a random 60-card deck via TestDeckFactory.
+## deck, the loader falls back to a random 60-card deck via CardDatabase.
 
 const PLAYER_DECK_PATH   := "res://data/decks/player_deck.json"
 const OPPONENT_DECK_PATH := "res://data/decks/opponent_deck.json"
@@ -62,24 +62,24 @@ static func get_valid_decks() -> Array[Dictionary]:
 static func _load_from_file(path: String) -> Array[CardData]:
 	if not FileAccess.file_exists(path):
 		push_warning("DeckLoader: '%s' not found — using random deck." % path)
-		return TestDeckFactory.build_deck(60)
+		return CardDatabase.build_random_deck(60)
 
 	var raw := FileAccess.get_file_as_string(path)
 	if raw.is_empty():
 		push_warning("DeckLoader: '%s' is empty — using random deck." % path)
-		return TestDeckFactory.build_deck(60)
+		return CardDatabase.build_random_deck(60)
 
 	var parsed = JSON.parse_string(raw)
 	if parsed == null or not (parsed is Dictionary):
 		push_warning("DeckLoader: failed to parse '%s' — using random deck." % path)
-		return TestDeckFactory.build_deck(60)
+		return CardDatabase.build_random_deck(60)
 
 	var entries = (parsed as Dictionary).get("cards", null)
 	if entries == null or not (entries is Array):
 		push_warning("DeckLoader: '%s' has no 'cards' array — using random deck." % path)
-		return TestDeckFactory.build_deck(60)
+		return CardDatabase.build_random_deck(60)
 
-	var pool := TestDeckFactory._build_card_pool_by_id()
+	var pool := CardDatabase.card_pool_by_id()
 	var deck: Array[CardData] = []
 
 	for entry in entries as Array:
@@ -103,6 +103,6 @@ static func _load_from_file(path: String) -> Array[CardData]:
 
 	if deck.is_empty():
 		push_warning("DeckLoader: deck from '%s' resolved to 0 cards — using random deck." % path)
-		return TestDeckFactory.build_deck(60)
+		return CardDatabase.build_random_deck(60)
 
 	return deck

@@ -78,3 +78,61 @@ func load_art(card_id: String) -> Texture2D:
 	var tex: Texture2D = load(path)
 	_art_cache[card_id] = tex
 	return tex
+
+
+# ---------------------------------------------------------------------------
+# Live-match deck API
+#
+# These wrap CardLibrary so the live match path uses the complete parser
+# (abilities, effect_chain, extra_types, plays_as_pokemon, rules_text).
+# Replaces the legacy `TestDeckFactory` helpers.
+# ---------------------------------------------------------------------------
+
+
+## Returns Dictionary[card_id -> CardData] for every parsed card.
+## Used by DeckLoader and GameStateSerializer to resolve card IDs.
+func card_pool_by_id() -> Dictionary:
+	var out: Dictionary = {}
+	for c in all_cards():
+		out[(c as CardData).card_id] = c
+	return out
+
+
+## Builds a deck from an array of card IDs, skipping unknown IDs.
+## Cards are NOT duplicated here — callers that need distinct instances
+## per copy (e.g. DeckLoader) must duplicate templates themselves.
+func build_deck(ids: Array) -> Array[CardData]:
+	return _get_library().build_deck(ids)
+
+
+## Random N-card fallback for when a deck file is missing or invalid.
+## Each card in the returned deck is a fresh duplicate so identity
+## tracking (e.g. _hand_cards keyed by CardData) stays one-to-one.
+func build_random_deck(size: int = 60) -> Array[CardData]:
+	var pool: Array = all_cards()
+	var deck: Array[CardData] = []
+	if pool.is_empty():
+		push_error("CardDatabase.build_random_deck: pool is empty")
+		return deck
+	for _i in size:
+		var template := pool[randi() % pool.size()] as CardData
+		deck.append(template.duplicate() as CardData)
+	return deck
+
+
+## Loads art textures for every card in a deck and assigns each `card.art`.
+## Shared Texture2D references are reused across duplicates of the same
+## card_id within the deck. Cards that already have art are skipped.
+func load_art_for_deck(deck: Array) -> void:
+	var loaded: Dictionary = {}
+	for c in deck:
+		var card := c as CardData
+		if card == null or card.art != null:
+			continue
+		if loaded.has(card.card_id):
+			card.art = loaded[card.card_id]
+			continue
+		var tex: Texture2D = load_art(card.card_id)
+		card.art = tex
+		if tex != null:
+			loaded[card.card_id] = tex

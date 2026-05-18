@@ -4,59 +4,39 @@
 > before starting work that touches Alpha scope. Update it when a
 > workstream lands or scope changes — do not let it go stale.
 >
-> Last revised: 2026-05-17 (branch `version_0.0.4.4`, mid-W4).
+> Last revised: 2026-05-18 (branch `version_0.0.4.5`, W0 landed).
 > Source plan: `.claude/plans/look-over-the-previous-keen-floyd.md`.
+> W0 source plan: `.claude/plans/i-updated-this-branch-inherited-cosmos.md`.
 
 ---
 
-## 🚨 Next-Session Priority — W0: Replace `TestDeckFactory` with a real card loader
+## ✅ W0 — Replace `TestDeckFactory` with a real card loader — **LANDED**
 
-**Address this BEFORE touching anything else.** A playtest of W4 Phase B2
-surfaced that Growlithe's "Fire Veil" Poké-Body never burns the attacker
-in live play, even though the GUT test passes. Investigation traced this
-to a divergence between two card parsers:
+**Landed 2026-05-18 on `version_0.0.4.5`.** Commit sha: _pending — fill in
+on commit._ Full GUT suite green; live-play Fire Veil canary still to be
+playtested.
 
-- [`scripts/cards/card_library.gd`](../scripts/cards/card_library.gd)
-  is the complete parser. GUT tests use it and pass.
-- [`scripts/game/test_deck_factory.gd`](../scripts/game/test_deck_factory.gd)
-  is what `DeckLoader` actually uses at match start, and it **does not
-  parse the `abilities` array, the `effect_chain` array on attacks, the
-  `extra_types` array, the `plays_as_pokemon` flag on trainers, or the
-  `rules_text` field on Pokémon.** So every Poké-Body, every Poké-Power,
-  every multi-effect attack chain, and every Fossil item is silently
-  inert during real gameplay.
+**What changed:**
 
-The name `TestDeckFactory` betrays the smell: a test helper became the
-live path. It should not be involved in production card loading at all.
+- `CardDatabase` ([`autoload/card_database.gd`](../autoload/card_database.gd))
+  is now the single source of truth for runtime card data. Added four
+  thin wrappers over the existing `CardLibrary` instance:
+  `card_pool_by_id()`, `build_deck(ids)`, `build_random_deck(size)`,
+  `load_art_for_deck(deck)`.
+- All live callers repointed:
+  [`deck_loader.gd`](../scripts/game/deck_loader.gd) (6 sites),
+  [`save_load_manager.gd`](../scenes/match/save_load_manager.gd) (2),
+  [`setup_manager.gd`](../scenes/match/setup_manager.gd) (2).
+  [`game_state_serializer.gd`](../scripts/game/game_state_serializer.gd)
+  comments updated.
+- `scripts/game/test_deck_factory.gd` + `.uid` **deleted**.
 
-**Plan for next session (do FIRST):**
-
-1. Audit every `TestDeckFactory.*` call site (current callers:
-   [`scripts/game/deck_loader.gd`](../scripts/game/deck_loader.gd),
-   [`scripts/game/game_state_serializer.gd`](../scripts/game/game_state_serializer.gd),
-   [`scenes/match/save_load_manager.gd`](../scenes/match/save_load_manager.gd),
-   [`scenes/match/setup_manager.gd`](../scenes/match/setup_manager.gd))
-   and figure out what each needs (`build_deck(60)` random fallback,
-   `_build_card_pool_by_id()` ID lookup, `load_art_for_deck()` art warm-up).
-2. Promote `CardLibrary` (or a new `CardCatalog` autoload built on top of
-   it) to be the single source of truth for parsed card data at runtime.
-   `CardDatabase` already exists at
-   [`autoload/card_database.gd`](../autoload/card_database.gd) — check
-   whether that is the right home and consolidate there if so.
-3. Repoint `DeckLoader._load_from_file`, the save/load card-pool lookup,
-   and any other live caller to the new loader.
-4. Deprecate `TestDeckFactory`. Keep `build_deck(N)` (random 60-card
-   fallback) only if nothing else needs it; otherwise delete entirely.
-   Move `load_art_for_deck` somewhere appropriate (it's not actually
-   test-only).
-5. Re-run the full GUT suite — the Growlithe Fire Veil regression test
-   at [`tests/test_ability_wave1.gd`](../tests/test_ability_wave1.gd)
-   should keep passing, and the live-game scenario should now actually
-   apply BURNED to the attacker.
-
-This unblocks everything that depends on real ability/effect-chain
-behavior in live play: most of W4's "smarter CPU" gains, the Phase B3
-scoring work, the comprehensive card audit, and the smoke test in §5.
+**Why it mattered:** the legacy `TestDeckFactory` was the live match
+parser but silently dropped `abilities`, `effect_chain`, `extra_types`,
+`plays_as_pokemon`, and `rules_text`. Every Poké-Body, Poké-Power,
+multi-effect attack chain, and Fossil item was inert during real
+gameplay (Growlithe Fire Veil regression was the canary). Live play now
+uses the same complete `CardLibrary` parser the GUT tests use.
 
 ---
 
