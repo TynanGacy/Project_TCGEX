@@ -12,9 +12,9 @@
 
 ## ✅ W0 — Replace `TestDeckFactory` with a real card loader — **LANDED**
 
-**Landed 2026-05-18 on `version_0.0.4.5`.** Commit sha: _pending — fill in
-on commit._ Full GUT suite green; live-play Fire Veil canary still to be
-playtested.
+**Landed 2026-05-18 on `version_0.0.4.5` in commit `8b6f603`.** Full
+GUT suite green; live-play Fire Veil canary verified (attacker is now
+BURNED on contact, as expected).
 
 **What changed:**
 
