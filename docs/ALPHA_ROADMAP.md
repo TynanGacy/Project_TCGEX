@@ -4,59 +4,65 @@
 > before starting work that touches Alpha scope. Update it when a
 > workstream lands or scope changes — do not let it go stale.
 >
-> Last revised: 2026-05-17 (branch `version_0.0.4.4`, mid-W4).
+> Last revised: 2026-05-18 (branch `version_0.0.4.5`, W0 landed +
+> W4 active Poké-Powers attempted; engine KO sweep, reset crash fix,
+> tool discard visual fix, CPU self-KO avoidance).
 > Source plan: `.claude/plans/look-over-the-previous-keen-floyd.md`.
+> W0 source plan: `.claude/plans/i-updated-this-branch-inherited-cosmos.md`.
 
 ---
 
-## 🚨 Next-Session Priority — W0: Replace `TestDeckFactory` with a real card loader
+## 🚨 Next-Session Priority — Diagnose & fix CPU not activating
+abilities in live play
 
-**Address this BEFORE touching anything else.** A playtest of W4 Phase B2
-surfaced that Growlithe's "Fire Veil" Poké-Body never burns the attacker
-in live play, even though the GUT test passes. Investigation traced this
-to a divergence between two card parsers:
+**Status:** W4 Active Poké-Powers code shipped 2026-05-18 (see §3 W4),
+GUT green, but the in-game log never shows `"Pn activates Poké-Power
+on ..."` when the CPU plays the SS Electric opponent deck (which has
+Delcatty, Magneton, and Pichu — three different active Poké-Powers).
 
-- [`scripts/cards/card_library.gd`](../scripts/cards/card_library.gd)
-  is the complete parser. GUT tests use it and pass.
-- [`scripts/game/test_deck_factory.gd`](../scripts/game/test_deck_factory.gd)
-  is what `DeckLoader` actually uses at match start, and it **does not
-  parse the `abilities` array, the `effect_chain` array on attacks, the
-  `extra_types` array, the `plays_as_pokemon` flag on trainers, or the
-  `rules_text` field on Pokémon.** So every Poké-Body, every Poké-Power,
-  every multi-effect attack chain, and every Fossil item is silently
-  inert during real gameplay.
+Recommended first action: add a one-shot `log_message` emit at the top
+of `_try_use_ability` in
+[`scripts/ai/opponent_ai.gd`](../scripts/ai/opponent_ai.gd) and at each
+`validate()` rejection inside that loop, run one CPU turn with the SS
+Electric deck, and read the resulting log. That tells us whether the
+AI never reaches step 2c vs. reaches it and rejects every candidate
+silently. The W4 W4 §3 block lists the three working hypotheses and
+their per-card relevance.
 
-The name `TestDeckFactory` betrays the smell: a test helper became the
-live path. It should not be involved in production card loading at all.
+This is the only outstanding W4 item before Phase B3. Once it's
+unblocked, the CPU should fire Delcatty's "Energy Draw" almost every
+turn once Skitty has evolved, which is visible enough to confirm the
+fix.
 
-**Plan for next session (do FIRST):**
+---
 
-1. Audit every `TestDeckFactory.*` call site (current callers:
-   [`scripts/game/deck_loader.gd`](../scripts/game/deck_loader.gd),
-   [`scripts/game/game_state_serializer.gd`](../scripts/game/game_state_serializer.gd),
-   [`scenes/match/save_load_manager.gd`](../scenes/match/save_load_manager.gd),
-   [`scenes/match/setup_manager.gd`](../scenes/match/setup_manager.gd))
-   and figure out what each needs (`build_deck(60)` random fallback,
-   `_build_card_pool_by_id()` ID lookup, `load_art_for_deck()` art warm-up).
-2. Promote `CardLibrary` (or a new `CardCatalog` autoload built on top of
-   it) to be the single source of truth for parsed card data at runtime.
-   `CardDatabase` already exists at
-   [`autoload/card_database.gd`](../autoload/card_database.gd) — check
-   whether that is the right home and consolidate there if so.
-3. Repoint `DeckLoader._load_from_file`, the save/load card-pool lookup,
-   and any other live caller to the new loader.
-4. Deprecate `TestDeckFactory`. Keep `build_deck(N)` (random 60-card
-   fallback) only if nothing else needs it; otherwise delete entirely.
-   Move `load_art_for_deck` somewhere appropriate (it's not actually
-   test-only).
-5. Re-run the full GUT suite — the Growlithe Fire Veil regression test
-   at [`tests/test_ability_wave1.gd`](../tests/test_ability_wave1.gd)
-   should keep passing, and the live-game scenario should now actually
-   apply BURNED to the attacker.
+## ✅ W0 — Replace `TestDeckFactory` with a real card loader — **LANDED**
 
-This unblocks everything that depends on real ability/effect-chain
-behavior in live play: most of W4's "smarter CPU" gains, the Phase B3
-scoring work, the comprehensive card audit, and the smoke test in §5.
+**Landed 2026-05-18 on `version_0.0.4.5` in commit `8b6f603`.** Full
+GUT suite green; live-play Fire Veil canary verified (attacker is now
+BURNED on contact, as expected).
+
+**What changed:**
+
+- `CardDatabase` ([`autoload/card_database.gd`](../autoload/card_database.gd))
+  is now the single source of truth for runtime card data. Added four
+  thin wrappers over the existing `CardLibrary` instance:
+  `card_pool_by_id()`, `build_deck(ids)`, `build_random_deck(size)`,
+  `load_art_for_deck(deck)`.
+- All live callers repointed:
+  [`deck_loader.gd`](../scripts/game/deck_loader.gd) (6 sites),
+  [`save_load_manager.gd`](../scenes/match/save_load_manager.gd) (2),
+  [`setup_manager.gd`](../scenes/match/setup_manager.gd) (2).
+  [`game_state_serializer.gd`](../scripts/game/game_state_serializer.gd)
+  comments updated.
+- `scripts/game/test_deck_factory.gd` + `.uid` **deleted**.
+
+**Why it mattered:** the legacy `TestDeckFactory` was the live match
+parser but silently dropped `abilities`, `effect_chain`, `extra_types`,
+`plays_as_pokemon`, and `rules_text`. Every Poké-Body, Poké-Power,
+multi-effect attack chain, and Fossil item was inert during real
+gameplay (Growlithe Fire Veil regression was the canary). Live play now
+uses the same complete `CardLibrary` parser the GUT tests use.
 
 ---
 
@@ -157,8 +163,9 @@ Follow the **exact** pipeline in CLAUDE.md (Dolphin → `.fsys` extract → Blen
 
 ### W4 — NPC enemy AI — **in progress**
 
-Split into four sub-phases. **A / B1 / B2 landed; B3 + abilities bucket
-remain.** All commits on branch `version_0.0.4.4`.
+Split into four sub-phases. **A / B1 / B2 landed on `version_0.0.4.4`;
+Active Poké-Powers code shipped on `version_0.0.4.5` but not yet
+firing in playtest (see below); B3 remains.**
 
 **Phase A ✅ — Foundation (commits `09f4334`, `e62afbf`, `23236d5`)**
 
@@ -214,14 +221,57 @@ once W0 is done)
 - Add Potion-on-damaged, Switch-when-trapped, Energy-Search-when-thirsty
   guards.
 
-**Active Poké-Powers ⏳ — also still pending**
+**Active Poké-Powers ⚠️ — code landed 2026-05-18, NOT yet firing in
+playtest. Investigation needed next session.**
 
-Most Poké-Bodies are already passive (auto-fire). Active Poké-Powers
-(e.g. "once per turn, draw 2") need a `_try_use_ability` step that
-submits `ActionUseAbility`. Narrow scope (5–10 cards) but moderate
-gameplay impact. Note that **active behaviour here also blocks on W0**:
-abilities aren't parsed by `TestDeckFactory`, so until W0 lands, no
-ability fires in live play.
+Code shipped on `version_0.0.4.5`:
+- `_try_use_ability` step in
+  [`scripts/ai/opponent_ai.gd`](../scripts/ai/opponent_ai.gd) between
+  evolve and attach-energy. Iterates own actives + bench, every ability
+  with `kind == POKE_POWER`, returns the first `ActionUseAbility`
+  whose `validate()` passes. Uses the existing `ActionUseAbility.validate`
+  + `AbilityResolver.validate` chain — no AI-side viability logic.
+- `_on_ability_query` handler in
+  [`scripts/ai/ai_driver.gd`](../scripts/ai/ai_driver.gd) connected to
+  `ability_resolver.player_query_requested`. Mirrors `_on_trainer_query`'s
+  default-response shape because `AbilityQuery.Kind` is enum-aligned with
+  `TrainerQuery.Kind`. Yields one process frame before calling
+  `resolve_query` to side-step a signal/await race in the resolver's
+  `ask()` helper (handler responded mid-`emit()` and the next-line `await`
+  registered too late, leaving the response orphaned and the pipeline hung).
+- SS Electric opponent deck restructured: dropped Plusle/Minun/Elekid
+  (abilities never fire — Plusle/Minun are passive-only, Elekid had no
+  Electabuzz to baby-evolve into); added Skitty/Delcatty (RS_5,
+  power_discard_energy_draw_n), kept Magneton (DR_17,
+  power_discard_hand_recover_basic_energy), added Pikachu (SS_72) so
+  Pichu's `power_baby_evolution` is actually triggerable. Total still 60.
+
+**Playtest result (2026-05-18):** GUT green, but no `"Pn activates
+Poké-Power on ..."` line ever appears in the in-game match log when the
+CPU plays the SS Electric deck against a human. Hypotheses to investigate
+next session:
+
+1. `_try_use_ability` is never reached because earlier steps
+   (`_try_play_trainer` / `_try_play_basic_to_bench` / `_try_evolve`)
+   always return non-null in the observed games. **Add a one-shot
+   `print` or `log_message` at the top of `_try_use_ability` (and at
+   each `validate()` rejection) to confirm reachability** — the existing
+   `manager.log_message.emit(action.description())` only fires on
+   successful submission, so silent validation failures look identical
+   to "step never reached" in the log.
+2. The action IS being submitted but the description doesn't render in
+   the visible game log (only console). Verify the game log control
+   subscribes to `log_message` and isn't filtering.
+3. `AbilityResolver.validate` rejects every candidate silently. The
+   most likely silent rejection: baby-evolution's
+   `pokemon_entered_play_this_turn` guard (the carrier slot's instance
+   was placed this turn) — but Delcatty's "Energy Draw" has no such
+   gate, so this only explains Pichu, not Delcatty.
+
+Recommended first action next session: add the diagnostic
+`log_message` emissions, run one CPU turn with the SS Electric deck,
+and read the resulting log. The fix usually falls out of seeing whether
+the AI never sees the ability vs. sees it and rejects it.
 
 **In-flight infrastructure changes landed alongside W4**
 
@@ -253,10 +303,47 @@ These were necessary unblockers, committed independently:
     so the human sees their own hand throughout setup placement and CPU
     turns.
 
+**2026-05-18 session changes on `version_0.0.4.5`** (in addition to
+the W0 landing and the Active Poké-Powers attempt above):
+
+- **Engine post-action KO sweep.** `ManagerSystem.sweep_for_kos()`
+  iterates both players' in-play Pokémon and calls `resolve_knockout`
+  on any whose HP hit 0. Wired into `_check_all_promotions_needed()`
+  (runs after every `request_action`) and into `AttackResolver` after
+  `run_post_actions()`. Catches damage applied outside the resolver's
+  batched `damage_queue` — specifically self-damage from
+  `attach_from_discard`'s `self_damage_per_attached` (Pichu's Energy
+  Retrieval). Opponent of the KO'd Pokémon's owner takes the prize.
+- **CPU self-KO avoidance.** `_try_attack` skips attacks whose
+  worst-case self-damage would KO the attacker. New helper
+  `_attack_self_damage_max(atk)` covers `self_damage` and
+  `attach_from_discard` / `attach_from_deck`, including `effect_chain`
+  entries. Coin gates are conservatively treated as "tails always"
+  for now; Phase B3 will move to expected-value scoring.
+- **Reset/scene-change crash fix.** All three resolvers
+  (`AttackResolver` / `TrainerResolver` / `AbilityResolver`) gained an
+  `abort()` method backed by a generation counter. Each
+  `begin_attack_with_attack` (and equivalents) captures the generation
+  at entry; after every `await`, `_should_bail(gen)` checks for a
+  generation bump and exits cleanly before touching freed
+  `PokemonInstance` / `BoardPosition` state.
+  `AnimationManager.clear_queue()` drains the queue and emits
+  `queue_drained` so awaiters wake immediately and hit their bail
+  check. `match._reset_game` and `ManagerSystem.full_reset` call
+  abort() + clear_queue() before tearing down board state.
+- **Tool discard visual fix.** `inst.refresh_visual()` is now part of
+  `ToolEffects._discard_tool_from_instance`, so Oran Berry / Buffer
+  Piece auto-discards clear the attachment bubble icon. The
+  centralisation means future tool discards through that helper are
+  visually correct without per-site refresh calls.
+
 **Known issues still open at end of session**
 
-- **W0 (above) is blocking Fire Veil and every other Poké-Body in live
-  play.** Highest priority next session.
+- **CPU never activates Poké-Powers in live play** despite the W4
+  Active Poké-Powers code shipping on `version_0.0.4.5`. See the
+  next-session priority block at the top of this doc and the W4
+  Active-Poké-Powers entry above for hypotheses and the recommended
+  diagnostic first step.
 - Pokémon Reversal's PROMPT-phase coin path was fixed for animation;
   cancellation restore works for ITEM/SUPPORTER/STADIUM, not TOOL
   (Tools currently have no cancellable path).

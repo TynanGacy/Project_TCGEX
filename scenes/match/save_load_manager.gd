@@ -186,7 +186,7 @@ func load_game_state(path: String) -> void:
 	_main.manager.attach_board_anchors(_main.board.collect_slot_anchors())
 	_main.manager.reset_game_state()
 
-	var pool_by_id := TestDeckFactory._build_card_pool_by_id()
+	var pool_by_id := CardDatabase.card_pool_by_id()
 	GameStateSerializer.restore_turn_state(state, _main.manager)
 	GameStateSerializer.restore_positions(state, _main.manager, pool_by_id)
 	GameStateSerializer.restore_board(state, _main.manager, pool_by_id)
@@ -208,7 +208,7 @@ func load_game_state(path: String) -> void:
 		all_cards.append_array(inst.prior_stages as Array[CardData])
 		all_cards.append_array(inst.attached_energy)
 		all_cards.append_array(inst.attached_tools)
-	TestDeckFactory.load_art_for_deck(all_cards)
+	CardDatabase.load_art_for_deck(all_cards)
 	for sid in BoardPosition.all_slot_ids():
 		var inst: PokemonInstance = _main.manager.board_position.get_instance(sid)
 		if inst != null:

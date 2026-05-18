@@ -48,6 +48,17 @@ func decide_action(manager, pid: int) -> GameAction:
 	if evolve_action != null:
 		return evolve_action
 
+	## 2c. Use an active Poké-Power on any in-play Pokemon.  Sits after evolve
+	## so Stage 1/2 powers (Delcatty Energy Draw, Magneton Magnetic Force, …)
+	## can fire on the same turn they evolve, before we lock in energy/attack
+	## choices.  ActionUseAbility.validate() enforces "active before attack",
+	## once-per-turn locks, status suppression (asleep/confused/paralyzed),
+	## POKE_POWER-vs-POKE_BODY gating, and per-effect viability via
+	## AbilityResolver.validate, so we just submit the first one that passes.
+	var ability_action: GameAction = _try_use_ability(manager, pid)
+	if ability_action != null:
+		return ability_action
+
 	## 3. Attach one energy (once per turn) — prefer the active's needed type.
 	if not manager.energy_attached_this_turn[pid]:
 		var energy_action: GameAction = _try_attach_energy(manager, pid)
@@ -199,6 +210,47 @@ func _try_evolve(manager, pid: int) -> GameAction:
 			if inst.card.name_slug != evo.evolves_from:
 				continue
 			var action := ActionEvolve.new(pid, evo, slot)
+			if action.validate(manager).ok:
+				return action
+	return null
+
+
+## --- 2c. Use an active Poké-Power -------------------------------------------
+##
+## Enumerates every in-play Pokémon owned by [pid] and every ability on each.
+## Returns the first ActionUseAbility whose validate() passes — which already
+## checks: main-phase, attack-not-used-this-turn, slot ownership, fossil
+## guard, ability_index range, once-per-turn lock (`power_used_this_turn`
+## vs `ability.repeatable`), special-condition suppression (asleep / confused
+## / paralyzed), POKE_POWER kind (skips POKE_BODY), and the effect-specific
+## `AbilityResolver.validate` (so e.g. Delcatty's "Energy Draw" only fires
+## if there's a discardable energy + the deck is non-empty).
+##
+## Iteration order: actives first, then bench, in slot-number order, ability
+## index in declaration order.  This is deterministic and matches the
+## "first valid" pattern used elsewhere in OpponentAI.
+
+func _try_use_ability(manager, pid: int) -> GameAction:
+	if manager.attack_used_this_turn[pid]:
+		return null  ## Powers are gated to "before your attack" — short-circuit.
+
+	var slots: Array[String] = []
+	for i in range(1, manager.active_slot_count + 1):
+		slots.append("p%d_active%d" % [pid, i])
+	for i in range(1, manager.bench_slot_count + 1):
+		slots.append("p%d_bench%d" % [pid, i])
+
+	for slot: String in slots:
+		var inst: PokemonInstance = manager.board_position.get_instance(slot)
+		if inst == null or inst.card == null:
+			continue
+		if inst.is_fossil():
+			continue
+		for abil_idx in inst.card.abilities.size():
+			var ability: AbilityData = inst.card.abilities[abil_idx]
+			if ability.kind != AbilityData.AbilityKind.POKE_POWER:
+				continue  ## Bodies are passive — never activated.
+			var action := ActionUseAbility.new(pid, slot, abil_idx)
 			if action.validate(manager).ok:
 				return action
 	return null
@@ -361,6 +413,15 @@ func _try_attack(manager, pid: int) -> GameAction:
 			if not action.validate(manager).ok:
 				continue
 			var atk: AttackData = attacker.card.attacks[atk_idx]
+			## Skip attacks whose worst-case self-damage would KO the
+			## attacker — handing the opponent a free prize is strictly
+			## worse than ending the turn.  Conservative check: assumes
+			## coin-gated self-damage rolls the bad side.  Phase B3 will
+			## use expected-value scoring instead so e.g. a 50%-chance
+			## self-damage attack isn't always rejected.
+			var self_dmg_max: int = _attack_self_damage_max(atk)
+			if self_dmg_max > 0 and attacker.current_hp <= self_dmg_max:
+				continue
 			var dmg: int = int(atk.base_damage)
 			var tier: int = _tier_for_attack(atk, dmg, target)
 			tiers[tier].append({"action": action, "damage": dmg})
@@ -374,6 +435,36 @@ func _try_attack(manager, pid: int) -> GameAction:
 				best = entry
 		return best["action"] as ActionAttack
 	return null
+
+
+## Returns the worst-case self-damage [atk] could inflict on its own
+## attacker.  Used by _try_attack to avoid self-KOs.  Counts known self-
+## damage patterns from the effect_key and any effect_chain entries:
+##   - "self_damage" with effect_params.amount (Thunder Jolt, Self-
+##     Destruct, Volt Tackle, etc.).  Coin-gated variants are counted at
+##     their full amount (worst case = tails).
+##   - "attach_from_discard" / "attach_from_deck" with
+##     self_damage_per_attached × count (Pichu's Energy Retrieval).
+## Returns 0 for attacks with no self-damage component.  Phase B3 will
+## replace this with an expected-value model and broader pattern coverage.
+func _attack_self_damage_max(atk: AttackData) -> int:
+	var total: int = _self_damage_amount_for(atk.effect_key, atk.effect_params)
+	for raw in atk.effect_chain:
+		if raw is Dictionary:
+			var key: String    = str((raw as Dictionary).get("key", ""))
+			var params: Dictionary = (raw as Dictionary).get("params", {}) as Dictionary
+			total += _self_damage_amount_for(key, params)
+	return total
+
+
+func _self_damage_amount_for(key: String, params: Dictionary) -> int:
+	match key:
+		"self_damage":
+			return int(params.get("amount", 0))
+		"attach_from_discard", "attach_from_deck":
+			var per_attached: int = int(params.get("self_damage_per_attached", 0))
+			return per_attached * int(params.get("count", 0))
+	return 0
 
 
 ## Returns the priority tier (0 best → 3 worst) for an attack.  See _try_attack

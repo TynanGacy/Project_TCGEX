@@ -20,6 +20,7 @@ signal player_query_requested(query: TrainerQuery)
 signal player_query_resolved(response: Variant)
 
 var _is_resolving: bool = false
+var _generation: int = 0
 
 
 func is_resolving() -> bool:
@@ -30,6 +31,17 @@ func is_resolving() -> bool:
 ## paused pipeline.  Mirror of AttackResolver.resolve_query().
 func resolve_query(response: Variant) -> void:
 	player_query_resolved.emit(response)
+
+
+## Aborts any in-flight trainer pipeline.  Called by match.gd._reset_game
+## and ManagerSystem.full_reset before tearing down GamePosition /
+## BoardPosition so awaiting coroutines don't touch freed state on resume.
+## Mirror of AttackResolver.abort().
+func abort() -> void:
+	_generation += 1
+	if _is_resolving:
+		_is_resolving = false
+		pipeline_completed.emit()
 
 
 ## Helper for handlers that need to ask the player something mid-APPLY.

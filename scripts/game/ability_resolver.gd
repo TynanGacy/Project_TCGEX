@@ -26,6 +26,7 @@ signal player_query_requested(query: AbilityQuery)
 signal player_query_resolved(response: Variant)
 
 var _is_resolving: bool = false
+var _generation: int = 0
 
 
 func is_resolving() -> bool:
@@ -34,6 +35,15 @@ func is_resolving() -> bool:
 
 func resolve_query(response: Variant) -> void:
 	player_query_resolved.emit(response)
+
+
+## Aborts any in-flight ability pipeline.  Called by match.gd._reset_game
+## and ManagerSystem.full_reset.  Mirror of AttackResolver.abort().
+func abort() -> void:
+	_generation += 1
+	if _is_resolving:
+		_is_resolving = false
+		pipeline_completed.emit()
 
 
 ## Helper for handlers that need to ask the player something mid-APPLY.

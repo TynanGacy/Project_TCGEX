@@ -5,7 +5,7 @@ class_name GameStateSerializer
 ##   version, saved_at, name, mode, prize_count, active_slots, bench_slots,
 ##   controlling_player, turn {}, positions {player_0, player_1}, board {}
 ##
-## Card restoration always uses TestDeckFactory._build_card_pool_by_id() so
+## Card restoration always uses CardDatabase.card_pool_by_id() so
 ## the loaded CardData objects carry art textures, matching the in-game pool.
 
 const SAVE_DIR := "user://saves/"
@@ -230,7 +230,7 @@ static func restore_turn_state(state: Dictionary, manager) -> void:
 
 ## Restores deck/hand/discard/prize card lists into manager.game_position.
 ## pool_by_id: Dictionary[card_id: String -> CardData] — art-loaded pool from
-## TestDeckFactory._build_card_pool_by_id().
+## CardDatabase.card_pool_by_id().
 static func restore_positions(state: Dictionary, manager, pool_by_id: Dictionary) -> void:
 	var gp = manager.game_position
 	var positions: Dictionary = state.get("positions", {}) as Dictionary

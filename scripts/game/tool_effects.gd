@@ -117,8 +117,12 @@ static func run_between_turn_effects(inst: PokemonInstance, slot_id: String,
 
 
 ## Detaches [tool] from [inst] and routes it to [inst.owner_id]'s discard.
+## Refreshes the visual so the tool-attachment bubble icon disappears
+## together with the tool — Oran Berry and Buffer Piece auto-discards
+## previously bypassed this and left a stale bubble on the Pokémon.
 static func _discard_tool_from_instance(inst: PokemonInstance,
 		tool: TrainerCardData, manager) -> void:
 	inst.attached_tools.erase(tool)
 	inst.tool_attached_turn.erase(tool)
 	manager.game_position.put_in_discard(inst.owner_id, tool)
+	inst.refresh_visual()
