@@ -56,6 +56,17 @@ func wait_until_drained() -> void:
 	await queue_drained
 
 
+## Drops every pending animation request and the currently-playing one.
+## Emits queue_drained so any wait_until_drained() awaiters resume immediately.
+## Called by match.gd._reset_game so pipeline coroutines awaiting an animation
+## don't hold the reset up; the resolvers' abort() checks pick up after they
+## resume and bail cleanly without touching freed PokemonInstance state.
+func clear_queue() -> void:
+	_queue.clear()
+	_current = null
+	queue_drained.emit()
+
+
 func _on_coin_flipped(result: bool, label: String) -> void:
 	if _coin_flip_overlay != null:
 		_coin_flip_overlay.show_flip(result, label)

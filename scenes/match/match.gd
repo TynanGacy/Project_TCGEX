@@ -246,6 +246,21 @@ func _on_back_to_menu_pressed() -> void:
 func _reset_game() -> void:
 	_in_setup_phase = false
 	_attack_end_turn_pending = false
+
+	## Abort any in-flight pipelines BEFORE freeing PokemonInstance / board
+	## state so resolver coroutines awaiting on animations or queries bail
+	## cleanly instead of resuming with stale references.  AnimationManager's
+	## queue is drained synchronously so awaiters wake immediately and hit
+	## their _should_bail check.
+	if manager.attack_resolver != null:
+		manager.attack_resolver.abort()
+	if manager.trainer_resolver != null:
+		manager.trainer_resolver.abort()
+	if manager.ability_resolver != null:
+		manager.ability_resolver.abort()
+	if manager.animation_manager != null:
+		manager.animation_manager.clear_queue()
+
 	_input_mgr.reset()
 	_dialog_mgr.clear()
 	_pile_mgr.clear()

@@ -25,6 +25,12 @@ signal player_query_requested(query: AttackQuery)
 signal player_query_resolved(response: Variant)
 
 var _is_resolving: bool = false
+## Generation counter — bumped by abort() when the match scene resets while
+## an attack pipeline is mid-await.  Each pipeline captures the generation at
+## entry and bails on resume if it no longer matches, instead of touching
+## PokemonInstance / BoardPosition references that may have been freed by
+## the reset.  See abort() and _should_bail().
+var _generation: int = 0
 
 
 func is_resolving() -> bool:
@@ -33,6 +39,29 @@ func is_resolving() -> bool:
 
 func resolve_query(response: Variant) -> void:
 	player_query_resolved.emit(response)
+
+
+## Aborts any in-flight attack pipeline.  Called by match.gd._reset_game and
+## ManagerSystem.full_reset before tearing down PokemonInstance / BoardPosition
+## state so coroutines awaiting on animations or queries don't crash with
+## "Invalid access on previously freed object" when they resume.
+##
+## Bumps the generation counter so resumed pipelines see they're stale, then
+## emits pipeline_completed to unblock any request_action_async awaiters and
+## clears _is_resolving so the next match can start fresh.
+func abort() -> void:
+	_generation += 1
+	if _is_resolving:
+		_is_resolving = false
+		pipeline_completed.emit()
+
+
+## True when the given generation token no longer matches the current
+## generation — i.e. abort() was called while the pipeline was awaiting.
+## Callers must `return` immediately if this returns true; the abort() call
+## already emitted pipeline_completed for the parent request_action_async.
+func _should_bail(gen: int) -> bool:
+	return gen != _generation
 
 
 ## Wave 17 — coroutine-friendly helper. Handlers can `await resolver.ask(query)`
@@ -138,6 +167,9 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 	if not is_sub:
 		assert(not _is_resolving, "AttackResolver: re-entrant call")
 		_is_resolving = true
+	## Capture generation at entry; if abort() bumps it mid-await we bail
+	## before touching freed PokemonInstance / BoardPosition state.
+	var gen: int = _generation
 
 	var attacker: PokemonInstance = manager.board_position.get_instance(action.attacker_slot)
 	var target: PokemonInstance   = manager.board_position.get_instance(action.target_slot)
@@ -171,6 +203,7 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 		attacker.next_attack_coin_fail_until_turn = -1
 		if not passed:
 			await _wait_for_animations()
+			if _should_bail(gen): return
 			manager.log_message.emit(
 				"[Smokescreen] %s's attack does nothing (tails)." % sname
 			)
@@ -179,11 +212,13 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 				pipeline_completed.emit()
 			return
 		await _wait_for_animations()
+		if _should_bail(gen): return
 
 	if not skip_cond and attacker.special_conditions.has(PokemonInstance.SpecialCondition.CONFUSED):
 		var pname: String = attacker.card.display_name if attacker.card != null else "Pokémon"
 		if not manager.flip_coin("%s confusion" % pname):
 			await _wait_for_animations()
+			if _should_bail(gen): return
 			manager.log_message.emit(
 				"[Confused] %s is confused — attack fails! Takes 30 damage." % pname
 			)
@@ -196,8 +231,11 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 				pipeline_completed.emit()
 			return
 		await _wait_for_animations()
+		if _should_bail(gen): return
 	await EffectRegistry.dispatch_phase_for_attack(attack, Phase.CONDITIONALS, ctx, ctx.effect_queue)
+	if _should_bail(gen): return
 	await _wait_for_animations()
+	if _should_bail(gen): return
 
 	## Tier-3 multi-turn defender immunity: if the primary target has an active
 	## effect_immune_until_turn flag (Agility, Iron Defense, etc.), the attack
@@ -232,7 +270,9 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 	## Step 4: Pre-damage effects.
 	ctx.current_phase = Phase.PRE_DAMAGE_EFFECTS
 	await EffectRegistry.dispatch_phase_for_attack(attack, Phase.PRE_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
+	if _should_bail(gen): return
 	await _wait_for_animations()
+	if _should_bail(gen): return
 
 	## Execute any PRE_DAMAGE-category effects inline so they (and their queries)
 	## resolve BEFORE damage calc. Used by attacks that switch the defender,
@@ -253,7 +293,9 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 	## Step 5: Damage calculation.
 	ctx.current_phase = Phase.DAMAGE_CALC
 	await EffectRegistry.dispatch_phase_for_attack(attack, Phase.DAMAGE_CALC, ctx, ctx.effect_queue)
+	if _should_bail(gen): return
 	await _wait_for_animations()
+	if _should_bail(gen): return
 
 	## Execute attacker modifiers immediately so bonus_damage is ready for W/R.
 	_execute_category(ctx, QueuedEffect.Category.ATTACKER_MODIFIER)
@@ -370,7 +412,9 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 	## Step 6: Post-damage effects.
 	ctx.current_phase = Phase.POST_DAMAGE_EFFECTS
 	await EffectRegistry.dispatch_phase_for_attack(attack, Phase.POST_DAMAGE_EFFECTS, ctx, ctx.effect_queue)
+	if _should_bail(gen): return
 	await _wait_for_animations()
+	if _should_bail(gen): return
 
 	## Step 7: Nullification (placeholder — no abilities implemented yet).
 	ctx.current_phase = Phase.NULLIFICATION
@@ -404,6 +448,7 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 			if effect.needs_query and effect.query_template != null:
 				player_query_requested.emit(effect.query_template)
 				ctx._query_response = await player_query_resolved
+				if _should_bail(gen): return
 			effect.execute.call(ctx)
 	elif primary_tgt != null:
 		manager.log_message.emit(
@@ -428,12 +473,24 @@ func begin_attack_with_attack(action, manager, attack: AttackData, opts: Diction
 		ctx.run_post_actions()
 	manager.flush_deferred_effects()
 
+	## Step 10b: post-effect KO sweep.  The step-10 loop above only resolves
+	## damage_queue entries (primary target + bench damage tracked by the
+	## resolver).  Post-actions can apply additional damage that never went
+	## through the queue — e.g. Pichu's Energy Retrieval
+	## (attach_from_discard with self_damage_per_attached) self-damages the
+	## attacker.  Without this sweep the attacker would sit at 0 HP with no
+	## prize awarded.  The opponent of the KO'd Pokémon's owner takes the
+	## prize via sweep_for_kos -> resolve_knockout's standard contract.
+	manager.sweep_for_kos()
+	if _should_bail(gen): return
+
 	## Wave 7 — Chain of Events (Plusle / Minun): when a regular attack
 	## finishes, a Pokémon in the OTHER active slot carrying Chain of Events
 	## may use its own attack[0] (Cheer On) once per turn. Fires before
 	## pipeline_completed so request_action_async callers await it too.
 	if not is_sub:
 		await _maybe_chain_of_events(action, manager)
+		if _should_bail(gen): return
 
 	if not is_sub:
 		_is_resolving = false

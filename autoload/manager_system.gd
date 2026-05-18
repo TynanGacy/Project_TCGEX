@@ -628,7 +628,19 @@ func reset_game_state() -> void:
 ## Full reset for scene transitions.  Clears all game state AND drops the
 ## match-local subsystem references so they are not used after the match
 ## scene is freed.  Called by match.gd before transitioning to another scene.
+##
+## Aborts in-flight pipelines first so any coroutine still awaiting an
+## animation or query bails cleanly when it resumes — otherwise it would
+## try to read freed PokemonInstance / BoardPosition state and crash.
 func full_reset() -> void:
+	if attack_resolver != null:
+		attack_resolver.abort()
+	if trainer_resolver != null:
+		trainer_resolver.abort()
+	if ability_resolver != null:
+		ability_resolver.abort()
+	if animation_manager != null:
+		animation_manager.clear_queue()
 	reset_game_state()
 	board_position   = null
 	game_position    = null
@@ -887,12 +899,41 @@ func _check_promotion_needed(defender: int) -> void:
 	promotion_required.emit(defender)
 
 
+## Sweeps both players' in-play Pokémon and resolves any whose HP has
+## reached 0 but whose KO hasn't been processed yet.  Catches damage that
+## lands outside the attack pipeline's batched damage_queue — most
+## importantly self-damage applied during effect post-actions (Pichu's
+## Energy Retrieval "self_damage_per_attached", etc.), but also any future
+## effect that mutates HP via apply_damage without queueing through the
+## resolver.
+##
+## resolve_knockout pauses for prize selection / promotion choice; once
+## the player resolves that, the next caller's sweep picks up any remaining
+## KOs.  We bail out of this sweep early on the first pause so the game
+## doesn't try to resolve multiple KOs in a single synchronous block.
+func sweep_for_kos() -> void:
+	for pid: int in [0, 1]:
+		for sid: String in BoardPosition.all_slot_ids(pid):
+			var inst: PokemonInstance = board_position.get_instance(sid)
+			if inst != null and inst.is_knocked_out():
+				resolve_knockout(sid, 1 - pid)
+				if promotion_phase_for >= 0 or prize_selection_phase_for >= 0:
+					return
+
+
 ## Enforces the invariant that no empty active slot exists while a bench
 ## Pokémon is available to fill it.  Called after every successful action
 ## during the MAIN phase so the check covers play-to-bench as well as KOs.
+##
+## Sweeps for KOs first so an action whose effect handler self-damages
+## (e.g. Pichu's Energy Retrieval) doesn't leave a 0-HP Pokémon sitting
+## on the board with no prize awarded.
 func _check_all_promotions_needed() -> void:
 	if current_phase != Phase.MAIN:
 		return
+	if promotion_phase_for >= 0 or prize_selection_phase_for >= 0:
+		return
+	sweep_for_kos()
 	if promotion_phase_for >= 0 or prize_selection_phase_for >= 0:
 		return
 	for pid: int in [0, 1]:

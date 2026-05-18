@@ -4,9 +4,35 @@
 > before starting work that touches Alpha scope. Update it when a
 > workstream lands or scope changes — do not let it go stale.
 >
-> Last revised: 2026-05-18 (branch `version_0.0.4.5`, W0 landed).
+> Last revised: 2026-05-18 (branch `version_0.0.4.5`, W0 landed +
+> W4 active Poké-Powers attempted; engine KO sweep, reset crash fix,
+> tool discard visual fix, CPU self-KO avoidance).
 > Source plan: `.claude/plans/look-over-the-previous-keen-floyd.md`.
 > W0 source plan: `.claude/plans/i-updated-this-branch-inherited-cosmos.md`.
+
+---
+
+## 🚨 Next-Session Priority — Diagnose & fix CPU not activating
+abilities in live play
+
+**Status:** W4 Active Poké-Powers code shipped 2026-05-18 (see §3 W4),
+GUT green, but the in-game log never shows `"Pn activates Poké-Power
+on ..."` when the CPU plays the SS Electric opponent deck (which has
+Delcatty, Magneton, and Pichu — three different active Poké-Powers).
+
+Recommended first action: add a one-shot `log_message` emit at the top
+of `_try_use_ability` in
+[`scripts/ai/opponent_ai.gd`](../scripts/ai/opponent_ai.gd) and at each
+`validate()` rejection inside that loop, run one CPU turn with the SS
+Electric deck, and read the resulting log. That tells us whether the
+AI never reaches step 2c vs. reaches it and rejects every candidate
+silently. The W4 W4 §3 block lists the three working hypotheses and
+their per-card relevance.
+
+This is the only outstanding W4 item before Phase B3. Once it's
+unblocked, the CPU should fire Delcatty's "Energy Draw" almost every
+turn once Skitty has evolved, which is visible enough to confirm the
+fix.
 
 ---
 
@@ -137,8 +163,9 @@ Follow the **exact** pipeline in CLAUDE.md (Dolphin → `.fsys` extract → Blen
 
 ### W4 — NPC enemy AI — **in progress**
 
-Split into four sub-phases. **A / B1 / B2 landed; B3 + abilities bucket
-remain.** All commits on branch `version_0.0.4.4`.
+Split into four sub-phases. **A / B1 / B2 landed on `version_0.0.4.4`;
+Active Poké-Powers code shipped on `version_0.0.4.5` but not yet
+firing in playtest (see below); B3 remains.**
 
 **Phase A ✅ — Foundation (commits `09f4334`, `e62afbf`, `23236d5`)**
 
@@ -194,14 +221,57 @@ once W0 is done)
 - Add Potion-on-damaged, Switch-when-trapped, Energy-Search-when-thirsty
   guards.
 
-**Active Poké-Powers ⏳ — also still pending**
+**Active Poké-Powers ⚠️ — code landed 2026-05-18, NOT yet firing in
+playtest. Investigation needed next session.**
 
-Most Poké-Bodies are already passive (auto-fire). Active Poké-Powers
-(e.g. "once per turn, draw 2") need a `_try_use_ability` step that
-submits `ActionUseAbility`. Narrow scope (5–10 cards) but moderate
-gameplay impact. Note that **active behaviour here also blocks on W0**:
-abilities aren't parsed by `TestDeckFactory`, so until W0 lands, no
-ability fires in live play.
+Code shipped on `version_0.0.4.5`:
+- `_try_use_ability` step in
+  [`scripts/ai/opponent_ai.gd`](../scripts/ai/opponent_ai.gd) between
+  evolve and attach-energy. Iterates own actives + bench, every ability
+  with `kind == POKE_POWER`, returns the first `ActionUseAbility`
+  whose `validate()` passes. Uses the existing `ActionUseAbility.validate`
+  + `AbilityResolver.validate` chain — no AI-side viability logic.
+- `_on_ability_query` handler in
+  [`scripts/ai/ai_driver.gd`](../scripts/ai/ai_driver.gd) connected to
+  `ability_resolver.player_query_requested`. Mirrors `_on_trainer_query`'s
+  default-response shape because `AbilityQuery.Kind` is enum-aligned with
+  `TrainerQuery.Kind`. Yields one process frame before calling
+  `resolve_query` to side-step a signal/await race in the resolver's
+  `ask()` helper (handler responded mid-`emit()` and the next-line `await`
+  registered too late, leaving the response orphaned and the pipeline hung).
+- SS Electric opponent deck restructured: dropped Plusle/Minun/Elekid
+  (abilities never fire — Plusle/Minun are passive-only, Elekid had no
+  Electabuzz to baby-evolve into); added Skitty/Delcatty (RS_5,
+  power_discard_energy_draw_n), kept Magneton (DR_17,
+  power_discard_hand_recover_basic_energy), added Pikachu (SS_72) so
+  Pichu's `power_baby_evolution` is actually triggerable. Total still 60.
+
+**Playtest result (2026-05-18):** GUT green, but no `"Pn activates
+Poké-Power on ..."` line ever appears in the in-game match log when the
+CPU plays the SS Electric deck against a human. Hypotheses to investigate
+next session:
+
+1. `_try_use_ability` is never reached because earlier steps
+   (`_try_play_trainer` / `_try_play_basic_to_bench` / `_try_evolve`)
+   always return non-null in the observed games. **Add a one-shot
+   `print` or `log_message` at the top of `_try_use_ability` (and at
+   each `validate()` rejection) to confirm reachability** — the existing
+   `manager.log_message.emit(action.description())` only fires on
+   successful submission, so silent validation failures look identical
+   to "step never reached" in the log.
+2. The action IS being submitted but the description doesn't render in
+   the visible game log (only console). Verify the game log control
+   subscribes to `log_message` and isn't filtering.
+3. `AbilityResolver.validate` rejects every candidate silently. The
+   most likely silent rejection: baby-evolution's
+   `pokemon_entered_play_this_turn` guard (the carrier slot's instance
+   was placed this turn) — but Delcatty's "Energy Draw" has no such
+   gate, so this only explains Pichu, not Delcatty.
+
+Recommended first action next session: add the diagnostic
+`log_message` emissions, run one CPU turn with the SS Electric deck,
+and read the resulting log. The fix usually falls out of seeing whether
+the AI never sees the ability vs. sees it and rejects it.
 
 **In-flight infrastructure changes landed alongside W4**
 
@@ -233,10 +303,47 @@ These were necessary unblockers, committed independently:
     so the human sees their own hand throughout setup placement and CPU
     turns.
 
+**2026-05-18 session changes on `version_0.0.4.5`** (in addition to
+the W0 landing and the Active Poké-Powers attempt above):
+
+- **Engine post-action KO sweep.** `ManagerSystem.sweep_for_kos()`
+  iterates both players' in-play Pokémon and calls `resolve_knockout`
+  on any whose HP hit 0. Wired into `_check_all_promotions_needed()`
+  (runs after every `request_action`) and into `AttackResolver` after
+  `run_post_actions()`. Catches damage applied outside the resolver's
+  batched `damage_queue` — specifically self-damage from
+  `attach_from_discard`'s `self_damage_per_attached` (Pichu's Energy
+  Retrieval). Opponent of the KO'd Pokémon's owner takes the prize.
+- **CPU self-KO avoidance.** `_try_attack` skips attacks whose
+  worst-case self-damage would KO the attacker. New helper
+  `_attack_self_damage_max(atk)` covers `self_damage` and
+  `attach_from_discard` / `attach_from_deck`, including `effect_chain`
+  entries. Coin gates are conservatively treated as "tails always"
+  for now; Phase B3 will move to expected-value scoring.
+- **Reset/scene-change crash fix.** All three resolvers
+  (`AttackResolver` / `TrainerResolver` / `AbilityResolver`) gained an
+  `abort()` method backed by a generation counter. Each
+  `begin_attack_with_attack` (and equivalents) captures the generation
+  at entry; after every `await`, `_should_bail(gen)` checks for a
+  generation bump and exits cleanly before touching freed
+  `PokemonInstance` / `BoardPosition` state.
+  `AnimationManager.clear_queue()` drains the queue and emits
+  `queue_drained` so awaiters wake immediately and hit their bail
+  check. `match._reset_game` and `ManagerSystem.full_reset` call
+  abort() + clear_queue() before tearing down board state.
+- **Tool discard visual fix.** `inst.refresh_visual()` is now part of
+  `ToolEffects._discard_tool_from_instance`, so Oran Berry / Buffer
+  Piece auto-discards clear the attachment bubble icon. The
+  centralisation means future tool discards through that helper are
+  visually correct without per-site refresh calls.
+
 **Known issues still open at end of session**
 
-- **W0 (above) is blocking Fire Veil and every other Poké-Body in live
-  play.** Highest priority next session.
+- **CPU never activates Poké-Powers in live play** despite the W4
+  Active Poké-Powers code shipping on `version_0.0.4.5`. See the
+  next-session priority block at the top of this doc and the W4
+  Active-Poké-Powers entry above for hypotheses and the recommended
+  diagnostic first step.
 - Pokémon Reversal's PROMPT-phase coin path was fixed for animation;
   cancellation restore works for ITEM/SUPPORTER/STADIUM, not TOOL
   (Tools currently have no cancellable path).

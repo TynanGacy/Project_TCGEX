@@ -1,14 +1,14 @@
 {
-  "_comment": "SS Electric — Phase B1 opponent deck. Two basic + Stage 1 lines (Mareep/Flaaffy and Magnemite/Magneton) plus Plusle/Minun/Pichu/Elekid for tempo basics. Lives in data/decks/opponents/ so it does not appear in the human deck picker.",
+  "_comment": "SS Electric — Phase B1 opponent deck, restructured 2026-05-18 to showcase active Poké-Powers for the W4 CPU. Three lines, three different active powers the AI can fire: Magneton (DR_17, power_discard_hand_recover_basic_energy — fires once basic Lightning is in discard), Delcatty (RS_5, power_discard_energy_draw_n — fires whenever Delcatty is in play and the deck has energies in hand), Pichu (SS_20, power_baby_evolution — now actually triggerable because the deck ships Pikachu (SS_72) as the evolve-into). Mareep/Flaaffy stays for a non-power basic line. Plusle/Minun/Elekid removed: their abilities were either passive-only or required cards the deck didn't ship. Lives in data/decks/opponents/ so it does not appear in the human deck picker.",
   "cards": [
     { "card_id": "DR_64_mareep",       "count": 4 },
     { "card_id": "DR_27_flaaffy",      "count": 3 },
     { "card_id": "DR_61_magnemite",    "count": 4 },
     { "card_id": "DR_17_magneton",     "count": 3 },
-    { "card_id": "DR_8_plusle",        "count": 4 },
-    { "card_id": "DR_7_minun",         "count": 4 },
-    { "card_id": "SS_20_pichu",        "count": 4 },
-    { "card_id": "SS_36_elekid",       "count": 3 },
-    { "card_id": "RS_109_lightning_energy", "count": 31 }
+    { "card_id": "SS_79_skitty",       "count": 4 },
+    { "card_id": "RS_5_delcatty",      "count": 3 },
+    { "card_id": "SS_20_pichu",        "count": 3 },
+    { "card_id": "SS_72_pikachu",      "count": 3 },
+    { "card_id": "RS_109_lightning_energy", "count": 33 }
   ]
 }

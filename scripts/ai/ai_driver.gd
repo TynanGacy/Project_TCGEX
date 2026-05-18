@@ -34,6 +34,8 @@ func init(main_node: Node, deck_id: String = "") -> void:
 		mgr.trainer_resolver.player_query_requested.connect(_on_trainer_query)
 	if mgr.attack_resolver != null:
 		mgr.attack_resolver.player_query_requested.connect(_on_attack_query)
+	if mgr.ability_resolver != null:
+		mgr.ability_resolver.player_query_requested.connect(_on_ability_query)
 
 
 ## --- Setup placement -------------------------------------------------------
@@ -252,6 +254,62 @@ func _default_attack_response(query) -> Variant:
 			return query.options[0] if not query.options.is_empty() else null
 		AttackQuery.Kind.CHOOSE_ORDER:
 			return query.options.duplicate()
+	return null
+
+
+## --- Ability query fallback ------------------------------------------------
+##
+## Poké-Powers reuse the trainer query system (AbilityQuery mirrors
+## TrainerQuery Kind-for-Kind), so the default response logic is the same:
+## take the first option for single-choice queries, take min_selections
+## from the front of the list for multi-select queries.  Phase B3 will add
+## smarter targeting (prefer damaged own Pokémon for heal powers, prefer
+## benched threats for switch-opponent powers, etc.).
+##
+## The one-frame await is load-bearing.  Inside the resolver's `ask()`:
+##
+##     player_query_requested.emit(query)
+##     return await player_query_resolved
+##
+## Both lines run on the same coroutine.  If we call `resolve_query()`
+## synchronously from this handler, it emits `player_query_resolved`
+## while the resolver is still mid-`emit()` — the `await` on the next line
+## hasn't registered its listener yet, the signal is lost, and the
+## resolver hangs forever.  Yielding one frame lets the resolver finish
+## its emit, hit the await, register its listener, and only then receive
+## our response.  Mid-APPLY `ask()` callers (e.g. Delcatty Energy Draw)
+## depend on this; PROMPT-phase paths that already yielded for animations
+## happen to work without it, but deferring is safe in all cases.
+
+func _on_ability_query(query) -> void:
+	if query == null or query.player_id != cpu_pid:
+		return
+	var resolver = _main.manager.ability_resolver
+	if resolver == null:
+		return
+	await _main.get_tree().process_frame
+	resolver.resolve_query(_default_ability_response(query))
+
+
+func _default_ability_response(query) -> Variant:
+	match query.kind:
+		AbilityQuery.Kind.GENERIC_CHOICE:
+			return query.options[0] if not query.options.is_empty() else ""
+		AbilityQuery.Kind.CHOOSE_OWN_POKEMON, \
+		AbilityQuery.Kind.CHOOSE_OPPONENT_BENCH, \
+		AbilityQuery.Kind.CHOOSE_OPPONENT_POKEMON, \
+		AbilityQuery.Kind.CHOOSE_OWN_BENCH:
+			return query.options[0] if not query.options.is_empty() else ""
+		AbilityQuery.Kind.CHOOSE_ENERGY_ON_POKEMON:
+			return query.options[0] if not query.options.is_empty() else null
+		AbilityQuery.Kind.CHOOSE_FROM_HAND, \
+		AbilityQuery.Kind.CHOOSE_FROM_LIST, \
+		AbilityQuery.Kind.REORDER_TOP_OF_DECK:
+			var take_n: int = clampi(query.min_selections, 0, query.options.size())
+			var arr: Array = []
+			for i in take_n:
+				arr.append(query.options[i])
+			return arr
 	return null
 
 
