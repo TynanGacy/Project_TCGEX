@@ -71,7 +71,7 @@ func dispatch(card: TrainerCardData, manager, player_id: int) -> void:
 
 	var ctx := _build_ctx(card, manager, player_id)
 
-	var query: TrainerQuery = TrainerEffectRegistry.get_query(card.effect_key, ctx)
+	var query: TrainerQuery = await TrainerEffectRegistry.get_query(card.effect_key, ctx)
 	if query != null:
 		player_query_requested.emit(query)
 		ctx.query_response = await player_query_resolved
@@ -81,6 +81,13 @@ func dispatch(card: TrainerCardData, manager, player_id: int) -> void:
 	await _await_phase(card.effect_key, Phase.APPLY, ctx)
 	await _await_phase(card.effect_key, Phase.POST_APPLY, ctx)
 
+	## If the APPLY handler set ctx.cancelled (player aborted at a prompt),
+	## restore the played card so the play does not silently consume it.
+	## ITEMs are in the discard pile; SUPPORTERs/STADIUMs sit in their shared
+	## slot until end-of-turn cleanup so we clear the slot too.
+	if ctx.cancelled:
+		_restore_cancelled_card(card, manager, player_id)
+
 	## Trainer effects can vacate active slots (Mr. Briney's Compassion).
 	## Re-run the manager's promotion check now that the pipeline is done.
 	if manager != null and manager.has_method("_check_all_promotions_needed"):
@@ -88,6 +95,39 @@ func dispatch(card: TrainerCardData, manager, player_id: int) -> void:
 
 	_is_resolving = false
 	pipeline_completed.emit()
+
+
+## Returns a played Trainer card to its owner's hand when the APPLY handler
+## flagged the resolution as cancelled.  Item: pulled out of the discard
+## pile.  Supporter / Stadium: cleared from its shared slot.  Tool: not
+## supported here (ActionAttachTool has no cancellable APPLY path).
+func _restore_cancelled_card(card: TrainerCardData, manager, player_id: int) -> void:
+	if card == null or manager == null:
+		return
+	match card.trainer_kind:
+		TrainerCardData.TrainerKind.ITEM:
+			var discard: Array = manager.game_position.discards[player_id]
+			if discard.has(card):
+				discard.erase(card)
+				manager.game_position.put_in_hand(player_id, card)
+				manager.game_position.discard_changed.emit(player_id)
+		TrainerCardData.TrainerKind.SUPPORTER:
+			if manager.active_supporter == card:
+				manager.active_supporter = null
+				manager.active_supporter_owner = -1
+				manager.supporter_changed.emit(null, -1)
+			manager.game_position.put_in_hand(player_id, card)
+			## Free up the once-per-turn lock so the player can try again.
+			manager.supporter_played_this_turn[player_id] = false
+		TrainerCardData.TrainerKind.STADIUM:
+			if manager.active_stadium == card:
+				manager.active_stadium = null
+				manager.active_stadium_owner = -1
+				manager.stadium_changed.emit(null, -1)
+			manager.game_position.put_in_hand(player_id, card)
+		_:
+			pass
+	manager.log_message.emit("[Trainer] %s — returned to hand." % card.display_name)
 
 
 ## Calls the registered handler for [phase] and awaits its return.  If the

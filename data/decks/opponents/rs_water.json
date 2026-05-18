@@ -1,0 +1,14 @@
+{
+  "_comment": "RS Water — Phase B1 opponent deck. Four basic + Stage 1 lines (Mudkip/Marshtomp, Magikarp/Gyarados, Corphish/Crawdaunt, Horsea/Seadra) plus 32 Water Energy. All Pokemon's typed attack costs are Water-only — Barboach/Whiscash were swapped out because Mud Slap / Magnitude require FIGHTING energy that this deck can't pay.",
+  "cards": [
+    { "card_id": "DR_65_mudkip",     "count": 4 },
+    { "card_id": "DR_36_marshtomp",  "count": 3 },
+    { "card_id": "DR_60_magikarp",   "count": 4 },
+    { "card_id": "DR_32_gyarados",   "count": 3 },
+    { "card_id": "DR_52_corphish",   "count": 4 },
+    { "card_id": "DR_3_crawdaunt",   "count": 3 },
+    { "card_id": "DR_33_horsea",     "count": 4 },
+    { "card_id": "DR_39_seadra",     "count": 3 },
+    { "card_id": "RS_106_water_energy", "count": 32 }
+  ]
+}

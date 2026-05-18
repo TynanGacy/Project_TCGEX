@@ -1244,7 +1244,11 @@ func on_attack_query_requested(query: AttackQuery) -> void:
 			_show_attack_generic_choice(query)
 		AttackQuery.Kind.CHOOSE_OPP_HAND_BLIND:
 			_show_opp_hand_blind_picker(query)
-		AttackQuery.Kind.CHOOSE_OPP_HAND_OPEN:
+		AttackQuery.Kind.CHOOSE_OPP_HAND_OPEN, \
+		AttackQuery.Kind.CHOOSE_FROM_LIST:
+			## Reuses the open-hand renderer — same UX (checklist of card names
+			## with min/max selection). CHOOSE_FROM_LIST callers leave
+			## query.filter empty so no extra dimming applies.
 			_show_opp_hand_open_picker(query)
 		AttackQuery.Kind.CHOOSE_ATTACK_FROM_CARDS:
 			_show_attack_from_cards_picker(query)

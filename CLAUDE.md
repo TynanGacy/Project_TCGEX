@@ -2,6 +2,10 @@
 
 Tabletop card game simulator built in Godot 4.6.
 
+> **Alpha roadmap:** `docs/ALPHA_ROADMAP.md` is the authoritative scope &
+> workstream tracker. Consult it before starting non-trivial work and
+> update it when workstreams land.
+
 ## Overview
 - Arena-style UI with click-and-drag cards in a 3D environment
 - 3D tabletop with camera looking down at the table

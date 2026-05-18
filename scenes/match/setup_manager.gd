@@ -153,7 +153,7 @@ func show_setup_dialog() -> void:
 		_setup_selected_mode = "player"
 		player_btn.modulate = Color(0.4, 0.4, 0.9)
 		dev_btn.modulate    = Color.WHITE
-		mode_desc.text = "Player Mode: CPU opponent will be restored with the turn system."
+		mode_desc.text = "Player Mode: P1 is a CPU opponent (DR Fire deck)."
 		start_btn.disabled = false
 	)
 	start_btn.pressed.connect(func() -> void:
@@ -193,12 +193,32 @@ func _on_setup_confirmed(
 	opponent_deck_path: String
 ) -> void:
 	_main.is_developer_mode   = (mode == "developer")
+	_main.opponent_is_cpu     = (mode == "player")
 	_main._prize_count        = prizes
 	_main._active_slots       = active_slots
 	_main._bench_slots        = bench_slots
 	_player_deck_path   = player_deck_path
 	_opponent_deck_path = opponent_deck_path
+	## Phase B1: CPU rolls a random deck from the opponent pool. Per-NPC deck
+	## selection lands with W5 (overworld NPC battles).
+	if _main.opponent_is_cpu:
+		_opponent_deck_path = _pick_random_opponent_deck()
 	_start_game()
+
+
+## Scans data/decks/opponents/ and returns one path at random.  Falls back to
+## the DR Fire deck if the folder is empty or unreadable.
+func _pick_random_opponent_deck() -> String:
+	const POOL_DIR := "res://data/decks/opponents/"
+	const FALLBACK := "res://data/decks/opponents/dr_fire.json"
+	var files := DirAccess.get_files_at(POOL_DIR)
+	var paths: Array[String] = []
+	for fname in files:
+		if fname.ends_with(".json"):
+			paths.append(POOL_DIR + fname)
+	if paths.is_empty():
+		return FALLBACK
+	return paths[randi() % paths.size()]
 
 
 ## ---------------------------------------------------------------------------
@@ -224,6 +244,14 @@ func _start_game() -> void:
 
 	_main._authority.draw_starting_hand(0, 7)
 	_main._authority.draw_starting_hand(1, 7)
+
+	## Stand up the CPU driver before the setup coroutine runs so it is
+	## already listening for turn_started by the time begin_game() fires.
+	if _main.opponent_is_cpu and _main._ai_driver == null:
+		_main._ai_driver = AIDriver.new()
+		_main.add_child(_main._ai_driver)
+		var deck_id := _opponent_deck_path.get_file().trim_suffix(".json")
+		_main._ai_driver.init(_main, deck_id)
 
 	_run_setup_sequence()
 
@@ -278,7 +306,11 @@ func _run_setup_sequence() -> void:
 
 	for placing_pid: int in [0, 1]:
 		_main._authority.begin_setup_placement(placing_pid)
-		_main._apply_perspective(placing_pid)
+		## Only flip the view to the placing player in Developer Mode (both
+		## sides driven by the operator). In Player Mode the human always
+		## sees P0; the CPU places silently behind the scenes.
+		if _main.is_developer_mode:
+			_main._apply_perspective(placing_pid)
 		_main._hand_mgr.rebuild(0)
 		_main._hand_mgr.rebuild(1)
 		_main._in_setup_phase = false
@@ -330,6 +362,14 @@ func _show_placement_phase(placing_pid: int) -> void:
 	_main.end_turn_button.disabled = not _is_placement_ready(placing_pid)
 	_main._update_phase_label()
 
+	## CPU side auto-places its basics and returns without waiting on a click.
+	if _main.is_cpu_player(placing_pid) and _main._ai_driver != null:
+		_main._ai_driver.auto_place_setup(placing_pid)
+		_main.end_turn_button.text     = "End Turn"
+		_main.end_turn_button.disabled = false
+		_main._in_placement_phase      = false
+		return
+
 	var refresh := func(_sid: String, _inst: PokemonInstance) -> void:
 		_main.end_turn_button.disabled = not _is_placement_ready(placing_pid)
 	_main._authority.board_slot_changed.connect(refresh)
@@ -359,6 +399,9 @@ func _show_setup_info(message: String) -> void:
 
 
 func _show_mulligan_card_offer(offer_pid: int) -> bool:
+	## CPU declines the bonus draw silently — no UI, no decision tree yet.
+	if _main.is_cpu_player(offer_pid):
+		return false
 	var panel := _make_panel()
 	var vbox := panel.get_child(0) as VBoxContainer
 	var lbl := Label.new()

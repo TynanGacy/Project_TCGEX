@@ -15,6 +15,24 @@ func _ready() -> void:
 	_register_handlers()
 
 
+## Flips a coin AND awaits the coin overlay animation so subsequent dialogs
+## (typically a `_search_deck_into_hand` follow-up) don't race ahead and hide
+## the flip from the player.  Safe when animation_manager is null (GUT tests).
+static func _flip_coin_awaited(ctx: TrainerContext) -> bool:
+	var heads: bool = ctx.manager.flip_coin(ctx.card.display_name)
+	if ctx.manager.animation_manager != null:
+		await ctx.manager.animation_manager.wait_until_drained()
+	return heads
+
+
+## Same, for batch flips.  Returns the array of results.
+static func _flip_coins_batch_awaited(ctx: TrainerContext, count: int) -> Array[bool]:
+	var results: Array[bool] = ctx.manager.flip_coins_batch(count, ctx.card.display_name)
+	if ctx.manager.animation_manager != null:
+		await ctx.manager.animation_manager.wait_until_drained()
+	return results
+
+
 func _register_handlers() -> void:
 	## ── draw_until — Professor Birch ─────────────────────────────────────
 	## Params: {"target_size": 6}
@@ -99,6 +117,7 @@ func _register_handlers() -> void:
 	heal_choice_def.phase_handlers[TrainerResolver.Phase.APPLY] = func(ctx: TrainerContext) -> void:
 		var sid: String = str(ctx.query_response) if ctx.query_response != null else ""
 		if sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] %s — cancelled." % ctx.card.display_name)
 			return
 		var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
@@ -138,6 +157,7 @@ func _register_handlers() -> void:
 	switch_def.phase_handlers[TrainerResolver.Phase.APPLY] = func(ctx: TrainerContext) -> void:
 		var bench_sid: String = str(ctx.query_response) if ctx.query_response != null else ""
 		if bench_sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] %s — cancelled." % ctx.card.display_name)
 			return
 		var active_sid: String = _own_active_slot(ctx)
@@ -173,6 +193,7 @@ func _register_handlers() -> void:
 	briney_def.phase_handlers[TrainerResolver.Phase.APPLY] = func(ctx: TrainerContext) -> void:
 		var sid: String = str(ctx.query_response) if ctx.query_response != null else ""
 		if sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] %s — cancelled." % ctx.card.display_name)
 			return
 		var inst: PokemonInstance = ctx.manager.board_position.get_instance(sid)
@@ -204,7 +225,10 @@ func _register_handlers() -> void:
 	## active player pick the opponent's bench, since there is no AI yet.
 	var reversal_def := TrainerEffectDefinition.new()
 	reversal_def.phase_handlers[TrainerResolver.Phase.PROMPT] = func(ctx: TrainerContext) -> TrainerQuery:
-		var heads: bool = ctx.manager.flip_coin(ctx.card.display_name)
+		## PROMPT handlers can now be coroutines (callers `await` get_query).
+		## Wait on the coin overlay before the bench picker so the player sees
+		## the flip resolve before being asked to choose.
+		var heads: bool = await _flip_coin_awaited(ctx)
 		ctx.manager.log_message.emit(
 			"[Coin] %s — %s" % [ctx.card.display_name, "Heads" if heads else "Tails"]
 		)
@@ -239,6 +263,7 @@ func _register_handlers() -> void:
 			return
 		var bench_sid: String = str(ctx.query_response) if ctx.query_response != null else ""
 		if bench_sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] %s — cancelled." % ctx.card.display_name)
 			return
 		var opp_id: int = 1 - ctx.player_id
@@ -335,6 +360,7 @@ func _register_handlers() -> void:
 		src_q.options = src_arr
 		var src_sid: String = str(await resolver.ask(src_q))
 		if src_sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] Energy Switch — cancelled.")
 			return
 		var src_inst: PokemonInstance = ctx.manager.board_position.get_instance(src_sid)
@@ -357,6 +383,7 @@ func _register_handlers() -> void:
 		var chosen_variant: Variant = await resolver.ask(energy_q)
 		var chosen: CardData = chosen_variant as CardData
 		if chosen == null:
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] Energy Switch — cancelled.")
 			return
 		var dest_q := TrainerQuery.new()
@@ -370,6 +397,7 @@ func _register_handlers() -> void:
 		dest_q.options = dest_arr
 		var dest_sid: String = str(await resolver.ask(dest_q))
 		if dest_sid == "":
+			ctx.cancelled = true
 			ctx.manager.log_message.emit("[Trainer] Energy Switch — cancelled.")
 			return
 		var dest_inst: PokemonInstance = ctx.manager.board_position.get_instance(dest_sid)
@@ -392,7 +420,7 @@ func _register_handlers() -> void:
 	## then picks an energy on it, then discards.
 	var energy_removal_def := TrainerEffectDefinition.new()
 	energy_removal_def.phase_handlers[TrainerResolver.Phase.APPLY] = func(ctx: TrainerContext) -> void:
-		var heads: bool = ctx.manager.flip_coin(ctx.card.display_name)
+		var heads: bool = await _flip_coin_awaited(ctx)
 		ctx.manager.log_message.emit(
 			"[Coin] %s — %s" % [ctx.card.display_name, "Heads" if heads else "Tails"]
 		)
@@ -492,7 +520,7 @@ func _register_handlers() -> void:
 	TrainerEffectRegistry.register_def("coin_search_deck_pokemon", TrainerEffectDefinition.single(
 		TrainerResolver.Phase.APPLY,
 		func(ctx: TrainerContext) -> void:
-			var heads: bool = ctx.manager.flip_coin(ctx.card.display_name)
+			var heads: bool = await _flip_coin_awaited(ctx)
 			ctx.manager.log_message.emit(
 				"[Coin] %s — %s" % [ctx.card.display_name, "Heads" if heads else "Tails"]
 			)
@@ -509,7 +537,7 @@ func _register_handlers() -> void:
 		TrainerResolver.Phase.APPLY,
 		func(ctx: TrainerContext) -> void:
 			var n: int = int(ctx.params.get("flips", 3))
-			var flips: Array[bool] = ctx.manager.flip_coins_batch(n, ctx.card.display_name)
+			var flips: Array[bool] = await _flip_coins_batch_awaited(ctx, n)
 			var heads: int = 0
 			for h in flips:
 				if h: heads += 1
