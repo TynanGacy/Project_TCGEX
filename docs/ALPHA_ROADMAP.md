@@ -4,8 +4,59 @@
 > before starting work that touches Alpha scope. Update it when a
 > workstream lands or scope changes — do not let it go stale.
 >
-> Last revised: 2026-05-17 (branch `version_0.0.4.4`).
+> Last revised: 2026-05-17 (branch `version_0.0.4.4`, mid-W4).
 > Source plan: `.claude/plans/look-over-the-previous-keen-floyd.md`.
+
+---
+
+## 🚨 Next-Session Priority — W0: Replace `TestDeckFactory` with a real card loader
+
+**Address this BEFORE touching anything else.** A playtest of W4 Phase B2
+surfaced that Growlithe's "Fire Veil" Poké-Body never burns the attacker
+in live play, even though the GUT test passes. Investigation traced this
+to a divergence between two card parsers:
+
+- [`scripts/cards/card_library.gd`](../scripts/cards/card_library.gd)
+  is the complete parser. GUT tests use it and pass.
+- [`scripts/game/test_deck_factory.gd`](../scripts/game/test_deck_factory.gd)
+  is what `DeckLoader` actually uses at match start, and it **does not
+  parse the `abilities` array, the `effect_chain` array on attacks, the
+  `extra_types` array, the `plays_as_pokemon` flag on trainers, or the
+  `rules_text` field on Pokémon.** So every Poké-Body, every Poké-Power,
+  every multi-effect attack chain, and every Fossil item is silently
+  inert during real gameplay.
+
+The name `TestDeckFactory` betrays the smell: a test helper became the
+live path. It should not be involved in production card loading at all.
+
+**Plan for next session (do FIRST):**
+
+1. Audit every `TestDeckFactory.*` call site (current callers:
+   [`scripts/game/deck_loader.gd`](../scripts/game/deck_loader.gd),
+   [`scripts/game/game_state_serializer.gd`](../scripts/game/game_state_serializer.gd),
+   [`scenes/match/save_load_manager.gd`](../scenes/match/save_load_manager.gd),
+   [`scenes/match/setup_manager.gd`](../scenes/match/setup_manager.gd))
+   and figure out what each needs (`build_deck(60)` random fallback,
+   `_build_card_pool_by_id()` ID lookup, `load_art_for_deck()` art warm-up).
+2. Promote `CardLibrary` (or a new `CardCatalog` autoload built on top of
+   it) to be the single source of truth for parsed card data at runtime.
+   `CardDatabase` already exists at
+   [`autoload/card_database.gd`](../autoload/card_database.gd) — check
+   whether that is the right home and consolidate there if so.
+3. Repoint `DeckLoader._load_from_file`, the save/load card-pool lookup,
+   and any other live caller to the new loader.
+4. Deprecate `TestDeckFactory`. Keep `build_deck(N)` (random 60-card
+   fallback) only if nothing else needs it; otherwise delete entirely.
+   Move `load_art_for_deck` somewhere appropriate (it's not actually
+   test-only).
+5. Re-run the full GUT suite — the Growlithe Fire Veil regression test
+   at [`tests/test_ability_wave1.gd`](../tests/test_ability_wave1.gd)
+   should keep passing, and the live-game scenario should now actually
+   apply BURNED to the attacker.
+
+This unblocks everything that depends on real ability/effect-chain
+behavior in live play: most of W4's "smarter CPU" gains, the Phase B3
+scoring work, the comprehensive card audit, and the smoke test in §5.
 
 ---
 
@@ -104,13 +155,115 @@ Follow the **exact** pipeline in CLAUDE.md (Dolphin → `.fsys` extract → Blen
   - Reads velocity from the existing controller — do not duplicate input handling.
 - Keep the existing CollisionShape3D capsule for physics; animation drives the mesh only.
 
-### W4 — NPC enemy AI
+### W4 — NPC enemy AI — **in progress**
 
-- New `scripts/ai/opponent_ai.gd` with `decide_action(match_state) -> Action`.
-- **Heuristic baseline:** enumerate legal actions, score by damage potential, energy efficiency, board threat.
-- **Per-deck overrides:** optional `data/ai_profiles/<deck_id>.json` with weight hints. Falls back to defaults when absent.
-- Wire into [`scenes/match/match.gd`](../scenes/match/match.gd): when SetupManager mode is **Player** and player 1 has `is_cpu=true`, AI drives the opposing turn. Add CPU toggle to [`scenes/match/setup_manager.gd`](../scenes/match/setup_manager.gd).
-- Author 3 opponent decks under `data/decks/opponents/`: DR fire, RS water, SS electric. One AI profile per deck.
+Split into four sub-phases. **A / B1 / B2 landed; B3 + abilities bucket
+remain.** All commits on branch `version_0.0.4.4`.
+
+**Phase A ✅ — Foundation (commits `09f4334`, `e62afbf`, `23236d5`)**
+
+- [`scripts/ai/opponent_ai.gd`](../scripts/ai/opponent_ai.gd)
+  `decide_action(manager, pid) -> GameAction`. Priority-ordered heuristic
+  (place active → fill bench → attach energy → attack), with tiered
+  attack scoring (damage > 0 first, then status-inflicting on a clean
+  target, then vanilla, then status-already-on-target last).
+- [`scripts/ai/ai_driver.gd`](../scripts/ai/ai_driver.gd) turn loop +
+  auto-place setup + "first valid option" fallback handlers for prize
+  selection, promotion, energy-discard choice, retreat-discard choice,
+  trainer queries, and attack queries. Match never blocks waiting on
+  CPU input.
+- [`scripts/ai/ai_profile.gd`](../scripts/ai/ai_profile.gd) stub for
+  per-deck weight overrides (Phase B3).
+- CPU toggle via Player Mode in
+  [`scenes/match/setup_manager.gd`](../scenes/match/setup_manager.gd);
+  AIDriver instantiated before `begin_game()`. Dialog gating in
+  [`scenes/match/match.gd`](../scenes/match/match.gd) skips CPU-targeted
+  prompts so AIDriver answers them.
+- Perspective fix: Player Mode never flips camera; human always sees P0.
+- First opponent deck: [`data/decks/opponents/dr_fire.json`](../data/decks/opponents/dr_fire.json).
+
+**Phase B1 ✅ — Evolution + 2 more decks (commit `fe8a080`)**
+
+- `_try_evolve` step in OpponentAI; engine's `ActionEvolve.validate`
+  handles same-turn / first-turn restrictions.
+- [`data/decks/opponents/rs_water.json`](../data/decks/opponents/rs_water.json)
+  (Mudkip/Marshtomp, Magikarp/Gyarados, Corphish/Crawdaunt, Horsea/Seadra)
+  and
+  [`data/decks/opponents/ss_electric.json`](../data/decks/opponents/ss_electric.json)
+  (Mareep/Flaaffy, Magnemite/Magneton + Plusle/Minun/Pichu/Elekid).
+- SetupManager rolls a random opponent deck at match start; per-NPC
+  selection lands with **W5**.
+
+**Phase B2 ✅ — Trainer play (commit `0a223f6`)**
+
+- `_try_play_trainer` step in OpponentAI between active placement and
+  bench fill. Handles all five Trainer kinds: ITEM / SUPPORTER / STADIUM
+  / TOOL (active first, then bench) / Fossil (`plays_as_pokemon` onto
+  empty bench).
+- Policy: "play any legal trainer". Engine validators block illegal
+  cases; "legal but wasteful" plays (Potion on full HP, etc.) will fire
+  until Phase B3 scoring lands.
+
+**Phase B3 ⏳ — Real scoring + per-deck profiles** (next planned bucket
+once W0 is done)
+
+- Replace priority-ordered heuristic with a scored enumerator: damage-to-KO,
+  energy efficiency, threat avoidance, "is this trainer play worth a card?".
+- Load optional `data/ai_profiles/<deck_id>.json` weight overrides via
+  the existing AIProfile stub.
+- Add Potion-on-damaged, Switch-when-trapped, Energy-Search-when-thirsty
+  guards.
+
+**Active Poké-Powers ⏳ — also still pending**
+
+Most Poké-Bodies are already passive (auto-fire). Active Poké-Powers
+(e.g. "once per turn, draw 2") need a `_try_use_ability` step that
+submits `ActionUseAbility`. Narrow scope (5–10 cards) but moderate
+gameplay impact. Note that **active behaviour here also blocks on W0**:
+abilities aren't parsed by `TestDeckFactory`, so until W0 lands, no
+ability fires in live play.
+
+**In-flight infrastructure changes landed alongside W4**
+
+These were necessary unblockers, committed independently:
+
+- ~~W1~~ closed (commit `0c15902`).
+- Card audit pass (commit `4126380`): attack-side searches
+  (`search_deck_basic_to_bench`, `search_deck_to_hand`,
+  `search_deck_energy_to_hand`, `search_discard_energy_to_hand`) now
+  prompt the player via a new `AttackQuery.Kind.CHOOSE_FROM_LIST`
+  instead of auto-picking; trainer coin flips await the overlay so the
+  player sees them resolve before any follow-up prompt.
+- PROMPT handlers may be coroutines (commit `0b3d0c8`): both
+  `TrainerEffectRegistry.get_query` and `AbilityEffectRegistry.get_query`
+  now `await` the handler call so PROMPT bodies can await coin
+  animations etc. Pokémon Reversal uses this.
+- Playtest fixes (commit `a48134d`):
+  - Dunsparce's "you may switch" tail option (`then_may_switch` param).
+  - Cancelled Trainer cards return to hand (Switch, Potion, Mr. Briney's,
+    Pokémon Reversal, Energy Switch). New `TrainerContext.cancelled`
+    flag + restore-on-cancel in `TrainerResolver.dispatch`.
+  - CPU energy attachment is now three passes (needs-energy actives →
+    bench → fallback) and treats type-unreachable attacks (e.g. Barboach
+    Mud Slap needs FIGHTING in a water-only deck) as covered so the AI
+    doesn't pile water onto a Pokémon that can never fund its second
+    attack. Barboach/Whiscash swapped out of the water deck for
+    Corphish/Crawdaunt (water-only costs).
+  - Hand visibility follows `_controlling_player`, not the active turn,
+    so the human sees their own hand throughout setup placement and CPU
+    turns.
+
+**Known issues still open at end of session**
+
+- **W0 (above) is blocking Fire Veil and every other Poké-Body in live
+  play.** Highest priority next session.
+- Pokémon Reversal's PROMPT-phase coin path was fixed for animation;
+  cancellation restore works for ITEM/SUPPORTER/STADIUM, not TOOL
+  (Tools currently have no cancellable path).
+- A comprehensive sweep for "game auto-decides where the player should
+  choose" was started (4 attack-side search handlers fixed) but is
+  intentionally not finished — defer until W0 lands so the live game
+  reflects the same behaviour as the tests.
 
 ### W5 — Animated idle NPCs
 
@@ -146,14 +299,17 @@ Follow the **exact** pipeline in CLAUDE.md (Dolphin → `.fsys` extract → Blen
 
 ## 4. Recommended Execution Order
 
-1. **W1** — independent, low risk; can interleave with anything.
-2. **W3** — quick visual win that makes the overworld feel real.
-3. **W2** — needed before W5 placement.
-4. **W4** — depends on W1 cards being playable.
-5. **W5** — depends on W2 + W3 + W4.
-6. **W8** — depends on W5 + W4.
-7. **W7** — independent; do anytime.
-8. **W6** — last; touches match flow heavily; land on a stable base.
+1. **~~W1~~** ✅ landed `0c15902`.
+2. **W0** — **FIRST next session.** Card-loader replacement (see top of
+   document). Unblocks Phase B3 + abilities + the live smoke test.
+3. **W4 Phase B3** + **abilities bucket** — resume W4 once W0 is in.
+4. **W3** — quick visual win that makes the overworld feel real (needs
+   user's Blender pipeline).
+5. **W2** — needed before W5 placement (also Blender-gated).
+6. **W5** — depends on W2 + W3 + W4.
+7. **W8** — depends on W5 + W4.
+8. **W7** — independent; do anytime.
+9. **W6** — last; touches match flow heavily; land on a stable base.
 
 ---
 
