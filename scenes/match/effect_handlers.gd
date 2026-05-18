@@ -952,16 +952,21 @@ func _register_handlers() -> void:
 			var slug_any: Array = p.get("name_slug_any_of", []) as Array
 			ctx.add_post_action(func() -> void:
 				var deck: Array = ctx.manager.game_position.decks[ctx.player_id]
-				var taken: int = 0
-				for i in range(deck.size() - 1, -1, -1):
-					if taken >= count:
-						break
-					var c = deck[i]
-					if not _search_match(c, filt, slug, slug_any):
-						continue
-					deck.remove_at(i)
+				var candidates: Array[CardData] = []
+				for c in deck:
+					if _search_match(c, filt, slug, slug_any):
+						candidates.append(c)
+				var max_pick: int = mini(count, candidates.size())
+				if max_pick == 0:
+					ctx.manager.game_position.shuffle_deck(ctx.player_id)
+					return
+				var picks: Array[CardData] = candidates
+				if candidates.size() > max_pick:
+					picks = await _ask_pick_cards(ctx, candidates, max_pick,
+							"Search your deck and put cards into your hand")
+				for c in picks:
+					deck.erase(c)
 					ctx.manager.game_position.put_in_hand(ctx.player_id, c)
-					taken += 1
 				ctx.manager.game_position.shuffle_deck(ctx.player_id)
 			)
 	))
@@ -1161,21 +1166,33 @@ func _register_handlers() -> void:
 			var distinct: bool = bool(p.get("distinct_types", false))
 			ctx.add_post_action(func() -> void:
 				var deck: Array = ctx.manager.game_position.decks[ctx.player_id]
-				var taken: int = 0
-				var seen_types: Dictionary = {}
-				for i in range(deck.size() - 1, -1, -1):
-					if taken >= count:
-						break
-					var c = deck[i]
-					if not (c is EnergyCardData):
-						continue
-					var et: int = int((c as EnergyCardData).energy_type)
-					if distinct and seen_types.has(et):
-						continue
-					seen_types[et] = true
-					deck.remove_at(i)
+				var candidates: Array[CardData] = []
+				for c in deck:
+					if c is EnergyCardData:
+						candidates.append(c)
+				## distinct_types: dedupe candidate pool before sizing the cap
+				## so e.g. 3 grass + 1 fire with count=3 yields 2 picks, not 3.
+				if distinct:
+					var seen: Dictionary = {}
+					var deduped: Array[CardData] = []
+					for c in candidates:
+						var et: int = int((c as EnergyCardData).energy_type)
+						if seen.has(et):
+							continue
+						seen[et] = true
+						deduped.append(c)
+					candidates = deduped
+				var max_pick: int = mini(count, candidates.size())
+				if max_pick == 0:
+					ctx.manager.game_position.shuffle_deck(ctx.player_id)
+					return
+				var picks: Array[CardData] = candidates
+				if candidates.size() > max_pick:
+					picks = await _ask_pick_cards(ctx, candidates, max_pick,
+							"Search your deck for Energy cards")
+				for c in picks:
+					deck.erase(c)
 					ctx.manager.game_position.put_in_hand(ctx.player_id, c)
-					taken += 1
 				ctx.manager.game_position.shuffle_deck(ctx.player_id)
 			)
 	))
@@ -1190,16 +1207,20 @@ func _register_handlers() -> void:
 			var count: int    = int(p.get("count", 1))
 			ctx.add_post_action(func() -> void:
 				var discard: Array = ctx.manager.game_position.discards[ctx.player_id]
-				var taken: int = 0
-				for i in range(discard.size() - 1, -1, -1):
-					if taken >= count:
-						break
-					var c = discard[i]
-					if not (c is EnergyCardData):
-						continue
-					discard.remove_at(i)
+				var candidates: Array[CardData] = []
+				for c in discard:
+					if c is EnergyCardData:
+						candidates.append(c)
+				var max_pick: int = mini(count, candidates.size())
+				if max_pick == 0:
+					return
+				var picks: Array[CardData] = candidates
+				if candidates.size() > max_pick:
+					picks = await _ask_pick_cards(ctx, candidates, max_pick,
+							"Recover Energy cards from your discard pile")
+				for c in picks:
+					discard.erase(c)
 					ctx.manager.game_position.put_in_hand(ctx.player_id, c)
-					taken += 1
 				ctx.manager.game_position.discard_changed.emit(ctx.player_id)
 			)
 	))
@@ -2756,6 +2777,10 @@ func _count_damage_counters_actives(mgr, player_id: int) -> int:
 
 ## Wave-5 helper: pulls matching Basic Pokémon out of the player's deck and
 ## drops them onto the first empty bench slots, then shuffles the deck.
+##
+## Prompts the player to choose when there is a meaningful choice
+## (`candidates.size() > max_pick`); otherwise auto-picks to preserve the
+## existing no-choice semantics (and test expectations).
 func _search_deck_basic_to_bench(ctx: AttackContext, p: Dictionary) -> void:
 	var deck: Array = ctx.manager.game_position.decks[ctx.player_id]
 	var count: int = int(p.get("count", 1))
@@ -2763,14 +2788,11 @@ func _search_deck_basic_to_bench(ctx: AttackContext, p: Dictionary) -> void:
 	var slug_any: Array = p.get("name_slug_any_of", []) as Array
 	var or_any_basic: bool = bool(p.get("or_any_basic", false))
 	var type_filter: String = str(p.get("pokemon_type", "ANY"))
-	# When true, allow non-basic Pokémon (Influence places fossil Stage-1s as
-	# "Basic" via the card text — bypassing the normal stage check).
 	var ignore_stage: bool = bool(p.get("ignore_stage", false))
-	var placed: int = 0
-	for i in range(deck.size() - 1, -1, -1):
-		if placed >= count:
-			break
-		var c = deck[i]
+
+	## Pass 1 — collect candidates without mutating the deck.
+	var candidates: Array[PokemonCardData] = []
+	for c in deck:
 		if not (c is PokemonCardData):
 			continue
 		var pc := c as PokemonCardData
@@ -2785,22 +2807,86 @@ func _search_deck_basic_to_bench(ctx: AttackContext, p: Dictionary) -> void:
 			if int(pc.pokemon_type) == _energy_type_from_string(type_filter):
 				matched = true
 		else:
-			# No filter set → any basic counts.
 			matched = (slug == "" and slug_any.is_empty())
-		# `or_any_basic`: even a non-matching slug counts as a fallback basic.
 		if not matched and or_any_basic:
 			matched = true
-		if not matched:
-			continue
+		if matched:
+			candidates.append(pc)
+
+	## Determine the cap: min of the per-effect count, the candidate pool, and
+	## the bench capacity.
+	var bench_capacity: int = 0
+	for i in range(1, ctx.manager.bench_slot_count + 1):
+		var slot := "p%d_bench%d" % [ctx.player_id, i]
+		if ctx.manager.board_position.is_empty(slot):
+			bench_capacity += 1
+	var max_pick: int = mini(count, mini(candidates.size(), bench_capacity))
+
+	if max_pick == 0:
+		ctx.manager.game_position.shuffle_deck(ctx.player_id)
+		return
+
+	## Pick: auto when there is no meaningful choice, prompt otherwise.
+	var picks: Array[PokemonCardData] = []
+	if candidates.size() <= max_pick:
+		picks = candidates
+	else:
+		var raw: Array[CardData] = []
+		for pc in candidates:
+			raw.append(pc)
+		var chosen: Array[CardData] = await _ask_pick_cards(ctx, raw, max_pick,
+				"Search your deck for a Basic Pokémon")
+		for c in chosen:
+			if c is PokemonCardData:
+				picks.append(c as PokemonCardData)
+
+	## Apply: move picks from deck onto empty bench slots, then shuffle.
+	for pc in picks:
+		deck.erase(pc)
 		var bench: String = ctx.manager.board_position.first_empty_bench(ctx.player_id)
 		if bench == "":
-			break  # bench full
-		deck.remove_at(i)
+			break
 		var inst := PokemonInstance.create(pc, ctx.player_id)
 		ctx.manager.board_position.place(bench, inst)
-		placed += 1
-	if placed > 0 or deck.size() > 0:
-		ctx.manager.game_position.shuffle_deck(ctx.player_id)
+	ctx.manager.game_position.shuffle_deck(ctx.player_id)
+
+
+## Emits an AttackQuery.CHOOSE_FROM_LIST and returns the player's picks.
+## Caller is responsible for capping max_pick to a sensible value.
+##
+## When no listener is connected to player_query_requested (i.e. GUT runs
+## without DialogManager / AIDriver), auto-picks the first max_pick options
+## so deferred effects still resolve synchronously and assertions don't race
+## an unanswered query.
+func _ask_pick_cards(ctx: AttackContext, options: Array[CardData],
+		max_pick: int, prompt: String) -> Array[CardData]:
+	var resolver = ctx.manager.attack_resolver
+	if resolver == null \
+			or resolver.player_query_requested.get_connections().is_empty():
+		var auto: Array[CardData] = []
+		for i in mini(max_pick, options.size()):
+			auto.append(options[i])
+		return auto
+
+	var q := AttackQuery.new()
+	q.kind = AttackQuery.Kind.CHOOSE_FROM_LIST
+	q.player_id = ctx.player_id
+	q.prompt = prompt
+	var arr: Array = []
+	for c in options:
+		arr.append(c)
+	q.options = arr
+	q.min_selections = 0
+	q.max_selections = max_pick
+	var resp: Variant = await resolver.ask(q)
+	if not (resp is Array):
+		return []
+	var out: Array[CardData] = []
+	for v in resp as Array:
+		var c: CardData = v as CardData
+		if c != null:
+			out.append(c)
+	return out
 
 
 ## Number of prize cards still in [player_id]'s prize area (not yet taken).

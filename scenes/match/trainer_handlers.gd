@@ -15,6 +15,24 @@ func _ready() -> void:
 	_register_handlers()
 
 
+## Flips a coin AND awaits the coin overlay animation so subsequent dialogs
+## (typically a `_search_deck_into_hand` follow-up) don't race ahead and hide
+## the flip from the player.  Safe when animation_manager is null (GUT tests).
+static func _flip_coin_awaited(ctx: TrainerContext) -> bool:
+	var heads: bool = ctx.manager.flip_coin(ctx.card.display_name)
+	if ctx.manager.animation_manager != null:
+		await ctx.manager.animation_manager.wait_until_drained()
+	return heads
+
+
+## Same, for batch flips.  Returns the array of results.
+static func _flip_coins_batch_awaited(ctx: TrainerContext, count: int) -> Array[bool]:
+	var results: Array[bool] = ctx.manager.flip_coins_batch(count, ctx.card.display_name)
+	if ctx.manager.animation_manager != null:
+		await ctx.manager.animation_manager.wait_until_drained()
+	return results
+
+
 func _register_handlers() -> void:
 	## ── draw_until — Professor Birch ─────────────────────────────────────
 	## Params: {"target_size": 6}
@@ -392,7 +410,7 @@ func _register_handlers() -> void:
 	## then picks an energy on it, then discards.
 	var energy_removal_def := TrainerEffectDefinition.new()
 	energy_removal_def.phase_handlers[TrainerResolver.Phase.APPLY] = func(ctx: TrainerContext) -> void:
-		var heads: bool = ctx.manager.flip_coin(ctx.card.display_name)
+		var heads: bool = await _flip_coin_awaited(ctx)
 		ctx.manager.log_message.emit(
 			"[Coin] %s — %s" % [ctx.card.display_name, "Heads" if heads else "Tails"]
 		)
@@ -492,7 +510,7 @@ func _register_handlers() -> void:
 	TrainerEffectRegistry.register_def("coin_search_deck_pokemon", TrainerEffectDefinition.single(
 		TrainerResolver.Phase.APPLY,
 		func(ctx: TrainerContext) -> void:
-			var heads: bool = ctx.manager.flip_coin(ctx.card.display_name)
+			var heads: bool = await _flip_coin_awaited(ctx)
 			ctx.manager.log_message.emit(
 				"[Coin] %s — %s" % [ctx.card.display_name, "Heads" if heads else "Tails"]
 			)
@@ -509,7 +527,7 @@ func _register_handlers() -> void:
 		TrainerResolver.Phase.APPLY,
 		func(ctx: TrainerContext) -> void:
 			var n: int = int(ctx.params.get("flips", 3))
-			var flips: Array[bool] = ctx.manager.flip_coins_batch(n, ctx.card.display_name)
+			var flips: Array[bool] = await _flip_coins_batch_awaited(ctx, n)
 			var heads: int = 0
 			for h in flips:
 				if h: heads += 1

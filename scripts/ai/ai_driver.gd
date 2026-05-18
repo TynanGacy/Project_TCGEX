@@ -226,8 +226,12 @@ func _default_attack_response(query) -> Variant:
 			return query.options[0] if not query.options.is_empty() else ""
 		AttackQuery.Kind.CHOOSE_ENERGY_DISCARD, \
 		AttackQuery.Kind.CHOOSE_ENERGY_FROM_HAND, \
-		AttackQuery.Kind.CHOOSE_DISCARD_COUNT:
-			var take_n: int = clampi(query.min_selections, 0, query.options.size())
+		AttackQuery.Kind.CHOOSE_DISCARD_COUNT, \
+		AttackQuery.Kind.CHOOSE_FROM_LIST:
+			## Take up to max_selections; the engine handler decides what to do
+			## with that many.  Phase A heuristic: first N candidates.
+			var take_n: int = clampi(query.max_selections, query.min_selections,
+					query.options.size())
 			var arr: Array = []
 			for i in take_n:
 				arr.append(query.options[i])

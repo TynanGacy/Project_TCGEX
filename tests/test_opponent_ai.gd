@@ -107,11 +107,11 @@ func test_does_not_evolve_freshly_played_basic() -> void:
 	mgr.pokemon_entered_play_this_turn[0].append(basic)
 
 	var action: GameAction = _ai.decide_action(mgr, 0)
-	## AI should fall through to energy attach (we have no energy in hand) and
-	## ultimately return null, NOT propose an ActionEvolve on the fresh basic.
-	if action != null:
-		assert_false(action is ActionEvolve,
-			"AI must not evolve a Pokemon that entered play this turn")
+	## AI may fall through to energy attach / attack / null, but must not
+	## propose an ActionEvolve on a Pokemon that entered play this turn.
+	## `null is ActionEvolve` is false, so this assertion holds either way.
+	assert_false(action is ActionEvolve,
+		"AI must not evolve a Pokemon that entered play this turn")
 
 
 ## ── 3. Bench at MAX_BENCH_FILL, energy in hand, not yet attached → attach ────

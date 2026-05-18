@@ -17,6 +17,10 @@ enum Kind {
 	CHOOSE_OPP_HAND_BLIND,    ## Wave 19 — Lombre/Murkrow/Duskull Surprise, Absol Bad News
 	CHOOSE_OPP_HAND_OPEN,     ## Wave 19 — Sableye, Mawile, Skarmory (filter via `filter` dict)
 	CHOOSE_ATTACK_FROM_CARDS, ## Wave 19 — Genetic Memory
+	CHOOSE_FROM_LIST,         ## Card-list pick used by deck/discard search
+                              ## attack effects (Wurmple Signs of Evolution,
+                              ## search_deck_basic_to_bench, etc.). Options
+                              ## are CardData; response is Array[CardData].
 }
 
 var kind: int = Kind.GENERIC_CHOICE
